@@ -6,7 +6,9 @@ const PROP_PEDIDOS_REVISION = 'kds_pedidos_revision';
 const PROP_ATIVIDADES_REVISION = 'kds_atividades_revision';
 const PROP_FOTOS_TAREFAS = 'kds_fotos_tarefas';
 const PROP_MIGRACAO_PREFIX = 'kds_migracao_';
+const PROP_SPREADSHEET_ID = 'kds_spreadsheet_id';
 const PASTA_FOTOS_TAREFAS = 'Alô Cozinha - Fotos das Tarefas';
+const NOME_PLANILHA_DADOS = 'Alô Cozinha - Banco de Dados';
 const CACHE_PEDIDOS_PREFIX = 'kds_pedidos_visiveis_';
 const BASE_HEADERS = ['ID', 'Produto', 'Status', 'Timestamp', 'FinalizadoEm', 'Motivo'];
 const EXTRA_HEADERS = ['AtualizadoEm', 'Revisao', 'OperacaoId', 'AreaOrigem', 'AreaDestino'];
@@ -28,8 +30,41 @@ function json_(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function getProperties_() {
+  let documentProperties = null;
+  try { documentProperties = PropertiesService.getDocumentProperties(); } catch (error) {}
+  return documentProperties || PropertiesService.getScriptProperties();
+}
+
+function getLock_() {
+  let documentLock = null;
+  try { documentLock = LockService.getDocumentLock(); } catch (error) {}
+  return documentLock || LockService.getScriptLock();
+}
+
+function getSpreadsheet_() {
+  let spreadsheet = null;
+  try { spreadsheet = SpreadsheetApp.getActiveSpreadsheet(); } catch (error) {}
+  const properties = getProperties_();
+  if (spreadsheet) {
+    if (!properties.getProperty(PROP_SPREADSHEET_ID)) {
+      properties.setProperty(PROP_SPREADSHEET_ID, spreadsheet.getId());
+    }
+    return spreadsheet;
+  }
+
+  const savedId = properties.getProperty(PROP_SPREADSHEET_ID);
+  if (savedId) {
+    try { return SpreadsheetApp.openById(savedId); } catch (error) {}
+  }
+
+  spreadsheet = SpreadsheetApp.create(NOME_PLANILHA_DADOS);
+  properties.setProperty(PROP_SPREADSHEET_ID, spreadsheet.getId());
+  return spreadsheet;
+}
+
 function getPedidosSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(SHEET_PEDIDOS);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_PEDIDOS);
@@ -79,12 +114,12 @@ function orderFromRow_(row) {
 }
 
 function getPedidosRevision_() {
-  return Number(PropertiesService.getDocumentProperties().getProperty(PROP_PEDIDOS_REVISION) || '0');
+  return Number(getProperties_().getProperty(PROP_PEDIDOS_REVISION) || '0');
 }
 
 function nextPedidosRevision_() {
   const revision = getPedidosRevision_() + 1;
-  PropertiesService.getDocumentProperties().setProperty(PROP_PEDIDOS_REVISION, String(revision));
+  getProperties_().setProperty(PROP_PEDIDOS_REVISION, String(revision));
   return revision;
 }
 
@@ -98,7 +133,7 @@ function findRecordsById_(sheet) {
 }
 
 function mapaFotosTarefas_() {
-  const raw = PropertiesService.getDocumentProperties().getProperty(PROP_FOTOS_TAREFAS);
+  const raw = getProperties_().getProperty(PROP_FOTOS_TAREFAS);
   if (!raw) return {};
   try { return JSON.parse(raw); } catch (error) { return {}; }
 }
@@ -122,7 +157,7 @@ function salvarFotoTarefa_(tarefaId, imagem) {
   const file = pastaFotosTarefas_().createFile(blob);
   try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (error) {}
   map[id] = { fileId: file.getId(), atualizadoEm: new Date().toISOString() };
-  PropertiesService.getDocumentProperties().setProperty(PROP_FOTOS_TAREFAS, JSON.stringify(map));
+  getProperties_().setProperty(PROP_FOTOS_TAREFAS, JSON.stringify(map));
   return map[id];
 }
 
@@ -132,7 +167,7 @@ function excluirFotoTarefa_(tarefaId) {
   if (map[id] && map[id].fileId) {
     try { DriveApp.getFileById(map[id].fileId).setTrashed(true); } catch (error) {}
     delete map[id];
-    PropertiesService.getDocumentProperties().setProperty(PROP_FOTOS_TAREFAS, JSON.stringify(map));
+    getProperties_().setProperty(PROP_FOTOS_TAREFAS, JSON.stringify(map));
   }
 }
 
@@ -173,7 +208,7 @@ function appendNewOrders_(sheet, orders) {
 
   if (rows.length) {
     sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, HEADERS_PEDIDOS.length).setValues(rows);
-    PropertiesService.getDocumentProperties().setProperty(PROP_PEDIDOS_REVISION, String(revision));
+    getProperties_().setProperty(PROP_PEDIDOS_REVISION, String(revision));
   }
   return { count: rows.length, revision: revision };
 }
@@ -185,14 +220,14 @@ function migrationKey_(migrationId) {
 }
 
 function saveMigrationStatus_(migrationId, report) {
-  PropertiesService.getDocumentProperties().setProperty(
+  getProperties_().setProperty(
     migrationKey_(migrationId),
     JSON.stringify(Object.assign({ atualizadoEm: new Date().toISOString() }, report))
   );
 }
 
 function getMigrationStatus_(migrationId) {
-  const raw = PropertiesService.getDocumentProperties().getProperty(migrationKey_(migrationId));
+  const raw = getProperties_().getProperty(migrationKey_(migrationId));
   if (!raw) return { status: 'not_found' };
   try { return JSON.parse(raw); } catch (error) { return { status: 'error', message: 'Registro de migração inválido.' }; }
 }
@@ -239,7 +274,7 @@ function importBackupOrders_(sheet, orders) {
 
   if (rows.length) {
     sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, HEADERS_PEDIDOS.length).setValues(rows);
-    PropertiesService.getDocumentProperties().setProperty(PROP_PEDIDOS_REVISION, String(revision));
+    getProperties_().setProperty(PROP_PEDIDOS_REVISION, String(revision));
   }
   return { imported: rows.length, ignored: ignored, revision: revision };
 }
@@ -248,7 +283,7 @@ function importBackup_(sheet, params) {
   const migrationId = params.migrationId;
   saveMigrationStatus_(migrationId, { status: 'processing' });
   try {
-    const properties = PropertiesService.getDocumentProperties();
+    const properties = getProperties_();
     const currentBankRevision = Number(properties.getProperty(PROP_BANCO_REVISION) || '0');
     if (Number(params.expectedRevision || 0) !== currentBankRevision) {
       const conflict = { status: 'conflict', revision: currentBankRevision };
@@ -337,19 +372,19 @@ function updateStatuses_(sheet, updates) {
     group.push(record);
   });
   writeGroup();
-  PropertiesService.getDocumentProperties().setProperty(PROP_PEDIDOS_REVISION, String(revision));
+  getProperties_().setProperty(PROP_PEDIDOS_REVISION, String(revision));
   return changedRecords.length;
 }
 
 function bancosComRevisao_() {
-  const bancoStr = PropertiesService.getDocumentProperties().getProperty(PROP_BANCO);
+  const bancoStr = getProperties_().getProperty(PROP_BANCO);
   const banco = bancoStr ? JSON.parse(bancoStr) : {};
-  banco._revision = Number(PropertiesService.getDocumentProperties().getProperty(PROP_BANCO_REVISION) || '0');
+  banco._revision = Number(getProperties_().getProperty(PROP_BANCO_REVISION) || '0');
   return banco;
 }
 
 function salvarBanco_(dados, expectedRevision) {
-  const properties = PropertiesService.getDocumentProperties();
+  const properties = getProperties_();
   const currentRevision = Number(properties.getProperty(PROP_BANCO_REVISION) || '0');
   if (expectedRevision !== undefined && expectedRevision !== null && Number(expectedRevision) !== currentRevision) {
     return { status: 'conflict', revision: currentRevision };
@@ -406,7 +441,7 @@ function pedidosVisiveisCached_(sheet, revision) {
 }
 
 function getAtividadesSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(SHEET_ATIVIDADES);
   if (!sheet) sheet = ss.insertSheet(SHEET_ATIVIDADES);
   if (sheet.getLastRow() === 0) {
@@ -469,7 +504,7 @@ function activityToRow_(activity, revision) {
 }
 
 function getAtividadesRevision_() {
-  return Number(PropertiesService.getDocumentProperties().getProperty(PROP_ATIVIDADES_REVISION) || '0');
+  return Number(getProperties_().getProperty(PROP_ATIVIDADES_REVISION) || '0');
 }
 
 function saveActivities_(sheet, activities) {
@@ -519,7 +554,7 @@ function saveActivities_(sheet, activities) {
     sheet.getRange(sheet.getLastRow() + 1, 1, appended.length, HEADERS_ATIVIDADES.length).setValues(appended);
   }
   if (changed.length || appended.length) {
-    PropertiesService.getDocumentProperties().setProperty(PROP_ATIVIDADES_REVISION, String(revision));
+    getProperties_().setProperty(PROP_ATIVIDADES_REVISION, String(revision));
   }
   return { count: changed.length + appended.length, revision: revision };
 }
@@ -568,7 +603,7 @@ function filtrarHistorico_(sheet, start, end) {
 }
 
 function doPost(e) {
-  const lock = LockService.getDocumentLock();
+  const lock = getLock_();
   let locked = false;
   try {
     lock.waitLock(10000);
@@ -734,7 +769,7 @@ function doGet(e) {
 }
 
 function resgatarMeusDados() {
-  const dados = PropertiesService.getDocumentProperties().getProperty(PROP_BANCO);
-  const aba = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  const dados = getProperties_().getProperty(PROP_BANCO);
+  const aba = getSpreadsheet_().getSheets()[0];
   aba.getRange('H1').setValue(dados || 'NENHUM DADO ENCONTRADO');
 }

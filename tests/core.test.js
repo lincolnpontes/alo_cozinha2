@@ -338,6 +338,53 @@ function testAppsScriptRejectsStaleStatus() {
     assert.equal(context.testRow[7], 6);
 }
 
+function testStandaloneAppsScriptCreatesAndReusesSpreadsheet() {
+    const scriptProperties = new Map();
+    const createdSpreadsheet = { getId() { return 'planilha-criada'; } };
+    const scriptLock = { name: 'script-lock' };
+    let created = 0;
+    let opened = 0;
+    const context = vm.createContext({
+        console,
+        Date,
+        Set,
+        PropertiesService: {
+            getDocumentProperties() { return null; },
+            getScriptProperties() {
+                return {
+                    getProperty(key) { return scriptProperties.get(key) || null; },
+                    setProperty(key, value) { scriptProperties.set(key, String(value)); }
+                };
+            }
+        },
+        SpreadsheetApp: {
+            getActiveSpreadsheet() { return null; },
+            create(name) {
+                created += 1;
+                assert.equal(name, 'Alô Cozinha - Banco de Dados');
+                return createdSpreadsheet;
+            },
+            openById(id) {
+                opened += 1;
+                assert.equal(id, 'planilha-criada');
+                return createdSpreadsheet;
+            }
+        },
+        LockService: {
+            getDocumentLock() { return null; },
+            getScriptLock() { return scriptLock; }
+        }
+    });
+    loadScript(context, 'google-apps-script.gs');
+
+    assert.equal(vm.runInContext('getSpreadsheet_().getId()', context), 'planilha-criada');
+    assert.equal(scriptProperties.get('kds_spreadsheet_id'), 'planilha-criada');
+    assert.equal(vm.runInContext('getSpreadsheet_().getId()', context), 'planilha-criada');
+    assert.equal(created, 1, 'a planilha independente deve ser criada uma única vez');
+    assert.equal(opened, 1, 'as próximas chamadas devem reutilizar a planilha salva');
+    assert.equal(vm.runInContext('getLock_()', context), scriptLock);
+}
+
 function testAppsScriptAppendsOrderBatchOnce() {
     const properties = new Map([['kds_pedidos_revision', '7']]);
     const writes = [];
@@ -550,7 +597,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2016TaskExperience() {
+function testV2017TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -567,6 +614,9 @@ function testV2016TaskExperience() {
     assert.equal(app.includes("AloApi.migrateBackup"), true, 'o backup deve ser confirmado pelo novo servidor');
     assert.equal(gas.includes("action === 'importar_backup'"), true);
     assert.equal(gas.includes("action === 'status_migracao'"), true);
+    assert.equal(gas.includes('PropertiesService.getScriptProperties()'), true);
+    assert.equal(gas.includes("SpreadsheetApp.create(NOME_PLANILHA_DADOS)"), true);
+    assert.equal(gas.includes('LockService.getScriptLock()'), true);
     assert.equal(html.includes('<strong>Checklist</strong>'), true, 'o modulo de atividades deve se chamar Checklist');
     assert.equal(html.includes('<strong>KDS</strong>'), true, 'o nome KDS deve aparecer no cabecalho');
     assert.equal(html.includes('Pedidos por Área'), false);
@@ -822,15 +872,16 @@ async function testCatalogAutoPublish() {
     await testNewerRemoteActionWinsOverStaleTablet();
     await testOldOrphanQueueIsCleaned();
     testAppsScriptRejectsStaleStatus();
+    testStandaloneAppsScriptCreatesAndReusesSpreadsheet();
     testAppsScriptAppendsOrderBatchOnce();
     testBackupMigrationIsIdempotentAndPreservesHistory();
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2016TaskExperience();
+    testV2017TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.16 passaram.');
+    console.log('Testes críticos da v2.0.17 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

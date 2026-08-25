@@ -394,6 +394,7 @@
             const operations = await global.AloStorage.getAllOperations();
             const createOrderIds = new Set(operations.filter(operation => operation.type === 'create').map(operation => String(operation.orderId)));
             const confirmed = [];
+            const rebased = [];
             operations.forEach(operation => {
                 if ((operation.type === 'delete' || operation.type === 'delete_today' || operation.type === 'delete_all') && operation.attempts > 0) {
                     const ids = Array.isArray(operation.payload.ids) ? operation.payload.ids.map(String) : [];
@@ -424,11 +425,24 @@
                     const desiredStateReached = remote.status === operation.payload.novoStatus;
                     const changedByAnotherAction = Number.isFinite(expectedRevision) && remoteRevision > expectedRevision;
                     const activeActionAlreadyFinished = operation.payload.novoStatus === 'fazendo' && global.AloLogic.isStatusFinal(remote.status);
-                    if (desiredStateReached || changedByAnotherAction || activeActionAlreadyFinished) {
+                    const serverStillAtExpectedStatus = operation.payload.expectedStatus
+                        && remote.status === operation.payload.expectedStatus;
+                    if (desiredStateReached || activeActionAlreadyFinished) {
+                        confirmed.push(operation.operationId);
+                    } else if (changedByAnotherAction && serverStillAtExpectedStatus) {
+                        rebased.push({
+                            ...operation,
+                            payload: { ...operation.payload, expectedOrderRevision: remoteRevision },
+                            submittedAt: 0,
+                            nextAttemptAt: 0,
+                            lastError: ''
+                        });
+                    } else if (changedByAnotherAction) {
                         confirmed.push(operation.operationId);
                     }
                 }
             });
+            await Promise.all(rebased.map(operation => global.AloStorage.updateOperation(operation)));
             await global.AloStorage.removeOperations(confirmed);
         }
 

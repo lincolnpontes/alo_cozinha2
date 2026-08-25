@@ -343,6 +343,46 @@ async function testNewOrderJumpsAheadOfOldQueue() {
     assert.equal(harness.postPayloads[0].action, 'novo_pedido', 'pedido novo deve ter prioridade sobre operações antigas');
 }
 
+async function testRapidAcceptsSurviveStaleHigherRevisionPull() {
+    const harness = createSyncHarness();
+    harness.manager.queueImmediateFlush = () => {};
+    const orders = ['rapido-1', 'rapido-2', 'rapido-3'].map((id, index) => ({
+        id,
+        produto: `Produto ${index + 1}`,
+        status: 'pendente',
+        revisao: 10 + index,
+        timestamp: new Date().toISOString()
+    }));
+    harness.manager.orders = orders.map(order => ({ ...order }));
+    orders.forEach(order => {
+        harness.localOrders.set(order.id, { ...order });
+        harness.remoteOrders.set(order.id, { ...order, revisao: order.revisao + 20 });
+    });
+
+    await Promise.all(orders.map(order => harness.manager.enqueueStatus(order.id, 'fazendo')));
+    await harness.manager.pull(true);
+
+    assert.equal(
+        harness.manager.orders.map(order => order.status).join(','),
+        'fazendo,fazendo,fazendo',
+        'uma leitura antiga não pode desfazer aceitações rápidas'
+    );
+    assert.equal(harness.operations.size, 3, 'as três intenções devem continuar protegidas na fila');
+    [...harness.operations.values()].forEach(operation => {
+        assert.equal(
+            operation.payload.expectedOrderRevision,
+            harness.remoteOrders.get(operation.orderId).revisao,
+            'cada operação deve ser rebaseada na revisão remota atual'
+        );
+        assert.equal(operation.nextAttemptAt, 0);
+    });
+
+    await harness.manager.flushPendingOperations();
+    await harness.manager.pull(true);
+    assert.equal([...harness.remoteOrders.values()].map(order => order.status).join(','), 'fazendo,fazendo,fazendo');
+    assert.equal(harness.operations.size, 0, 'a fila só deve limpar depois da confirmação dos três pedidos');
+}
+
 async function testAlertAcknowledgementIsConfirmedByServer() {
     const harness = createSyncHarness();
     const order = {
@@ -896,7 +936,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2026TaskExperience() {
+function testV2027TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -979,9 +1019,9 @@ function testV2026TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.0.26</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.26/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.26/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.0.27</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.27/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.27/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
@@ -1153,7 +1193,7 @@ function testAudioMode() {
     });
     assert.equal(classes.has('alerta-pisca-buscar'), true);
     assert.equal(playCount, 2, 'cancelamento novo deve beepar mesmo com o som comum desativado');
-    assert.equal(playerLoop, false, 'o aviso das panelas nunca deve tocar indefinidamente');
+    assert.equal(playerLoop, true, 'o aviso das panelas deve continuar até alguém confirmar');
 
     context.AloAudio.manage({
         mode: 'panelas',
@@ -1163,6 +1203,7 @@ function testAudioMode() {
     });
     assert.equal(playCount, 2, 'a sincronizacao nao deve reiniciar o mesmo aviso');
     assert.equal(classes.has('alerta-pisca-buscar'), true, 'o alerta visual deve continuar ate a ciencia');
+    assert.equal(playerLoop, true, 'o beep deve permanecer em loop enquanto a retirada não for confirmada');
 
     context.AloAudio.manage({
         mode: 'panelas',
@@ -1171,6 +1212,7 @@ function testAudioMode() {
         knownIds: new Set(['5'])
     });
     assert.equal(classes.has('alerta-pisca-buscar'), false);
+    assert.equal(playerLoop, false, 'a ciência deve encerrar imediatamente o áudio contínuo');
 
     context.AloAudio.manage({
         mode: 'panelas',
@@ -1243,6 +1285,7 @@ async function testCatalogAutoPublish() {
     await testNewOrderDoesNotWaitForSlowPull();
     await testSuccessfulPostTurnsIndicatorGreenBeforeFullPull();
     await testNewOrderJumpsAheadOfOldQueue();
+    await testRapidAcceptsSurviveStaleHigherRevisionPull();
     await testAlertAcknowledgementIsConfirmedByServer();
     await testAlertAcknowledgementRetriesAfterOfflineFailure();
     await testOldServerFallsBackToIndividualOrders();
@@ -1259,10 +1302,10 @@ async function testCatalogAutoPublish() {
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2026TaskExperience();
+    testV2027TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.26 passaram.');
+    console.log('Testes críticos da v2.0.27 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

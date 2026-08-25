@@ -18,8 +18,6 @@
     let playingKey = 'sem_som';
     let playingVolume = -1;
     let playingMode = '';
-    const playedPanelAlerts = new Set();
-    const MAX_PLAYED_PANEL_ALERTS = 300;
 
     function normalize(value, fallback) {
         return value === 'sem_som' || sounds[value] ? value : fallback;
@@ -158,19 +156,19 @@
         if (header) header.classList.remove('alerta-pisca', 'alerta-pisca-buscar');
     }
 
-    function startContinuousSound(key, volume) {
-        if (playingMode === 'cozinha' && playingKey === key && Math.abs(playingVolume - volume) < 0.01) return;
+    function startContinuousSound(key, volume, mode = 'cozinha') {
+        if (playingMode === mode && playingKey === key && Math.abs(playingVolume - volume) < 0.01) return;
         stopPlayback();
         const sound = sounds[key];
         playingKey = key;
         playingVolume = volume;
-        playingMode = 'cozinha';
+        playingMode = mode;
         if (sound.type === 'audio') {
             player.src = sound.url;
             player.loop = true;
             player.volume = volume;
             const useSyntheticSound = () => {
-                if (playingMode !== 'cozinha' || playingKey !== key || syntheticTimer) return;
+                if (playingMode !== mode || playingKey !== key || syntheticTimer) return;
                 player.pause();
                 startSyntheticLoop(key, volume, key === 'beep' ? 1000 : 1200);
             };
@@ -179,50 +177,6 @@
             return;
         }
         startSyntheticLoop(key, volume, sound.interval);
-    }
-
-    function startPanelSoundOnce(key, volume) {
-        stopPlayback();
-        const sound = sounds[key];
-        playingKey = key;
-        playingVolume = volume;
-        playingMode = 'panelas';
-        if (sound.type === 'audio') {
-            let usedFallback = false;
-            player.src = sound.url;
-            player.loop = false;
-            player.volume = volume;
-            player.onended = () => {
-                if (playingMode === 'panelas' && playingKey === key) stopPlayback();
-            };
-            const useSyntheticSound = () => {
-                if (usedFallback || playingMode !== 'panelas' || playingKey !== key) return;
-                usedFallback = true;
-                player.pause();
-                playSynthetic(key, volume);
-                finiteSoundTimer = setTimeout(() => {
-                    if (playingMode === 'panelas' && playingKey === key) stopPlayback();
-                }, 1500);
-            };
-            player.onerror = useSyntheticSound;
-            player.play().catch(useSyntheticSound);
-            return;
-        }
-        playSynthetic(key, volume);
-        finiteSoundTimer = setTimeout(() => {
-            if (playingMode === 'panelas' && playingKey === key) stopPlayback();
-        }, 1500);
-    }
-
-    function panelAlertKey(order) {
-        return `${String(order.id)}:${order.status}:${order.finalizadoEm || order.atualizadoEm || ''}`;
-    }
-
-    function rememberPanelAlerts(alerts) {
-        alerts.forEach(order => playedPanelAlerts.add(panelAlertKey(order)));
-        while (playedPanelAlerts.size > MAX_PLAYED_PANEL_ALERTS) {
-            playedPanelAlerts.delete(playedPanelAlerts.values().next().value);
-        }
     }
 
     function previewSound(selectId) {
@@ -270,15 +224,11 @@
         if (!alerts.length) return stop();
         header.classList.add('alerta-pisca-buscar');
 
-        const newAlerts = alerts.filter(order => !playedPanelAlerts.has(panelAlertKey(order)));
-        if (!newAlerts.length) return;
-        rememberPanelAlerts(newAlerts);
-
-        const hasCancellation = newAlerts.some(order => order.status === 'cancelado');
+        const hasCancellation = alerts.some(order => order.status === 'cancelado');
         const key = hasCancellation ? 'beep' : normalize(configs.somPanelas || 'sem_som', 'beep');
         if (key === 'sem_som') return stopPlayback();
         const volume = Math.max(0, Math.min(100, Number(configs.volumePanelas || 70))) / 100;
-        startPanelSoundOnce(key, volume);
+        startContinuousSound(key, volume, 'panelas');
     }
 
     function unlock() {

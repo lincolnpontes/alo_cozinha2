@@ -409,9 +409,32 @@ let db = carregarBanco();
     }
     function salvarFilaStatus() { localStorage.setItem('kds_fila_status', JSON.stringify(filaRetentativaStatus)); }
 
+    function pedidosParaCacheLocal(limite = 250) {
+        const agora = Date.now();
+        const hoje = new Date().toDateString();
+        return pedidosServidor.filter(order => {
+            if (order.status === 'pendente' || order.status === 'fazendo') return true;
+            const timestamp = new Date(order.timestamp).getTime();
+            const finalizadoEm = new Date(order.finalizadoEm || 0).getTime();
+            return new Date(order.timestamp).toDateString() === hoje
+                || (Number.isFinite(finalizadoEm) && agora - finalizadoEm < 10 * 60 * 1000)
+                || (Number.isFinite(timestamp) && agora - timestamp < 24 * 60 * 60 * 1000);
+        }).slice(-limite);
+    }
+
     function salvarHistoricoLocal() {
-        localStorage.setItem('kds_pedidos_local', JSON.stringify(pedidosServidor));
-        localStorage.setItem('kds_cientes_local', JSON.stringify(Array.from(pedidosCientes)));
+        const cache = pedidosParaCacheLocal();
+        try {
+            localStorage.setItem('kds_pedidos_local', JSON.stringify(cache));
+        } catch(error) {
+            try {
+                localStorage.removeItem('kds_pedidos_local');
+                localStorage.setItem('kds_pedidos_local', JSON.stringify(cache.slice(-80)));
+            } catch(fallbackError) {}
+        }
+        try {
+            localStorage.setItem('kds_cientes_local', JSON.stringify(Array.from(pedidosCientes).slice(-250)));
+        } catch(error) {}
     }
     setInterval(salvarHistoricoLocal, 60000);
 
@@ -1500,7 +1523,6 @@ let db = carregarBanco();
             db = preparedBank;
             db.configs.revisaoBanco = Number(report.bancoRevision || 0);
             db.configs.bancoPendente = false;
-            pedidosServidor = Array.isArray(importedData.pedidos) ? importedData.pedidos : [];
             pedidosCientes = new Set(Array.isArray(importedData.cientes) ? importedData.cientes : []);
             normalizarAreasERotas();
             normalizarSonsConfigurados();
@@ -2227,7 +2249,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.17').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.18').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

@@ -597,7 +597,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2017TaskExperience() {
+function testV2018TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -617,6 +617,9 @@ function testV2017TaskExperience() {
     assert.equal(gas.includes('PropertiesService.getScriptProperties()'), true);
     assert.equal(gas.includes("SpreadsheetApp.create(NOME_PLANILHA_DADOS)"), true);
     assert.equal(gas.includes('LockService.getScriptLock()'), true);
+    assert.equal(app.includes('function pedidosParaCacheLocal(limite = 250)'), true);
+    assert.equal(app.includes("localStorage.removeItem('kds_pedidos_local')"), true);
+    assert.equal(app.includes('pedidosServidor = Array.isArray(importedData.pedidos)'), false, 'a migração não deve copiar todo o histórico para o localStorage');
     assert.equal(html.includes('<strong>Checklist</strong>'), true, 'o modulo de atividades deve se chamar Checklist');
     assert.equal(html.includes('<strong>KDS</strong>'), true, 'o nome KDS deve aparecer no cabecalho');
     assert.equal(html.includes('Pedidos por Área'), false);
@@ -878,10 +881,10 @@ async function testCatalogAutoPublish() {
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2017TaskExperience();
+    testV2018TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.17 passaram.');
+    console.log('Testes críticos da v2.0.18 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

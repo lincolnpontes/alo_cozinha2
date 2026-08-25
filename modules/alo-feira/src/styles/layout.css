@@ -1,4 +1,6 @@
 .header { padding:4px 8px 4px 10px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr); align-items:center; color:white; transition:background-color .3s; flex-shrink:0; }
+        body.embedded-host .app-container > .header { display:none; }
+        body.embedded-host > .sync-indicador { display:none !important; }
         .header-mode { min-width:0; justify-self:start; }
         .header-select { max-width:116px; background: transparent; color: white; border: none; font-size: 17px; font-weight: bold; outline: none; -webkit-appearance: none; appearance: none; flex-shrink:0; }
         .header-select:focus, .header-select:focus-visible { outline:2px solid transparent !important; box-shadow:none; }

@@ -1,4 +1,4 @@
-# Alô Feira
+# Lista de Compras
 
 Aplicativo web instalável para preparar pedidos, acompanhar compras e gerar relatórios por fornecedor.
 

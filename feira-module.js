@@ -1,6 +1,11 @@
 (function (global) {
     const STORAGE_KEY = 'alofeira_v1';
+    const MODE_LABELS = {
+        pedido: { name: 'Pedir', emoji: '📝' },
+        compras: { name: 'Comprar', emoji: '🛒' }
+    };
     let getServerUrl = () => '';
+    let loadPromise = null;
 
     function readBank() {
         try {
@@ -15,6 +20,10 @@
         return String(getServerUrl() || '').trim();
     }
 
+    function frameElement() {
+        return document.getElementById('feiraFrame');
+    }
+
     function syncServerUrl() {
         const savedBank = readBank();
         const bank = savedBank || { app_id: 'alofeira', schemaVersion: 2, configs: {} };
@@ -26,92 +35,155 @@
         bank.configs.url = url;
         if (changed) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bank));
-            const frame = document.getElementById('feiraFrame');
+            const frame = frameElement();
             if (frame?.getAttribute('src')) frame.contentWindow.location.reload();
         }
         return changed;
     }
 
-    function reloadFrame() {
-        const frame = document.getElementById('feiraFrame');
-        if (!frame) return;
-        const source = frame.dataset.src || 'modules/alo-feira/index.html?v=2.1.0';
-        if (!frame.getAttribute('src')) frame.setAttribute('src', source);
-        else frame.contentWindow.location.reload();
-    }
-
     function open() {
         syncServerUrl();
-        const frame = document.getElementById('feiraFrame');
+        const frame = frameElement();
         if (!frame) return;
         if (!frame.getAttribute('src')) frame.setAttribute('src', frame.dataset.src);
     }
 
-    function pickImportFile() {
-        document.getElementById('feiraImportInput')?.click();
+    function waitForChild() {
+        open();
+        const frame = frameElement();
+        if (!frame) return Promise.reject(new Error('O módulo de compras não está disponível.'));
+        try {
+            if (frame.contentDocument?.readyState === 'complete' && typeof frame.contentWindow.obterEstadoHostCompras === 'function') {
+                return Promise.resolve(frame.contentWindow);
+            }
+        } catch (error) {}
+        if (!loadPromise) {
+            loadPromise = new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    loadPromise = null;
+                    reject(new Error('A Lista de Compras demorou para abrir.'));
+                }, 12000);
+                frame.addEventListener('load', () => {
+                    clearTimeout(timeout);
+                    loadPromise = null;
+                    resolve(frame.contentWindow);
+                }, { once: true });
+            });
+        }
+        return loadPromise;
     }
 
-    async function importBackup(event) {
-        const input = event.currentTarget;
-        const file = input.files && input.files[0];
-        if (!file) return;
+    function closeModePicker() {
+        document.getElementById('feiraModeOptions')?.classList.remove('open');
+        document.getElementById('feiraModeButton')?.setAttribute('aria-expanded', 'false');
+    }
 
-        try {
-            const imported = JSON.parse(await file.text());
-            if (!imported || imported.app_id !== 'alofeira') {
-                throw new Error('Este arquivo não é um backup válido do Alô Feira.');
-            }
+    function toggleModePicker() {
+        const options = document.getElementById('feiraModeOptions');
+        const button = document.getElementById('feiraModeButton');
+        if (!options || !button) return;
+        const openNow = !options.classList.contains('open');
+        options.classList.toggle('open', openNow);
+        button.setAttribute('aria-expanded', String(openNow));
+    }
 
-            const confirmed = await global.AloUiDialog.confirm(
-                'Os dados atuais do módulo Alô Feira neste aparelho serão substituídos. KDS e Checklist não serão alterados.',
-                {
-                    title: 'Importar dados do Alô Feira',
-                    icon: '⬆',
-                    confirmText: 'Importar',
-                    tone: 'default'
-                }
-            );
-            if (!confirmed) return;
-
-            const current = readBank();
-            imported.app_id = 'alofeira';
-            imported.schemaVersion = 2;
-            imported.configs = imported.configs && typeof imported.configs === 'object' ? imported.configs : {};
-            imported.configs.url = unifiedUrl();
-            imported.configs.colabAtivoId = current?.configs?.colabAtivoId || null;
-            imported.configs.modo = current?.configs?.modo || imported.configs.modo || 'pedido';
-            const importedAt = Date.now();
-            imported.configs.ultimaMudancaLocal = importedAt;
-            imported.configs.atualizadoEm = importedAt;
-            imported.configs.backendComControleRevisao = false;
-            imported.configs.importacaoInicialPendente = true;
-            imported.configs.syncPendente = true;
-            imported.restaurante = imported.restaurante && typeof imported.restaurante === 'object' ? imported.restaurante : {};
-            imported.restaurante.atualizadoEm = importedAt;
-            ['produtos', 'categorias', 'fornecedores', 'colaboradores'].forEach(name => {
-                if (!Array.isArray(imported[name])) imported[name] = [];
-                imported[name].forEach(item => { if (item && typeof item === 'object') item.atualizadoEm = importedAt; });
-            });
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
-            reloadFrame();
-
-            await global.AloUiDialog.notice(
-                'Dados importados somente para o Alô Feira. A sincronização usará a mesma nuvem dos outros módulos.',
-                { title: 'Importação concluída', icon: '✓', confirmText: 'Entendi' }
-            );
-        } catch (error) {
-            await global.AloUiDialog.notice(error.message || 'Não foi possível importar este arquivo.', {
-                title: 'Importação não concluída', icon: '!', tone: 'danger', confirmText: 'Entendi'
-            });
-        } finally {
-            input.value = '';
+    function updateHeader(state = {}) {
+        const mode = MODE_LABELS[state.mode] ? state.mode : 'pedido';
+        const label = MODE_LABELS[mode];
+        const modeName = document.getElementById('feiraModeName');
+        const modeEmoji = document.getElementById('feiraModeEmoji');
+        const profileName = document.getElementById('feiraProfileName');
+        const profileEmoji = document.getElementById('feiraProfileEmoji');
+        const requireOperator = document.getElementById('configComprasExigirOperador');
+        const syncIndicator = document.getElementById('feiraSyncIndicator');
+        if (modeName) modeName.textContent = label.name;
+        if (modeEmoji) modeEmoji.textContent = label.emoji;
+        if (profileName) profileName.textContent = state.profileName || 'Perfil';
+        if (profileEmoji) profileEmoji.textContent = state.profileEmoji || '👤';
+        if (requireOperator && state.requireOperator !== undefined) requireOperator.checked = Boolean(state.requireOperator);
+        if (syncIndicator && state.syncState) {
+            syncIndicator.className = `feira-sync-indicator ${state.syncState}`;
+            syncIndicator.title = state.syncMessage || 'Estado da sincronização de Compras';
+            syncIndicator.setAttribute('aria-label', syncIndicator.title);
         }
+        document.querySelectorAll('[data-feira-mode]').forEach(button => {
+            const selected = button.dataset.feiraMode === mode;
+            button.classList.toggle('selected', selected);
+            button.setAttribute('aria-selected', String(selected));
+            const check = button.querySelector('b');
+            if (check) check.textContent = selected ? '✓' : '';
+        });
+    }
+
+    async function refreshHeader() {
+        try {
+            const child = await waitForChild();
+            if (typeof child.obterEstadoHostCompras === 'function') updateHeader(child.obterEstadoHostCompras());
+        } catch (error) {}
+    }
+
+    function currentHeaderState() {
+        return {
+            mode: document.querySelector('[data-feira-mode].selected')?.dataset.feiraMode || 'pedido',
+            profileName: document.getElementById('feiraProfileName')?.textContent || 'Perfil',
+            profileEmoji: document.getElementById('feiraProfileEmoji')?.textContent || '👤',
+            requireOperator: document.getElementById('configComprasExigirOperador')?.checked || false
+        };
+    }
+
+    async function setMode(mode) {
+        closeModePicker();
+        if (!MODE_LABELS[mode]) return;
+        updateHeader({ ...currentHeaderState(), mode });
+        const child = await waitForChild();
+        child.alterarModo(mode);
+    }
+
+    async function openProfile() {
+        const child = await waitForChild();
+        child.abrirSelecaoColaboradorInicial(true);
+    }
+
+    async function openManager(type) {
+        global.fecharModal?.('modalConfigCompras');
+        global.AloTasks?.openModule('feira');
+        const child = await waitForChild();
+        child.abrirGerenciar(type);
+    }
+
+    async function setRequireOperator(enabled) {
+        const child = await waitForChild();
+        if (typeof child.definirExigenciaOperadorHost === 'function') child.definirExigenciaOperadorHost(Boolean(enabled));
+    }
+
+    async function exportData() {
+        const child = await waitForChild();
+        child.exportarDados();
+    }
+
+    async function clearHistory() {
+        const child = await waitForChild();
+        if (typeof child.excluirHistoricoPeloHost !== 'function') throw new Error('A Lista de Compras precisa ser atualizada.');
+        return child.excluirHistoricoPeloHost();
+    }
+
+    function backToSettings() {
+        global.abrirConfiguracoesCompras?.();
     }
 
     function configure(options = {}) {
         if (typeof options.getServerUrl === 'function') getServerUrl = options.getServerUrl;
         syncServerUrl();
+        frameElement()?.addEventListener('load', refreshHeader);
+        document.addEventListener('pointerdown', event => {
+            const picker = document.querySelector('.feira-mode-picker');
+            if (picker && !picker.contains(event.target)) closeModePicker();
+        });
     }
 
-    global.AloFeiraModule = Object.freeze({ configure, open, pickImportFile, importBackup, syncServerUrl });
+    global.AloFeiraModule = Object.freeze({
+        configure, open, syncServerUrl, toggleModePicker, closeModePicker, setMode,
+        updateHeader, refreshHeader, openProfile, openManager, setRequireOperator,
+        exportData, clearHistory, backToSettings
+    });
 })(window);

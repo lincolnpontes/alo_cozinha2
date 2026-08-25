@@ -682,6 +682,15 @@ function filtrarHistoricoAtividades_(sheet, start, end) {
   });
 }
 
+function excluirHistoricoAtividades_() {
+  const sheet = getAtividadesSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) sheet.deleteRows(2, lastRow - 1);
+  const revision = getAtividadesRevision_() + 1;
+  getProperties_().setProperty(PROP_ATIVIDADES_REVISION, String(revision));
+  return revision;
+}
+
 function filtrarHistorico_(sheet, start, end) {
   const startTime = start ? new Date(start).getTime() : 0;
   const endTime = end ? new Date(end).getTime() : Number.MAX_SAFE_INTEGER;
@@ -744,7 +753,7 @@ function readFeiraBank_(sheet) {
   const text = values.map(row => row[0] || '').join('');
   if (!text) return feiraEmptyBank_();
   const bank = JSON.parse(text);
-  if (!bank || bank.app_id !== 'alofeira') throw new Error('Banco do Alô Feira armazenado inválido.');
+  if (!bank || bank.app_id !== 'alofeira') throw new Error('Banco da Lista de Compras armazenado inválido.');
   bank.syncRevision = Number(bank.syncRevision || 0);
   return bank;
 }
@@ -934,7 +943,7 @@ function handleFeiraPost_(payload) {
       return saveNewFeiraOrders_(sheet, current, payload, currentRevision, now);
     }
     if (payload.action !== 'salvar_banco' || !payload.dados || payload.dados.app_id !== 'alofeira') {
-      return json_({ status: 'erro', msg: 'Ação ou banco do Alô Feira inválido.', serverNow: now });
+      return json_({ status: 'erro', msg: 'Ação ou banco da Lista de Compras inválido.', serverNow: now });
     }
 
     const nextBank = payload.dados;
@@ -1071,6 +1080,10 @@ function doPost(e) {
       const activities = action === 'salvar_atividade' ? [params.atividade || {}] : (params.atividades || []);
       const result = saveActivities_(sheetAtividades, activities);
       return json_({ status: 'ok', count: result.count, revision: result.revision });
+    }
+
+    if (action === 'excluir_historico_atividades') {
+      return json_({ status: 'ok', revision: excluirHistoricoAtividades_() });
     }
 
     if (action === 'salvar_foto_tarefa') {

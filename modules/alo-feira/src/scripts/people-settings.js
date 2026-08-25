@@ -27,7 +27,7 @@ function abrirFormColaborador(id) {
         const ativos = db.colaboradores.filter(c => c.ativo !== false);
         const primeiroPerfil = ativos.length === 0;
         const isAdmin = primeiroPerfil || document.getElementById('colabIsAdmin').checked;
-        if(!nome) return alert('Informe o nome do colaborador.');
+        if(!nome) return alert('Informe o nome do operador.');
         if(pin && pin.length < 4) return alert('Use pelo menos 4 digitos no PIN.');
         if(!isAdmin && ativos.filter(c => c.isAdmin && c.id !== id).length === 0) return alert('O sistema precisa manter pelo menos um administrador.');
 

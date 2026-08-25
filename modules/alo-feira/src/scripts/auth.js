@@ -3,7 +3,7 @@ let modoSenhaAvancada = 'entrar';
 function abrirSelecaoColaboradorInicial(isTroca = false) {
     const ativos = db.colaboradores.filter(c => c.ativo !== false);
     if(ativos.length === 0 && db.configs.exigirColaborador) {
-        alert('Nenhum colaborador cadastrado. O acesso às configurações iniciais foi liberado.');
+        alert('Nenhum operador cadastrado. O acesso às configurações iniciais foi liberado.');
         db.configs.exigirColaborador = false;
         salvarBanco();
         iniciarApp();
@@ -70,6 +70,8 @@ function sairDoSistema() {
 function toggleExigirColab() {
     db.configs.exigirColaborador = document.getElementById('configExigirColab').checked;
     marcarMudancaConfiguracao();
+    salvarBanco();
+    if(typeof notificarHostCompras === 'function') notificarHostCompras();
     sincronizarFundo(false, true);
 }
 

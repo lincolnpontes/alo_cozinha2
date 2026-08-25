@@ -946,6 +946,7 @@ function testV2027TaskExperience() {
     const ui = fs.readFileSync(path.join(root, 'ui.js'), 'utf8');
     const gas = fs.readFileSync(path.join(root, 'google-apps-script.gs'), 'utf8');
     const templates = fs.readFileSync(path.join(root, 'task-templates.js'), 'utf8');
+    const comprasHtml = fs.readFileSync(path.join(root, 'modules', 'alo-feira', 'index.html'), 'utf8');
     const panel = html.slice(html.indexOf('id="modalPainelUnificado"'), html.indexOf('id="modalConfigKds"'));
     const kdsSettings = html.slice(html.indexOf('id="modalConfigKds"'), html.indexOf('id="modalConfigTasksMenu"'));
 
@@ -1019,17 +1020,26 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.0</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.0/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.0/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.1</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.1/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.1/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.0/g) || []).length, 2, 'o Alô Feira deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.1/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
-    assert.equal(fs.existsSync(path.join(root, 'modules', 'alo-feira', 'index.html')), true, 'o Alô Feira completo deve acompanhar o app');
-    assert.equal(html.includes('id="feiraImportInput"'), true, 'a importação temporária do Alô Feira deve estar disponível');
-    assert.equal(gas.includes("const SHEET_FEIRA_BANCO = 'Alô Feira - Banco'"), true, 'a nuvem do Feira deve ficar isolada na mesma implantação');
-    assert.equal(gas.includes("e.parameter.app === 'alofeira'"), true, 'a URL única deve rotear as leituras do Alô Feira');
+    assert.equal(fs.existsSync(path.join(root, 'modules', 'alo-feira', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
+    assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
+    assert.equal(html.includes('id="feiraImportInput"'), false, 'a importação temporária deve ser removida após a migração');
+    assert.equal(html.includes('id="modalConfigCompras"'), true, 'as configurações de Compras devem ficar no painel principal');
+    assert.equal(html.includes('Gerenciar Operadores'), true, 'o cadastro de pessoas deve usar o nome Operadores');
+    assert.equal(html.includes('embedded=1'), true, 'o módulo integrado deve ocultar o segundo cabeçalho');
+    assert.equal(comprasHtml.includes('Configurações Avançadas'), false, 'Compras não deve manter um painel avançado próprio');
+    assert.equal(comprasHtml.includes('Forçar Atualização do App'), false, 'a atualização deve ficar centralizada no app principal');
+    assert.equal(gas.includes("const SHEET_FEIRA_BANCO = 'Alô Feira - Banco'"), true, 'a Lista de Compras deve preservar a aba já usada na mesma implantação');
+    assert.equal(gas.includes("e.parameter.app === 'alofeira'"), true, 'a URL única deve rotear as leituras da Lista de Compras');
+    assert.equal(gas.includes("action === 'excluir_historico_atividades'"), true, 'o histórico do Checklist deve poder ser apagado separadamente');
+    assert.equal(app.includes("function excluirHistoricoModulo(modulo)"), true, 'o painel principal deve apagar históricos por módulo');
+    assert.equal(tasks.includes('function clearHistoryLocal()'), true, 'o Checklist deve limpar seu cache após a exclusão confirmada');
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
     assert.equal(html.includes('>↻</button>'), false, 'nenhum módulo deve exibir seta no lugar da bolinha de conexão');
     assert.equal(html.includes('id="tasksSyncIndicator"') && html.includes('title="Aguardando sincronização">🔴</button>'), true, 'o Checklist deve iniciar com estado vermelho, nunca com seta');
@@ -1115,7 +1125,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('↩ Voltar para pendente'), true, 'a correcao de estado deve explicar seu efeito');
     assert.equal(tasks.includes("choices.classList.toggle('single-action', !isFinished)"), true, 'o menu com uma unica correcao deve ficar compacto');
     assert.equal(css.includes('.task-finished-choices.single-action { width: min(180px'), true, 'o botao isolado deve manter o tamanho de uma opcao');
-    assert.equal((html.match(/class="header-area-chevron" aria-hidden="true">▾/g) || []).length, 2, 'KDS e Checklist devem usar o novo indicador de abertura');
+    assert.equal((html.match(/class="header-area-chevron" aria-hidden="true">▾/g) || []).length, 3, 'KDS, Checklist e Compras devem usar o mesmo indicador de abertura');
     assert.equal(html.includes('>⌄</span>'), false, 'o indicador antigo deve ser removido');
     assert.equal(html.includes('<span>✓</span> Concluído'), true, 'o alarme deve usar Concluído');
     assert.equal(tasks.includes('✓ Concluído</button>'), true, 'os botoes das tarefas devem usar Concluído');
@@ -1282,15 +1292,16 @@ async function testCatalogAutoPublish() {
     assert.equal(conflicted.confirmed, false);
 }
 
-async function testFeiraImportStaysIsolated() {
+function testComprasUsesUnifiedHost() {
     const storage = new Map([
         ['kds_banco', '{"produtos":[{"nome":"Feijão"}]}'],
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/alo-feira/index.html?v=2.1.0' },
+        dataset: { src: 'modules/alo-feira/index.html?v=2.1.1' },
         getAttribute() { return ''; },
-        setAttribute() {}
+        setAttribute() {},
+        addEventListener() {}
     };
     const context = vm.createContext({
         console,
@@ -1301,39 +1312,22 @@ async function testFeiraImportStaysIsolated() {
             setItem(key, value) { storage.set(key, value); }
         },
         document: {
-            getElementById(id) { return id === 'feiraFrame' ? frame : null; }
-        },
-        AloUiDialog: {
-            async confirm() { return true; },
-            async notice() {}
+            getElementById(id) { return id === 'feiraFrame' ? frame : null; },
+            addEventListener() {},
+            querySelector() { return null; },
+            querySelectorAll() { return []; }
         }
     });
     context.window = context;
     loadScript(context, 'feira-module.js');
     context.AloFeiraModule.configure({ getServerUrl: () => 'https://script.google.com/macros/s/unificado/exec' });
 
-    const input = {
-        value: 'backup.json',
-        files: [{
-            async text() {
-                return JSON.stringify({
-                    app_id: 'alofeira', schemaVersion: 2,
-                    produtos: [{ id: 'produto-feira', nome: 'Tomate' }],
-                    pedidosAtivos: [], categorias: [], fornecedores: [], colaboradores: [], configs: {}
-                });
-            }
-        }]
-    };
-    await context.AloFeiraModule.importBackup({ currentTarget: input });
-
     const feira = JSON.parse(storage.get('alofeira_v1'));
-    assert.equal(feira.produtos[0].nome, 'Tomate');
     assert.equal(feira.configs.url, 'https://script.google.com/macros/s/unificado/exec');
-    assert.equal(feira.configs.syncPendente, true);
-    assert.equal(feira.configs.importacaoInicialPendente, true, 'a importação deve aguardar um backend identificado como Alô Feira');
+    assert.equal(feira.app_id, 'alofeira');
     assert.equal(storage.get('kds_banco'), '{"produtos":[{"nome":"Feijão"}]}');
     assert.equal(storage.get('kds_pedidos_local'), '[{"id":"pedido-kds"}]');
-    assert.equal(input.value, '');
+    assert.equal(context.AloFeiraModule.importBackup, undefined, 'a importação temporária não deve continuar exposta');
 }
 
 (async () => {
@@ -1365,8 +1359,8 @@ async function testFeiraImportStaysIsolated() {
     testV2027TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    await testFeiraImportStaysIsolated();
-    console.log('Testes críticos da v2.1.0 passaram.');
+    testComprasUsesUnifiedHost();
+    console.log('Testes críticos da v2.1.1 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

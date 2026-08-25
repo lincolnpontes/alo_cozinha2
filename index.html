@@ -2,44 +2,44 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="icon.png?v=2.1.0">
-    <link rel="apple-touch-icon" href="icon.png?v=2.1.0">
+    <link rel="icon" href="icon.png?v=2.1.1">
+    <link rel="apple-touch-icon" href="icon.png?v=2.1.1">
     <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v2.1.0</title>
+    <title>Alô Cozinha v2.1.1</title>
 
-    <link rel="stylesheet" href="styles.css?v=2.1.0">
-    <link rel="stylesheet" href="tasks.css?v=2.1.0">
+    <link rel="stylesheet" href="styles.css?v=2.1.1">
+    <link rel="stylesheet" href="tasks.css?v=2.1.1">
 </head>
 <body class="theme-panelas" oncontextmenu="return false;">
 
 <div id="overlayInatividade"></div>
 
 <div id="splashScreen">
-    <img src="icon.png?v=2.1.0" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
+    <img src="icon.png?v=2.1.1" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v2.1.0</div>
+    <div class="splash-versao">v2.1.1</div>
 </div>
 
 <main id="moduleHome" class="module-home" aria-label="Escolher módulo">
     <div class="module-home-inner">
-        <img src="icon.png?v=2.1.0" alt="Alô Cozinha" class="module-home-logo">
+        <img src="icon.png?v=2.1.1" alt="Alô Cozinha" class="module-home-logo">
         <h1>Alô Cozinha</h1>
-        <div class="module-home-version">v2.1.0</div>
+        <div class="module-home-version">v2.1.1</div>
         <div class="module-choice-grid">
             <button class="module-choice module-choice-kds" onclick="AloTasks.openModule('kds')">
-                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.0" alt="">
+                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.1" alt="">
                 <strong>KDS - Sistema de Pedidos</strong>
             </button>
             <button class="module-choice module-choice-tasks" onclick="AloTasks.openModule('tasks')">
-                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.0" alt="">
+                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.1" alt="">
                 <strong>Checklist</strong>
             </button>
             <button class="module-choice module-choice-feira" onclick="AloTasks.openModule('feira')">
-                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.0" alt="">
-                <strong>Alô Feira</strong>
+                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.1" alt="">
+                <strong>Lista de Compras</strong>
             </button>
             <button class="module-choice module-choice-settings" onclick="abrirLoginAdmin('painel')">
                 <span class="module-choice-icon">⚙️</span>
@@ -50,7 +50,7 @@
 </main>
 
 <section id="publicTaskView" class="public-task-view" style="display:none" aria-label="Consulta da atividade">
-    <header><img src="icon.png?v=2.1.0" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
+    <header><img src="icon.png?v=2.1.1" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
     <main id="publicTaskContent"><div class="tasks-empty">Carregando atividade...</div></main>
 </section>
 
@@ -70,7 +70,7 @@
     <div class="header" id="mainHeader">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="KDS, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-kds.png?v=2.1.0" class="module-nav-icon" alt="">
+            <img src="assets/module-kds.png?v=2.1.1" class="module-nav-icon" alt="">
             <strong>KDS</strong>
         </button>
         <div class="module-header-center">
@@ -235,15 +235,34 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.0</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.1</div>
 
         <button class="btn-outline" onclick="abrirConfiguracoesKds()">🍽️ Configurações KDS</button>
         <button class="btn-outline" onclick="AloTasks.openSettingsMenu()" style="border-color:#00695c; color:#00695c;">📋 Configurações Tarefas</button>
+        <button class="btn-outline" onclick="abrirConfiguracoesCompras()" style="border-color:#b35b08; color:#9a4d06;">🛒 Configurações Compras</button>
         <button class="btn-danger" onclick="solicitarAcessoAvancado()">⚠️ Configurações Avançadas</button>
 
         <div class="modal-actions">
             <button class="btn-cancel" onclick="fecharPainelUnificado()">Fechar Painel</button>
         </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalConfigCompras">
+    <div class="modal">
+        <div class="modal-title">Configurações Compras</div>
+        <button class="btn-outline" onclick="AloFeiraModule.openManager('restaurante')">🏢 Dados do Restaurante</button>
+        <button class="btn-outline" onclick="AloFeiraModule.openManager('produtos')">🍔 Gerenciar Produtos</button>
+        <button class="btn-outline" onclick="AloFeiraModule.openManager('colaboradores')">👤 Gerenciar Operadores</button>
+        <button class="btn-outline" onclick="AloFeiraModule.openManager('fornecedores')">🚚 Gerenciar Fornecedores</button>
+        <label class="config-switch-row" for="configComprasExigirOperador">
+            <span><strong>Exigir identificação ao abrir</strong></span>
+            <span class="switch-moderno">
+                <input type="checkbox" id="configComprasExigirOperador" onchange="AloFeiraModule.setRequireOperator(this.checked)">
+                <span class="switch-trilho"></span>
+            </span>
+        </label>
+        <div class="modal-actions"><button class="btn-cancel" onclick="voltarConfiguracoesCompras()">Voltar</button></div>
     </div>
 </div>
 
@@ -414,7 +433,7 @@
     <header class="tasks-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Checklist, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-checklist.png?v=2.1.0" class="module-nav-icon" alt="">
+            <img src="assets/module-checklist.png?v=2.1.1" class="module-nav-icon" alt="">
             <strong>Checklist</strong>
         </button>
         <div class="module-header-center">
@@ -446,20 +465,40 @@
     </div>
 </section>
 
-<section id="feiraModule" class="feira-module" style="display:none;" aria-label="Alô Feira">
+<section id="feiraModule" class="feira-module" style="display:none;" aria-label="Lista de Compras">
     <header class="feira-module-header">
-        <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Alô Feira, voltar aos módulos" title="Voltar aos módulos">
+        <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Compras, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-feira.png?v=2.1.0" class="module-nav-icon" alt="">
-            <strong>Alô Feira</strong>
+            <img src="assets/module-feira.png?v=2.1.1" class="module-nav-icon" alt="">
+            <strong>Compras</strong>
         </button>
-        <button class="feira-import-button" type="button" onclick="AloFeiraModule.pickImportFile()">
-            <span aria-hidden="true">⬆</span>
-            <strong>Importar dados</strong>
-        </button>
-        <input id="feiraImportInput" type="file" hidden accept=".json,.txt,application/json,text/plain" onchange="AloFeiraModule.importBackup(event)">
+        <div class="feira-mode-picker header-area-picker">
+            <button type="button" id="feiraModeButton" class="header-area-button" onclick="AloFeiraModule.toggleModePicker()" aria-haspopup="listbox" aria-expanded="false" aria-label="Escolher operação de compras">
+                <span id="feiraModeEmoji" class="header-area-emoji" aria-hidden="true">📝</span>
+                <strong id="feiraModeName">Pedir</strong>
+                <span class="header-area-chevron" aria-hidden="true">▾</span>
+            </button>
+            <div id="feiraModeOptions" class="header-area-options feira-mode-options" role="listbox" aria-label="Operações de compras">
+                <button type="button" class="header-area-option" data-feira-mode="pedido" onclick="AloFeiraModule.setMode('pedido')" role="option">
+                    <span class="header-area-option-emoji" aria-hidden="true">📝</span>
+                    <span class="header-area-option-copy"><strong>Pedir</strong><small>Montar e enviar pedidos</small></span><b aria-hidden="true"></b>
+                </button>
+                <button type="button" class="header-area-option" data-feira-mode="compras" onclick="AloFeiraModule.setMode('compras')" role="option">
+                    <span class="header-area-option-emoji" aria-hidden="true">🛒</span>
+                    <span class="header-area-option-copy"><strong>Comprar</strong><small>Acompanhar compras e entregas</small></span><b aria-hidden="true"></b>
+                </button>
+            </div>
+        </div>
+        <div class="feira-header-actions">
+            <button id="feiraProfileButton" class="feira-profile-button" type="button" onclick="AloFeiraModule.openProfile()" aria-label="Trocar operador" title="Trocar operador">
+                <span id="feiraProfileEmoji" aria-hidden="true">👤</span>
+                <strong id="feiraProfileName">Perfil</strong>
+            </button>
+            <span id="feiraSyncIndicator" class="feira-sync-indicator local" role="status" aria-label="Dados somente neste aparelho" title="Dados somente neste aparelho"></span>
+            <button class="module-settings-button" type="button" onclick="abrirLoginAdmin('compras')" aria-label="Configurações Compras" title="Configurações Compras">⚙️</button>
+        </div>
     </header>
-    <iframe id="feiraFrame" class="feira-frame" title="Módulo Alô Feira" data-src="modules/alo-feira/index.html?v=2.1.0"></iframe>
+    <iframe id="feiraFrame" class="feira-frame" title="Lista de Compras" data-src="modules/alo-feira/index.html?embedded=1&amp;v=2.1.1-compras-r3"></iframe>
 </section>
 
 <div class="modal-overlay" id="modalMenuProdutos">
@@ -571,9 +610,10 @@
             <button id="btnSalvarUrl" class="btn-action" style="width: 100%; margin-top: 10px; background-color: #4CAF50;" onclick="salvarURL()">💾 Validar e Salvar URL</button>
         </div>
 
-        <h3 style="font-size: 15px; color: #333; margin-top: 0; margin-bottom: 10px;">Backup Físico do Aparelho</h3>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="btn-outline" style="margin: 0; min-height: 44px; flex: 1; justify-content: center; font-size: 13px;" onclick="exportarDadosFisicos()">📤 Exportar (TXT)</button>
+        <h3 style="font-size: 15px; color: #333; margin-top: 0; margin-bottom: 10px;">Backup e Exportação</h3>
+        <div class="advanced-action-grid">
+            <button class="btn-outline" onclick="exportarDadosFisicos()">📤 Exportar KDS e Checklist</button>
+            <button class="btn-outline" onclick="AloFeiraModule.exportData()">📤 Exportar Compras</button>
             <button id="btnImportarBackup" class="btn-outline" style="margin: 0; min-height: 44px; flex: 1; justify-content: center; font-size: 13px;" onclick="document.getElementById('fileImportacao').click()">📥 Migrar backup</button>
             <input type="file" id="fileImportacao" style="display:none" accept=".txt,.json" onchange="importarDadosFisicos(event)">
         </div>
@@ -581,11 +621,15 @@
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
 
-        <p style="font-size: 13px; color: #555; margin-bottom: 5px;">Atenção: A ação abaixo é irreversível.</p>
-        <div class="form-group">
-            <label>Para apagar todos os pedidos, digite: <b>quero excluir todo o histórico</b></label>
-            <input type="text" id="inputExcluirTudo" placeholder="digite a frase exata">
-            <button class="btn-danger" style="margin-top: 10px;" onclick="excluirTodoHistorico()">🗑️ Apagar Todo o Histórico</button>
+        <div class="history-danger-zone">
+            <h3>Apagar históricos</h3>
+            <p>Os cadastros e as configurações serão mantidos.</p>
+            <div class="advanced-action-grid">
+                <button class="btn-danger-soft" onclick="excluirHistoricoModulo('kds')">🗑️ Histórico KDS</button>
+                <button class="btn-danger-soft" onclick="excluirHistoricoModulo('checklist')">🗑️ Histórico Checklist</button>
+                <button class="btn-danger-soft" onclick="excluirHistoricoModulo('compras')">🗑️ Histórico Compras</button>
+                <button class="btn-danger" onclick="excluirHistoricoModulo('todos')">🗑️ Apagar todos</button>
+            </div>
         </div>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
@@ -666,17 +710,17 @@
     </div>
 </div>
 
-<script defer src="logic.js?v=2.1.0"></script>
-<script defer src="storage.js?v=2.1.0"></script>
-<script defer src="api.js?v=2.1.0"></script>
-<script defer src="audio.js?v=2.1.0"></script>
-<script defer src="sync.js?v=2.1.0"></script>
-<script defer src="catalog-sync.js?v=2.1.0"></script>
-<script defer src="ui.js?v=2.1.0"></script>
-<script defer src="task-templates.js?v=2.1.0"></script>
-<script defer src="vendor/qrcode.js?v=2.1.0"></script>
-<script defer src="feira-module.js?v=2.1.0"></script>
-<script defer src="tasks.js?v=2.1.0"></script>
-<script defer src="app.js?v=2.1.0"></script>
+<script defer src="logic.js?v=2.1.1"></script>
+<script defer src="storage.js?v=2.1.1"></script>
+<script defer src="api.js?v=2.1.1"></script>
+<script defer src="audio.js?v=2.1.1"></script>
+<script defer src="sync.js?v=2.1.1"></script>
+<script defer src="catalog-sync.js?v=2.1.1"></script>
+<script defer src="ui.js?v=2.1.1"></script>
+<script defer src="task-templates.js?v=2.1.1"></script>
+<script defer src="vendor/qrcode.js?v=2.1.1"></script>
+<script defer src="feira-module.js?v=2.1.1"></script>
+<script defer src="tasks.js?v=2.1.1"></script>
+<script defer src="app.js?v=2.1.1"></script>
 </body>
 </html>

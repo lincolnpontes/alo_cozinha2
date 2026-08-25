@@ -6,6 +6,9 @@ function atualizarEstadoSync(estado, mensagem) {
     indicador.className = `sync-indicador ${estado}`;
     indicador.title = mensagem || '';
     indicador.setAttribute('aria-label', mensagem || 'Estado da sincronização');
+    if(typeof notificarHostCompras === 'function' && executandoNoHost && window.parent !== window) {
+        window.parent.AloFeiraModule?.updateHeader({ ...obterEstadoHostCompras(), syncState: estado, syncMessage: mensagem || '' });
+    }
 }
 
 async function fetchComTimeout(url, options = {}, timeoutMs = 15000) {
@@ -470,7 +473,7 @@ function exportarDados() {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(copia, null, 2));
     const link = document.createElement('a');
     link.href = dataStr;
-    link.download = 'alofeira_bkp_' + getHojeSTR() + '.json';
+    link.download = 'alo_cozinha_compras_backup_' + getHojeSTR() + '.json';
     document.body.appendChild(link);
     link.click();
     link.remove();

@@ -7,19 +7,18 @@
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon.png">
-    <title>Alô Feira v2.1.0</title>
-    <link rel="stylesheet" href="src/styles/base.css?v=2.1.0-feira-r1">
-    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.0-feira-r1">
-    <link rel="stylesheet" href="src/styles/components.css?v=2.1.0-feira-r1">
-    <link rel="stylesheet" href="src/styles/features.css?v=2.1.0-feira-r1">
-    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.0-feira-r1">
+    <title>Lista de Compras v2.1.1</title>
+    <link rel="stylesheet" href="src/styles/base.css?v=2.1.1-compras-r3">
+    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.1-compras-r3">
+    <link rel="stylesheet" href="src/styles/components.css?v=2.1.1-compras-r3">
+    <link rel="stylesheet" href="src/styles/features.css?v=2.1.1-compras-r3">
+    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.1-compras-r3">
 </head>
 <body class="theme-pedido">
 <div id="splashScreen">
     <img src="icon.png" alt="Ícone" class="splash-logo" onerror="this.style.display='none'">
-    <div class="splash-titulo">Alô Feira</div>
-    <div class="splash-versao">v2.1.0</div>
-    <button onclick="forcarAtualizacao()" style="margin-top: 30px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; pointer-events: auto;">🔄 Forçar Atualização do App</button>
+    <div class="splash-titulo">Lista de Compras</div>
+    <div class="splash-versao">v2.1.1</div>
 </div>
 <div id="syncIndicador" class="sync-indicador oculto" role="status" aria-live="polite"></div>
 <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
@@ -31,8 +30,8 @@
     <div class="header" id="mainHeader">
         <div class="header-mode">
             <select class="header-select" id="seletorModo" aria-label="Modo do aplicativo" onchange="alterarModo(this.value)">
-                <option value="pedido">📝 Pedido</option>
-                <option value="compras">🛒 Compras</option>
+                <option value="pedido">📝 Pedir</option>
+                <option value="compras">🛒 Comprar</option>
             </select>
             <div id="dicasCabecalho" class="dicas-cabecalho"></div>
         </div>
@@ -40,7 +39,7 @@
             <button id="btnTrocarPerfil" class="btn-perfil" aria-label="Trocar perfil" title="Trocar perfil" onclick="abrirSelecaoColaboradorInicial(true)">👤 Perfil</button>
         </div>
         <div class="header-actions">
-            <button id="btnAdmin" aria-label="Configurações" title="Configurações" onclick="document.getElementById('modalPainelUnificado').style.display='flex'">⚙️</button>
+            <button id="btnAdmin" aria-label="Configurações" title="Configurações" onclick="abrirAdmin()">⚙️</button>
         </div>
     </div>
     <div class="area-conteudo">
@@ -184,14 +183,6 @@
         </div>
     </div>
 </div>
-<div class="modal-overlay" id="modalSenhaAvancada">
-    <div class="modal">
-        <div class="modal-title" id="tituloSenhaAvancada" style="color:#d32f2f;">Acesso avançado</div>
-        <p id="ajudaSenhaAvancada" class="texto-ajuda-form">Digite sua senha para continuar.</p>
-        <div class="form-group"><label>Senha avançada:</label><input type="password" id="senhaAvancada" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onkeydown="if(event.key === 'Enter') confirmarSenhaAvancada()"></div>
-        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalSenhaAvancada')">Cancelar</button><button class="btn-action" onclick="confirmarSenhaAvancada()">Continuar</button></div>
-    </div>
-</div>
 <div class="modal-overlay" id="modalEditarPedido">
     <div class="modal">
         <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
@@ -324,42 +315,18 @@
     </div>
 </div>
 <div class="modal-overlay" id="modalPainelUnificado">
-    <div class="modal" style="padding-top: 25px;">
-        <div class="marca-sistema">
-            <img src="icon.png" alt="Logotipo Alô Feira" onerror="this.style.display='none'">
-            <div class="titulo">Alô Feira</div>
-            <div class="versao">v2.1.0</div>
-        </div>
+    <div class="modal">
+        <div class="modal-title">Configurações Compras</div>
         <button class="btn-outline" onclick="abrirGerenciar('restaurante')">🏢 Dados do Restaurante</button>
         <button class="btn-outline" onclick="abrirGerenciar('produtos')">🍔 Gerenciar Produtos</button>
-        <button class="btn-outline" onclick="abrirGerenciar('colaboradores')">👥 Gerenciar Colaboradores</button>
+        <button class="btn-outline" onclick="abrirGerenciar('colaboradores')">👤 Gerenciar Operadores</button>
         <button class="btn-outline" onclick="abrirGerenciar('fornecedores')">🚚 Gerenciar Fornecedores</button>
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
         <div class="form-group" style="display:flex; align-items:center;">
             <label class="switch"><input type="checkbox" id="configExigirColab" onchange="toggleExigirColab()"><span class="slider"></span></label>
             <span style="font-weight:bold; font-size:14px; color:#555; padding-top:2px;">Exigir Identificação ao Abrir App</span>
         </div>
-        <h3 style="font-size: 16px; color: #d32f2f; margin-top: 25px; margin-bottom: 10px;">Avançado</h3>
-        <button class="btn-danger" style="width: 100%; margin-bottom: 10px;" onclick="solicitarAcessoAvancado()">⚠️ Configurações Avançadas</button>
         <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalPainelUnificado'); renderizarLista();">Fechar</button></div>
-    </div>
-</div>
-<div class="modal-overlay" id="modalConfigAvancadas">
-    <div class="modal" style="max-height: 90vh; overflow-y: auto;">
-        <div class="modal-title" style="color:#d32f2f; display: flex; justify-content: space-between; align-items: center;">Zona de Risco</div>
-        <input type="hidden" id="configUrlApp">
-        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
-            <button id="btnSalvarNuvem" class="btn-action" style="margin: 0; width: 100%; font-size: 15px; margin-bottom: 10px;" onclick="forcarEnvioNuvemCompleto()">☁️ Forçar Envio Completo pra Nuvem</button>
-            <button class="btn-outline" style="margin: 0; width: 100%; font-size: 13px; border-color:#1565C0; color:#1565C0; text-align: center;" onclick="exportarDados()">⬇️ Exportar Dados</button>
-        </div>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <div class="form-group"><label>Segurança:</label><button class="btn-outline" style="width:100%; text-align:center;" onclick="abrirTrocaSenhaAvancada()">Alterar senha avançada</button></div>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="font-size: 13px; color: #555; margin-bottom: 5px;">Atenção: A ação abaixo é irreversível.</p>
-        <div class="form-group"><label>Para apagar todos os pedidos, digite: <b>quero excluir todo o histórico</b></label><input type="text" id="inputExcluirTudo" placeholder="digite a frase exata"><button class="btn-danger" style="margin-top: 10px; width: 100%;" onclick="excluirTodoHistorico()">🗑️ Apagar Todo o Histórico</button></div>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <div class="form-group"><label>App travou ou quer puxar versão nova?</label><button class="btn-outline" style="border-color:#fbc02d; color:#fbc02d; width: 100%; text-align: center;" onclick="forcarAtualizacao()">🔄 Forçar Atualização do App</button></div>
-        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalConfigAvancadas'); document.getElementById('modalPainelUnificado').style.display='flex';">Voltar</button></div>
     </div>
 </div>
 <div class="modal-overlay" id="modalListagem">
@@ -398,7 +365,7 @@
         <div style="display: flex; gap:10px;"><div class="form-group" style="flex:1;"><label>Número:</label><input type="text" id="restNum" inputmode="numeric"></div><div class="form-group" style="flex:3;"><label>Bairro:</label><input type="text" id="restBairro"></div></div>
         <div style="display: flex; gap:10px;"><div class="form-group" style="flex:2;"><label>Cidade:</label><input type="text" id="restCidade"></div><div class="form-group" style="flex:1;"><label>UF:</label><select id="restUF"><option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option></select></div></div>
         <div class="form-group"><label>Ponto de Referência (Opcional):</label><input type="text" id="restPonto"></div>
-        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormRestaurante'); document.getElementById('modalPainelUnificado').style.display='flex';">Cancelar</button><button class="btn-action" onclick="salvarRestaurante()">Salvar</button></div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormRestaurante'); voltarParaConfiguracoesHost();">Cancelar</button><button class="btn-action" onclick="salvarRestaurante()">Salvar</button></div>
     </div>
 </div>
 <div class="modal-overlay" id="modalFormProduto">
@@ -490,7 +457,7 @@
 </div>
 <div class="modal-overlay" id="modalFormColaborador">
     <div class="modal">
-        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Colaborador</div>
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Operador</div>
         <input type="hidden" id="colabId">
         <div class="form-group"><label>Nome:</label><input type="text" id="colabNome"></div>
         <div class="form-group"><label>Emoji:</label><select id="colabEmoji"><option value="👤">👤 Pessoa</option><option value="🧑">🧑 Pessoa</option><option value="👨">👨 Homem</option><option value="👩">👩 Mulher</option><option value="🧑‍🍳">🧑‍🍳 Cozinha</option><option value="👨‍🍳">👨‍🍳 Cozinheiro</option><option value="👩‍🍳">👩‍🍳 Cozinheira</option><option value="🧑‍💼">🧑‍💼 Gestão</option><option value="👨‍💼">👨‍💼 Gestor</option><option value="👩‍💼">👩‍💼 Gestora</option></select></div>
@@ -524,20 +491,20 @@
         <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormFornecedor'); abrirGerenciar('fornecedores', true);">Cancelar</button><button class="btn-action" onclick="salvarFornecedor()">Salvar</button></div>
     </div>
 </div>
-<script src="src/scripts/domain.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/core.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/security.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/sync.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/auth.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/orders.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/catalog.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/drafts.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/purchases.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/purchase-details.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/reports.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/settings.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/catalog-settings.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/people-settings.js?v=2.1.0-feira-r1"></script>
-<script src="src/scripts/app.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/domain.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/core.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/security.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/sync.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/auth.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/orders.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/catalog.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/drafts.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/purchases.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/purchase-details.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/reports.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/settings.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/catalog-settings.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/people-settings.js?v=2.1.1-compras-r3"></script>
+<script src="src/scripts/app.js?v=2.1.1-compras-r3"></script>
 </body>
 </html>

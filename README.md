@@ -1,13 +1,13 @@
-# Alô Cozinha v2.1.0
+# Alô Cozinha v2.1.1
 
-Aplicativo para operação de restaurante com três módulos: pedidos entre áreas (KDS), checklist por setor e compras do Alô Feira.
+Aplicativo para operação de restaurante com três módulos: pedidos entre áreas (KDS), checklist por setor e Lista de Compras.
 
 ## Novidades da v2
 
 - A v2.0.24 prioriza pedidos novos, reduz a leitura operacional do histórico e sincroniza entre aparelhos a confirmação dos alertas das Panelas.
 - A v2.0.25 confirma visualmente o POST sem esperar uma segunda leitura, mantém o retry durável e sincroniza apenas o expediente atual, sem limite numérico de pedidos.
 - A v2.0.26 posiciona a área de origem no canto superior direito dos pedidos em celulares, preservando as três ações na mesma linha.
-- A v2.1.0 acrescenta o Alô Feira como módulo, com importação isolada e a mesma URL de nuvem usada pelo KDS e pelo Checklist.
+- A v2.1.1 integra a Lista de Compras ao produto: cabeçalho único, perfil de operador, configurações centralizadas, senha mestra única e uma só URL de nuvem para os três módulos.
 - A versão estável anterior está preservada na tag `v2.0.27`.
 - A v2.0.23 corrige a perspectiva do ícone do KDS, deixando a tela frontal, simétrica e com laterais paralelas.
 - A v2.0.22 remove a seta do ícone do KDS, corrige a bolinha de sincronização do Checklist e iguala a altura e a proporção dos cabeçalhos no celular.

@@ -113,10 +113,10 @@
 }
 .feira-module-header {
     min-height: 48px;
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
     padding: 3px 10px;
     box-sizing: border-box;
     background: #114f87;
@@ -124,22 +124,62 @@
     flex: 0 0 auto;
 }
 .feira-module-header .module-nav-icon { width: 38px; height: 38px; flex-basis: 38px; }
-.feira-import-button {
-    min-height: 38px;
-    display: inline-flex;
+.feira-mode-picker { width: fit-content; max-width: min(180px, 100%); justify-self: center; }
+.feira-mode-picker .header-area-button { width: fit-content; min-width: 108px; max-width: 180px; min-height: 40px; }
+.feira-mode-options { width: min(330px, calc(100vw - 20px)); }
+.feira-header-actions { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+.feira-profile-button {
+    min-width: 72px;
+    max-width: 142px;
+    height: 40px;
+    display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 0 12px;
-    border: 1px solid rgba(255,255,255,.36);
+    justify-content: center;
+    gap: 5px;
+    padding: 0 8px;
+    border: 1px solid rgba(255,255,255,.22);
     border-radius: 6px;
-    background: rgba(255,255,255,.13);
+    background: rgba(255,255,255,.12);
     color: #fff;
     cursor: pointer;
 }
-.feira-import-button span { font-size: 19px; line-height: 1; }
-.feira-import-button strong { font-size: 13px; white-space: nowrap; }
-.feira-import-button:active { background: rgba(255,255,255,.23); }
+.feira-profile-button span { flex: 0 0 auto; font-size: 20px; line-height: 1; }
+.feira-profile-button strong { min-width: 0; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.feira-sync-indicator { width: 14px; height: 14px; flex: 0 0 14px; border: 2px solid rgba(255,255,255,.76); border-radius: 50%; background: #7f8c8d; box-shadow: 0 0 0 2px rgba(0,0,0,.12); }
+.feira-sync-indicator.sincronizado,
+.feira-sync-indicator.oculto { background: #21c98a; }
+.feira-sync-indicator.sincronizando { background: #f5c542; animation: feira-sync-pulse .9s ease-in-out infinite alternate; }
+.feira-sync-indicator.offline,
+.feira-sync-indicator.erro { background: #e44343; }
+.feira-sync-indicator.local { background: #94a3aa; }
+@keyframes feira-sync-pulse { to { opacity: .52; } }
 .feira-frame { width: 100%; min-height: 0; flex: 1 1 auto; border: 0; background: #f4f6f8; }
+
+.config-switch-row {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 4px;
+    padding: 8px 11px;
+    border: 1px solid var(--tasks-line);
+    border-radius: 7px;
+    background: #f7f9fa;
+    color: var(--tasks-ink);
+    box-sizing: border-box;
+    cursor: pointer;
+}
+.config-switch-row strong { font-size: 14px; }
+.advanced-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 20px; }
+.advanced-action-grid .btn-outline,
+.advanced-action-grid .btn-danger,
+.advanced-action-grid .btn-danger-soft { min-height: 48px; margin: 0; justify-content: center; font-size: 13px; }
+.btn-danger-soft { border: 1px solid #e1aaaa; border-radius: 5px; background: #fff3f3; color: #a52121; font-weight: 800; cursor: pointer; }
+.history-danger-zone { padding: 13px; border: 1px solid #edc3c3; border-radius: 7px; background: #fffafa; }
+.history-danger-zone h3 { margin: 0 0 4px; color: #a52121; font-size: 15px; }
+.history-danger-zone p { margin: 0 0 12px; color: #6b5b5b; font-size: 12px; }
+.history-danger-zone .advanced-action-grid { margin: 0; }
 
 .module-header-center {
     min-width: 0;
@@ -797,9 +837,19 @@
     .module-nav-button { gap: 3px; }
     .module-nav-icon { width: 30px; height: 30px; flex-basis: 30px; }
     .module-nav-button strong { max-width: 76px; font-size: 14px; }
-    .feira-module-header { padding-inline: 6px; }
-    .feira-module-header .module-nav-button strong { max-width: none; }
-    .feira-import-button { padding-inline: 9px; }
+    .feira-module-header { gap: 3px; padding-inline: 5px; }
+    .feira-module-header .module-nav-button { gap: 2px; }
+    .feira-module-header .module-nav-icon { width: 30px; height: 30px; flex-basis: 30px; }
+    .feira-module-header .module-nav-button strong { max-width: none; overflow: visible; }
+    .feira-mode-picker .header-area-button { min-width: 82px; padding-inline: 4px; grid-template-columns: 22px minmax(0, 1fr) 12px; }
+    .feira-mode-picker .header-area-emoji { width: 22px; font-size: 18px; }
+    .feira-mode-picker .header-area-button strong { font-size: 13px; }
+    .feira-header-actions { gap: 3px; }
+    .feira-profile-button { min-width: 50px; max-width: 74px; height: 36px; padding-inline: 4px; gap: 3px; }
+    .feira-profile-button span { font-size: 18px; }
+    .feira-profile-button strong { font-size: 12px; }
+    .feira-sync-indicator { width: 12px; height: 12px; flex-basis: 12px; border-width: 1px; }
+    .advanced-action-grid { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 641px) and (orientation: portrait) {
@@ -819,6 +869,14 @@
     .module-nav-icon { width: 28px; height: 28px; flex-basis: 28px; }
     .module-nav-button strong { max-width: 68px; font-size: 13px; }
     .module-nav-back { width: 8px; flex-basis: 8px; font-size: 20px; }
+    .feira-module-header .module-nav-icon { width: 26px; height: 26px; flex-basis: 26px; }
+    .feira-module-header .module-nav-button strong { max-width: 64px; overflow: hidden; font-size: 12px; }
+    .feira-mode-picker .header-area-button { min-width: 72px; padding-inline: 2px; }
+    .feira-mode-picker .header-area-button strong { font-size: 12px; }
+    .feira-mode-picker .header-area-emoji { font-size: 17px; }
+    .feira-profile-button { max-width: 70px; }
+    .feira-profile-button span { display: none; }
+    .feira-profile-button strong { font-size: 11px; }
 }
 
 @media print {

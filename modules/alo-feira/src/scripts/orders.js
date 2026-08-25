@@ -6,7 +6,8 @@ function alterarModo(modo) {
     if(modo === 'pedido') filtroFornecedorComprasId = null;
     fecharMenuFerramentas();
     fecharMenuAcaoCompra();
-    document.body.className = `theme-${modo}`;
+    document.body.classList.remove('theme-pedido', 'theme-compras');
+    document.body.classList.add(`theme-${modo}`);
     document.getElementById('metaThemeColor').content = modo === 'pedido' ? '#1565C0' : '#521565';
     document.getElementById('dicasCabecalho').innerHTML = '';
     document.getElementById('btnHistHoje').style.display = modo === 'pedido' ? 'inline-flex' : 'none';
@@ -21,6 +22,7 @@ function alterarModo(modo) {
     salvarBanco();
     atualizarBotaoDesfazer();
     renderizarLista();
+    if(typeof notificarHostCompras === 'function') notificarHostCompras();
 }
 
 function renderizarFiltros() {

@@ -1718,6 +1718,19 @@
         render();
         checkAlarms();
     }
+    function clearHistoryLocal() {
+        activities = [];
+        outbox = [];
+        revision = '';
+        currentAlarmId = '';
+        hiddenAlarmId = '';
+        saveRuntime();
+        generateToday();
+        render();
+        checkAlarms();
+        setSyncIndicator(navigator.onLine ? 'online' : 'offline');
+        scheduleSync(0);
+    }
     function init(options) {
         if (initialized) return;
         deps = options;
@@ -1761,7 +1774,7 @@
     }
 
     global.AloTasks = Object.freeze({
-        init, refreshDefinitions, showHome, openModule, setTab, setArea, toggleAreaPicker, syncNow,
+        init, refreshDefinitions, clearHistoryLocal, showHome, openModule, setTab, setArea, toggleAreaPicker, syncNow,
         startTask, completeTask, markTaskNotDone, confirmEmployeeSelection,
         openTaskDetails, openFinishedTask, closeFinishedTask, undoFinishedTask, returnTaskToPending,
         toggleTaskStatusEditMenu, runTaskDetailAction,

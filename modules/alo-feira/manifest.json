@@ -1,7 +1,7 @@
 {
-  "name": "Alô Feira",
-  "short_name": "Alô Feira",
-  "description": "Pedidos e compras do Alô Feira.",
+  "name": "Lista de Compras",
+  "short_name": "Compras",
+  "description": "Pedidos, compras e fornecedores do Alô Cozinha.",
   "lang": "pt-BR",
   "id": "./",
   "start_url": "./",

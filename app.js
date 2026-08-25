@@ -1225,6 +1225,10 @@ let db = carregarBanco();
             AloTasks.openSettingsMenu();
             return;
         }
+        if (destinoConfiguracoes === 'compras') {
+            abrirConfiguracoesCompras();
+            return;
+        }
         abrirPainelControle();
     }
 
@@ -1243,8 +1247,20 @@ let db = carregarBanco();
         if (destinoConfiguracoes !== 'tasks') abrirModalNoTopo('modalPainelUnificado');
     }
 
+    function abrirConfiguracoesCompras() {
+        fecharModal('modalPainelUnificado');
+        AloFeiraModule.open();
+        AloFeiraModule.refreshHeader();
+        abrirModalNoTopo('modalConfigCompras');
+    }
+
+    function voltarConfiguracoesCompras() {
+        fecharModal('modalConfigCompras');
+        if (destinoConfiguracoes !== 'compras') abrirModalNoTopo('modalPainelUnificado');
+    }
+
     function abrirLoginAdmin(destino = 'painel') {
-        destinoConfiguracoes = ['painel', 'kds', 'tasks'].includes(destino) ? destino : 'painel';
+        destinoConfiguracoes = ['painel', 'kds', 'tasks', 'compras'].includes(destino) ? destino : 'painel';
         if (!db.configs.senhaMestra) {
             abrirDestinoConfiguracoes();
             return;
@@ -1259,7 +1275,6 @@ let db = carregarBanco();
         document.getElementById('configSenhaMestra').value = db.configs.senhaMestra || '';
         document.getElementById('configSenhaFeedback').innerText = '';
         document.getElementById('configUrlApp').value = db.configs.url || '';
-        document.getElementById('inputExcluirTudo').value = '';
         abrirModalNoTopo('modalConfigAvancadas');
     }
 
@@ -1275,14 +1290,63 @@ let db = carregarBanco();
         setTimeout(() => document.getElementById('senhaAvancada').focus(), 100);
     }
 
-    function excluirTodoHistorico() {
-        let frase = document.getElementById('inputExcluirTudo').value;
-        if (frase === "quero excluir todo o histórico") {
-            pedidosServidor = [];
-            fetch(db.configs.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'excluir_tudo' }) });
-            alert("Histórico global apagado!");
-            forcarAtualizacao();
-        } else { alert("Frase de segurança incorreta."); }
+    async function limparHistoricoKds() {
+        await AloApi.post(db.configs.url, { action: 'excluir_tudo' });
+        pedidosServidor = [];
+        pedidosPendentesLocais = [];
+        pedidosBloqueados.clear();
+        pedidosCientes.clear();
+        filaRetentativaStatus = [];
+        salvarFilaStatus();
+        salvarHistoricoLocal();
+        renderizarListaCozinha();
+        renderizarUltimosPedidos();
+        gerenciarAlarme();
+    }
+
+    async function limparHistoricoChecklist() {
+        await AloApi.post(db.configs.url, { action: 'excluir_historico_atividades' });
+        AloTasks.clearHistoryLocal();
+    }
+
+    async function limparHistoricoCompras() {
+        await AloFeiraModule.clearHistory();
+    }
+
+    async function excluirHistoricoModulo(modulo) {
+        const nomes = { kds: 'KDS', checklist: 'Checklist', compras: 'Compras', todos: 'todos os módulos' };
+        const alvos = modulo === 'todos' ? ['kds', 'checklist', 'compras'] : [modulo];
+        if (!nomes[modulo] || !db.configs.url) {
+            await AloUiDialog.notice('Configure e valide a URL da nuvem antes de apagar históricos.', {
+                title: 'Nuvem não configurada', icon: '!', tone: 'danger', confirmText: 'Entendi'
+            });
+            return;
+        }
+        const confirmed = await AloUiDialog.confirm(
+            `Apagar o histórico de ${nomes[modulo]}?\n\nProdutos, tarefas, operadores, fornecedores e configurações serão mantidos.`,
+            { title: 'Apagar histórico', icon: '🗑️', tone: 'danger', confirmText: 'Apagar' }
+        );
+        if (!confirmed) return;
+
+        const handlers = {
+            kds: limparHistoricoKds,
+            checklist: limparHistoricoChecklist,
+            compras: limparHistoricoCompras
+        };
+        const falhas = [];
+        for (const alvo of alvos) {
+            try { await handlers[alvo](); }
+            catch (error) { falhas.push(nomes[alvo]); }
+        }
+        if (falhas.length) {
+            await AloUiDialog.notice(`Não foi possível confirmar a exclusão em: ${falhas.join(', ')}. Os demais módulos já foram processados.`, {
+                title: 'Exclusão parcialmente concluída', icon: '!', tone: 'danger', confirmText: 'Entendi'
+            });
+            return;
+        }
+        await AloUiDialog.notice(`Histórico de ${nomes[modulo]} apagado.`, {
+            title: 'Histórico apagado', icon: '✓', confirmText: 'Entendi'
+        });
     }
 
     async function forcarAtualizacao() {
@@ -2279,7 +2343,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.0').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.1').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

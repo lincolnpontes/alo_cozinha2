@@ -103,8 +103,10 @@
             if (!current || current.alertaReconhecidoEm) return current;
             const operationId = global.AloLogic.createId('ciencia');
             const now = new Date().toISOString();
+            const acknowledgedStatus = current.status === 'buscar' ? 'concluido' : current.status;
             const updated = global.AloLogic.normalizeOrder({
                 ...current,
+                status: acknowledgedStatus,
                 alertaReconhecidoEm: now,
                 atualizadoEm: now,
                 operacaoId: operationId,

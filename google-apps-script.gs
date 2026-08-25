@@ -416,6 +416,7 @@ function applyAlertAcknowledgement_(values, acknowledgedAt, operationId, revisio
   if (values[2] !== 'buscar' && values[2] !== 'cancelado') return false;
   if (values[11]) return false;
   const now = asIso_(acknowledgedAt) || new Date().toISOString();
+  if (values[2] === 'buscar') values[2] = 'concluido';
   values[6] = now;
   values[7] = revision;
   values[8] = operationId || '';

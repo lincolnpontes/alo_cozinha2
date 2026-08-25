@@ -122,10 +122,18 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         }
 
         @media (max-width: 430px) {
-            .pedido-cozinha { flex-direction: column; gap: 8px; }
-            .pedido-meta-acoes { width: 100%; flex-direction: column; align-items: flex-start; gap: 5px; }
-            .pedido-origem { min-width: 44px; min-height: 36px; padding: 2px 8px; font-size: 22px; }
-            .pedido-acoes { width: 100%; }
+            .pedido-cozinha {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                grid-template-areas:
+                    "conteudo origem"
+                    "acoes acoes";
+                gap: 8px 10px;
+            }
+            .pedido-conteudo { grid-area: conteudo; }
+            .pedido-meta-acoes { display: contents; }
+            .pedido-origem { grid-area: origem; min-width: 48px; min-height: 48px; padding: 3px; align-self: center; font-size: 23px; }
+            .pedido-acoes { grid-area: acoes; width: 100%; }
             .btn-pedido-acao { min-width: 0; flex: 1 1 0; }
             .emoji-area-opcoes { grid-template-columns: repeat(4, 1fr); }
             .header-area-button { min-width: 0; grid-template-columns: 25px minmax(0, 1fr) 14px; gap: 2px; }

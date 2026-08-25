@@ -125,6 +125,7 @@ function createSyncHarness() {
                 const order = remoteOrders.get(String(payload.id));
                 if (order) remoteOrders.set(String(payload.id), {
                     ...order,
+                    status: order.status === 'buscar' ? 'concluido' : order.status,
                     alertaReconhecidoEm: payload.reconhecidoEm || new Date().toISOString(),
                     operacaoId: payload.operationId,
                     revisao: revision + 1
@@ -135,6 +136,7 @@ function createSyncHarness() {
                     if (!order) return;
                     remoteOrders.set(String(acknowledgement.id), {
                         ...order,
+                        status: order.status === 'buscar' ? 'concluido' : order.status,
                         alertaReconhecidoEm: acknowledgement.reconhecidoEm || new Date().toISOString(),
                         operacaoId: acknowledgement.operationId,
                         revisao: revision + 1
@@ -354,10 +356,12 @@ async function testAlertAcknowledgementIsConfirmedByServer() {
 
     await harness.manager.enqueueAcknowledgement(order.id);
     assert.notEqual(harness.manager.orders[0].alertaReconhecidoEm, '', 'o alarme deve parar imediatamente neste aparelho');
+    assert.equal(harness.manager.orders[0].status, 'concluido', 'confirmar a retirada deve encerrar o pedido localmente');
     await harness.manager.flushPendingOperations();
     await harness.manager.pull(true);
 
     assert.notEqual(harness.remoteOrders.get(order.id).alertaReconhecidoEm, '', 'a ciência deve ser gravada para os outros aparelhos');
+    assert.equal(harness.remoteOrders.get(order.id).status, 'concluido', 'o outro aparelho deve receber um estado que encerra o alarme');
     assert.equal(harness.operations.size, 0);
 
     await harness.manager.enqueueStatus(order.id, 'fazendo');
@@ -497,6 +501,7 @@ function testAppsScriptAcknowledgesAlertOnce() {
         context
     );
     assert.equal(first, true);
+    assert.equal(context.testRow[2], 'concluido');
     assert.equal(context.testRow[11], '2026-08-25T12:00:00.000Z');
     assert.equal(context.testRow[7], 6);
 
@@ -508,7 +513,7 @@ function testAppsScriptAcknowledgesAlertOnce() {
     assert.equal(context.testRow[7], 6);
 
     const reopened = vm.runInContext(
-        "applyStatus_(testRow, 'fazendo', '', 'reabrir', 'buscar', 6, 7)",
+        "applyStatus_(testRow, 'fazendo', '', 'reabrir', 'concluido', 6, 7)",
         context
     );
     assert.equal(reopened, true);
@@ -519,6 +524,17 @@ function testAppsScriptAcknowledgesAlertOnce() {
         context
     );
     assert.equal(ignored, false, 'não deve reconhecer alerta quando o pedido não está aguardando retirada ou cancelado');
+
+    context.cancelledRow = [
+        'srv-cancelado', 'Couve', 'cancelado', new Date().toISOString(), new Date().toISOString(), 'Acabou',
+        '', 8, 'acao_cancelar', 'panelas', 'cozinha', ''
+    ];
+    const cancelledAck = vm.runInContext(
+        "applyAlertAcknowledgement_(cancelledRow, '2026-08-25T12:03:00.000Z', 'ciencia-cancelada', 9)",
+        context
+    );
+    assert.equal(cancelledAck, true);
+    assert.equal(context.cancelledRow[2], 'cancelado', 'confirmar um cancelamento não deve alterar seu status histórico');
 }
 
 function testStandaloneAppsScriptCreatesAndReusesSpreadsheet() {
@@ -880,7 +896,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2025TaskExperience() {
+function testV2026TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -911,7 +927,8 @@ function testV2025TaskExperience() {
     assert.equal(gas.includes("action === 'reconhecer_alerta'"), true, 'a ciência das Panelas deve ser compartilhada pelo servidor');
     assert.equal(gas.includes('PROP_PEDIDOS_SHIFT_START_PREFIX'), true, 'a sincronização operacional deve localizar o expediente sem limite numérico');
     assert.equal(gas.includes('PEDIDOS_SHIFT_START_HOUR = 4'), true, 'o expediente deve atravessar a madrugada sem carregar pedidos antigos');
-    assert.equal(kdsCss.includes('.pedido-meta-acoes { width: 100%; flex-direction: column;'), true, 'no celular o emoji da origem deve subir para liberar os botões');
+    assert.equal(kdsCss.includes('"conteudo origem"'), true, 'no celular o emoji da origem deve ficar no canto superior direito do cartão');
+    assert.equal(kdsCss.includes('.pedido-meta-acoes { display: contents; }'), true, 'a origem e as ações devem ocupar áreas diferentes da grade móvel');
     assert.equal(kdsCss.includes('.btn-pedido-acao { min-width: 0; flex: 1 1 0; }'), true, 'as três ações devem caber na mesma linha no celular');
     assert.equal(app.includes('function pedidosParaCacheLocal()'), true);
     assert.equal(app.includes("localStorage.removeItem('kds_pedidos_local')"), true);
@@ -962,9 +979,9 @@ function testV2025TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.0.25</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.25/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.25/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.0.26</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.26/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.26/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
@@ -1242,10 +1259,10 @@ async function testCatalogAutoPublish() {
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2025TaskExperience();
+    testV2026TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.25 passaram.');
+    console.log('Testes críticos da v2.0.26 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

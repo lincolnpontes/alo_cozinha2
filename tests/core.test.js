@@ -374,6 +374,58 @@ function testAppsScriptAppendsOrderBatchOnce() {
     assert.equal(writes[0].values.length, 2);
 }
 
+function testBackupMigrationIsIdempotentAndPreservesHistory() {
+    const properties = new Map([['kds_pedidos_revision', '10']]);
+    const rows = [[
+        'pedido-existente', 'Arroz', 'enviado', '2026-08-01T10:00:00.000Z',
+        '2026-08-01T10:05:00.000Z', '', '2026-08-01T10:05:00.000Z', 10, '', 'panelas', 'cozinha'
+    ]];
+    const context = vm.createContext({
+        console,
+        Date,
+        Set,
+        PropertiesService: {
+            getDocumentProperties() {
+                return {
+                    getProperty(key) { return properties.get(key) || null; },
+                    setProperty(key, value) { properties.set(key, String(value)); }
+                };
+            }
+        }
+    });
+    loadScript(context, 'google-apps-script.gs');
+    context.testSheet = {
+        getLastRow() { return rows.length + 1; },
+        getRange(row, column, rowCount) {
+            return {
+                getValues() { return rows.slice(row - 2, row - 2 + rowCount).map(values => values.slice()); },
+                setValues(values) {
+                    values.forEach((valuesRow, index) => { rows[row - 2 + index] = valuesRow.slice(); });
+                }
+            };
+        }
+    };
+    context.backupOrders = [
+        { id: 'pedido-existente', produto: 'Arroz', status: 'enviado', timestamp: '2026-08-01T10:00:00.000Z' },
+        { id: 'pedido-cancelado', produto: 'Chá', status: 'cancelado', timestamp: '2026-08-02T09:00:00.000Z', finalizadoEm: '2026-08-02T09:03:00.000Z', motivo: 'Acabou', areaOrigem: 'bar', areaDestino: 'cozinha' },
+        { id: 'pedido-buscar', produto: 'Batata', status: 'buscar', timestamp: '2026-08-03T12:00:00.000Z', finalizadoEm: '2026-08-03T12:07:00.000Z', areaOrigem: 'delivery', areaDestino: 'cozinha' }
+    ];
+
+    const first = vm.runInContext('importBackupOrders_(testSheet, backupOrders)', context);
+    assert.equal(first.imported, 2);
+    assert.equal(first.ignored, 1);
+    assert.equal(rows.length, 3);
+    assert.equal(rows[1][2], 'cancelado');
+    assert.equal(rows[1][3], '2026-08-02T09:00:00.000Z');
+    assert.equal(rows[1][5], 'Acabou');
+    assert.equal(rows[1][9], 'bar');
+
+    const repeated = vm.runInContext('importBackupOrders_(testSheet, backupOrders)', context);
+    assert.equal(repeated.imported, 0);
+    assert.equal(repeated.ignored, 3);
+    assert.equal(rows.length, 3, 'repetir o backup não pode duplicar pedidos');
+}
+
 function testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus() {
     const properties = new Map([['kds_atividades_revision', '0']]);
     const rows = [];
@@ -498,7 +550,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2015TaskExperience() {
+function testV2016TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -510,6 +562,11 @@ function testV2015TaskExperience() {
     const kdsSettings = html.slice(html.indexOf('id="modalConfigKds"'), html.indexOf('id="modalConfigTasksMenu"'));
 
     assert.equal(html.includes('KDS - Sistema de Pedidos'), true);
+    assert.equal(html.includes('📥 Migrar backup'), true);
+    assert.equal(app.includes("url: current.configs.url"), true, 'a migração deve preservar a URL nova');
+    assert.equal(app.includes("AloApi.migrateBackup"), true, 'o backup deve ser confirmado pelo novo servidor');
+    assert.equal(gas.includes("action === 'importar_backup'"), true);
+    assert.equal(gas.includes("action === 'status_migracao'"), true);
     assert.equal(html.includes('<strong>Checklist</strong>'), true, 'o modulo de atividades deve se chamar Checklist');
     assert.equal(html.includes('<strong>KDS</strong>'), true, 'o nome KDS deve aparecer no cabecalho');
     assert.equal(html.includes('Pedidos por Área'), false);
@@ -766,13 +823,14 @@ async function testCatalogAutoPublish() {
     await testOldOrphanQueueIsCleaned();
     testAppsScriptRejectsStaleStatus();
     testAppsScriptAppendsOrderBatchOnce();
+    testBackupMigrationIsIdempotentAndPreservesHistory();
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2015TaskExperience();
+    testV2016TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.15 passaram.');
+    console.log('Testes críticos da v2.0.16 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

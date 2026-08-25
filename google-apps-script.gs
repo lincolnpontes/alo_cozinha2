@@ -5,6 +5,7 @@ const PROP_BANCO_REVISION = 'kds_banco_revision';
 const PROP_PEDIDOS_REVISION = 'kds_pedidos_revision';
 const PROP_ATIVIDADES_REVISION = 'kds_atividades_revision';
 const PROP_FOTOS_TAREFAS = 'kds_fotos_tarefas';
+const PROP_MIGRACAO_PREFIX = 'kds_migracao_';
 const PASTA_FOTOS_TAREFAS = 'Alô Cozinha - Fotos das Tarefas';
 const CACHE_PEDIDOS_PREFIX = 'kds_pedidos_visiveis_';
 const BASE_HEADERS = ['ID', 'Produto', 'Status', 'Timestamp', 'FinalizadoEm', 'Motivo'];
@@ -175,6 +176,110 @@ function appendNewOrders_(sheet, orders) {
     PropertiesService.getDocumentProperties().setProperty(PROP_PEDIDOS_REVISION, String(revision));
   }
   return { count: rows.length, revision: revision };
+}
+
+function migrationKey_(migrationId) {
+  const safeId = String(migrationId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+  if (!safeId) throw new Error('Identificador de migração inválido.');
+  return PROP_MIGRACAO_PREFIX + safeId;
+}
+
+function saveMigrationStatus_(migrationId, report) {
+  PropertiesService.getDocumentProperties().setProperty(
+    migrationKey_(migrationId),
+    JSON.stringify(Object.assign({ atualizadoEm: new Date().toISOString() }, report))
+  );
+}
+
+function getMigrationStatus_(migrationId) {
+  const raw = PropertiesService.getDocumentProperties().getProperty(migrationKey_(migrationId));
+  if (!raw) return { status: 'not_found' };
+  try { return JSON.parse(raw); } catch (error) { return { status: 'error', message: 'Registro de migração inválido.' }; }
+}
+
+function importBackupOrders_(sheet, orders) {
+  if (!Array.isArray(orders)) throw new Error('A lista de pedidos do backup é inválida.');
+  if (orders.length > 10000) throw new Error('O backup ultrapassa o limite de 10.000 pedidos por migração.');
+
+  const knownIds = new Set(Object.keys(findRecordsById_(sheet)));
+  const rows = [];
+  let ignored = 0;
+  let revision = getPedidosRevision_();
+
+  orders.forEach(order => {
+    if (!order || !order.id || !order.produto) {
+      ignored += 1;
+      return;
+    }
+    const id = String(order.id);
+    if (knownIds.has(id)) {
+      ignored += 1;
+      return;
+    }
+    knownIds.add(id);
+    revision += 1;
+    const status = VALID_STATUSES.has(order.status) ? order.status : 'pendente';
+    const timestamp = asIso_(order.timestamp) || new Date().toISOString();
+    const updatedAt = asIso_(order.atualizadoEm) || asIso_(order.finalizadoEm) || timestamp;
+    const finalizedAt = asIso_(order.finalizadoEm);
+    rows.push([
+      id,
+      String(order.produto),
+      status,
+      timestamp,
+      finalizedAt,
+      order.motivo || '',
+      updatedAt,
+      revision,
+      order.operacaoId || order.operationId || '',
+      order.areaOrigem || 'panelas',
+      order.areaDestino || 'cozinha'
+    ]);
+  });
+
+  if (rows.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, HEADERS_PEDIDOS.length).setValues(rows);
+    PropertiesService.getDocumentProperties().setProperty(PROP_PEDIDOS_REVISION, String(revision));
+  }
+  return { imported: rows.length, ignored: ignored, revision: revision };
+}
+
+function importBackup_(sheet, params) {
+  const migrationId = params.migrationId;
+  saveMigrationStatus_(migrationId, { status: 'processing' });
+  try {
+    const properties = PropertiesService.getDocumentProperties();
+    const currentBankRevision = Number(properties.getProperty(PROP_BANCO_REVISION) || '0');
+    if (Number(params.expectedRevision || 0) !== currentBankRevision) {
+      const conflict = { status: 'conflict', revision: currentBankRevision };
+      saveMigrationStatus_(migrationId, conflict);
+      return conflict;
+    }
+
+    const orders = Array.isArray(params.pedidos) ? params.pedidos : [];
+    const bankResult = salvarBanco_(params.dados || {}, currentBankRevision);
+    if (bankResult.status !== 'ok') {
+      saveMigrationStatus_(migrationId, bankResult);
+      return bankResult;
+    }
+    const orderResult = importBackupOrders_(sheet, orders);
+    const report = {
+      status: 'ok',
+      migrationId: String(migrationId),
+      produtos: Array.isArray(params.dados && params.dados.produtos) ? params.dados.produtos.length : 0,
+      pedidosRecebidos: orders.length,
+      pedidosImportados: orderResult.imported,
+      pedidosIgnorados: orderResult.ignored,
+      bancoRevision: bankResult.revision,
+      pedidosRevision: orderResult.revision
+    };
+    saveMigrationStatus_(migrationId, report);
+    return report;
+  } catch (error) {
+    const report = { status: 'error', message: error.message || 'Não foi possível concluir a migração.' };
+    saveMigrationStatus_(migrationId, report);
+    return report;
+  }
 }
 
 function applyStatus_(values, novoStatus, motivo, operationId, expectedStatus, expectedOrderRevision, revision) {
@@ -472,6 +577,10 @@ function doPost(e) {
     const action = params.action;
     const sheetPedidos = getPedidosSheet_();
 
+    if (action === 'importar_backup') {
+      return json_(importBackup_(sheetPedidos, params));
+    }
+
     if (action === 'novo_pedido') {
       if (!params.id || !params.produto) return json_({ status: 'error', message: 'ID e produto são obrigatórios.' });
       const result = appendNewOrders_(sheetPedidos, [params]);
@@ -578,6 +687,7 @@ function doGet(e) {
   const action = e && e.parameter ? e.parameter.action : '';
   if (action === 'carregar_banco') return json_(bancosComRevisao_());
   if (action === 'foto_tarefa') return json_(fotoTarefa_(e.parameter.tarefaId));
+  if (action === 'status_migracao') return json_(getMigrationStatus_(e.parameter.migrationId));
 
   if (action === 'sincronizar_atividades') {
     const revision = getAtividadesRevision_();

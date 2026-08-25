@@ -62,5 +62,21 @@
         return response.json();
     }
 
-    global.AloApi = Object.freeze({ buildUrl, post, sync, getBank, getHistory, syncActivities, getActivityHistory, uploadTaskPhoto, deleteTaskPhoto, getTaskPhoto });
+    async function getMigrationStatus(baseUrl, migrationId) {
+        const response = await fetch(buildUrl(baseUrl, { action: 'status_migracao', migrationId }), { cache: 'no-store' });
+        if (!response.ok) throw new Error('Não foi possível conferir a migração.');
+        return response.json();
+    }
+
+    async function migrateBackup(baseUrl, payload, wait = ms => new Promise(resolve => setTimeout(resolve, ms))) {
+        await post(baseUrl, { action: 'importar_backup', ...payload });
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            await wait(attempt === 0 ? 350 : 700);
+            const report = await getMigrationStatus(baseUrl, payload.migrationId);
+            if (report && ['ok', 'error', 'conflict'].includes(report.status)) return report;
+        }
+        throw new Error('A migração demorou além do esperado. Tente conferir novamente.');
+    }
+
+    global.AloApi = Object.freeze({ buildUrl, post, sync, getBank, getHistory, syncActivities, getActivityHistory, uploadTaskPhoto, deleteTaskPhoto, getTaskPhoto, getMigrationStatus, migrateBackup });
 })(window);

@@ -1412,35 +1412,115 @@ let db = carregarBanco();
         setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 1000);
     }
 
-    function importarDadosFisicos(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const importedData = JSON.parse(e.target.result);
-
-                if (importedData.db && importedData.db.produtos) {
-                    db = importedData.db;
-                    if(importedData.pedidos) pedidosServidor = importedData.pedidos;
-                    if(importedData.cientes) pedidosCientes = new Set(importedData.cientes);
-                } else if (importedData.produtos) {
-                    db = importedData;
-                } else {
-                    alert("❌ Arquivo inválido ou corrompido.");
-                    return;
-                }
-
-                db.configs.dadosBaixados = true;
-                marcarBancoAlterado();
-
-                alert("✅ Banco de dados restaurado com sucesso! O aplicativo será recarregado.");
-                location.reload();
-            } catch(err) {
-                alert("❌ Erro ao ler o arquivo TXT.");
+    function bancoPreparadoDoBackup(importedData) {
+        const source = importedData.db && typeof importedData.db === 'object' ? importedData.db : importedData;
+        if (!source || !Array.isArray(source.produtos)) throw new Error('O arquivo não contém um banco válido.');
+        const current = db;
+        const hasArray = key => Object.prototype.hasOwnProperty.call(source, key) && Array.isArray(source[key]);
+        return {
+            ...current,
+            produtos: source.produtos,
+            categorias: hasArray('categorias') ? source.categorias : current.categorias,
+            obsPedidos: hasArray('obsPedidos') ? source.obsPedidos : current.obsPedidos,
+            obsCancelamentos: hasArray('obsCancelamentos') ? source.obsCancelamentos : current.obsCancelamentos,
+            areas: hasArray('areas') ? source.areas : current.areas,
+            setoresTarefas: hasArray('setoresTarefas') ? source.setoresTarefas : current.setoresTarefas,
+            funcionarios: hasArray('funcionarios') ? source.funcionarios : current.funcionarios,
+            tarefas: hasArray('tarefas') ? source.tarefas : current.tarefas,
+            configsTarefas: Object.prototype.hasOwnProperty.call(source, 'configsTarefas')
+                ? { ...current.configsTarefas, ...(source.configsTarefas || {}) }
+                : current.configsTarefas,
+            configs: {
+                ...current.configs,
+                ...(source.configs || {}),
+                url: current.configs.url,
+                modo: current.configs.modo,
+                areaAtual: current.configs.areaAtual,
+                dadosBaixados: true,
+                bancoPendente: false,
+                revisaoBanco: Number(current.configs.revisaoBanco || 0)
             }
         };
-        reader.readAsText(file);
+    }
+
+    function resumoBackup(importedData) {
+        const source = importedData.db && typeof importedData.db === 'object' ? importedData.db : importedData;
+        const orders = Array.isArray(importedData.pedidos) ? importedData.pedidos : [];
+        return {
+            produtos: Array.isArray(source.produtos) ? source.produtos.length : 0,
+            categorias: Array.isArray(source.categorias) ? source.categorias.length : 0,
+            areas: Array.isArray(source.areas) ? source.areas.length : 0,
+            pedidos: orders.length
+        };
+    }
+
+    function lerArquivoTexto(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = event => resolve(event.target.result);
+            reader.onerror = () => reject(new Error('Não foi possível ler o arquivo selecionado.'));
+            reader.readAsText(file);
+        });
+    }
+
+    async function importarDadosFisicos(event) {
+        const input = event.target;
+        const file = input.files[0];
+        if (!file) return;
+        const button = document.getElementById('btnImportarBackup');
+        const status = document.getElementById('statusImportacaoBackup');
+        const originalText = button ? button.innerText : '';
+        try {
+            if (!db.configs.url || !ehUrlAppsScript(db.configs.url)) {
+                throw new Error('Cadastre e valide primeiro a URL do novo Google Apps Script.');
+            }
+            const importedData = JSON.parse(await lerArquivoTexto(file));
+            const preparedBank = bancoPreparadoDoBackup(importedData);
+            const summary = resumoBackup(importedData);
+            const confirmed = await AloUiDialog.confirm(
+                `Este backup contém ${summary.produtos} produtos, ${summary.categorias} categorias, ${summary.areas} áreas e ${summary.pedidos} pedidos. A URL nova será preservada e pedidos repetidos não serão duplicados.`,
+                { title: 'Migrar backup', icon: '📥', confirmText: 'Iniciar migração' }
+            );
+            if (!confirmed) return;
+
+            if (button) { button.disabled = true; button.innerText = 'Migrando...'; }
+            if (status) status.innerText = 'Enviando e conferindo os dados...';
+            const currentBank = await AloApi.getBank(db.configs.url);
+            if (!bancoNuvemValido(currentBank)) throw new Error('O novo Apps Script não possui suporte à migração.');
+            const migrationId = `backup_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+            const report = await AloApi.migrateBackup(db.configs.url, {
+                migrationId,
+                expectedRevision: Number(currentBank._revision || 0),
+                dados: dadosBancoParaNuvem(preparedBank),
+                pedidos: Array.isArray(importedData.pedidos) ? importedData.pedidos : []
+            });
+            if (report.status === 'conflict') throw new Error('Os dados na nuvem mudaram durante a migração. Abra novamente e repita a operação.');
+            if (report.status !== 'ok') throw new Error(report.message || 'A migração não foi confirmada pelo servidor.');
+
+            db = preparedBank;
+            db.configs.revisaoBanco = Number(report.bancoRevision || 0);
+            db.configs.bancoPendente = false;
+            pedidosServidor = Array.isArray(importedData.pedidos) ? importedData.pedidos : [];
+            pedidosCientes = new Set(Array.isArray(importedData.cientes) ? importedData.cientes : []);
+            normalizarAreasERotas();
+            normalizarSonsConfigurados();
+            salvarBancoLocal();
+            salvarHistoricoLocal();
+            if (status) status.innerText = 'Migração concluída e confirmada.';
+            await AloUiDialog.notice(
+                `${report.pedidosImportados} pedidos foram importados e ${report.pedidosIgnorados} já existiam ou foram ignorados.`,
+                { title: 'Migração concluída', icon: '✓', confirmText: 'Abrir aplicativo' }
+            );
+            location.reload();
+        } catch(err) {
+            if (status) status.innerText = '';
+            await AloUiDialog.notice(err.message || 'Não foi possível ler ou migrar o arquivo.', {
+                title: 'Migração não concluída', icon: '!', tone: 'danger', confirmText: 'Entendi'
+            });
+        } finally {
+            input.value = '';
+            if (button) { button.disabled = false; button.innerText = originalText; }
+        }
     }
 
     async function salvarURL() {
@@ -1994,31 +2074,33 @@ let db = carregarBanco();
         abrirModalMetricasOriginal();
     };
 
-    function dadosBancoParaNuvem() {
+    function dadosBancoParaNuvem(banco = db) {
+        const taskSettings = banco.configsTarefas || {};
+        const settings = banco.configs || {};
         return {
-            produtos: db.produtos,
-            categorias: db.categorias,
-            obsPedidos: db.obsPedidos,
-            obsCancelamentos: db.obsCancelamentos,
-            areas: db.areas,
-            setoresTarefas: db.setoresTarefas,
-            funcionarios: db.funcionarios,
-            tarefas: db.tarefas,
+            produtos: banco.produtos,
+            categorias: banco.categorias,
+            obsPedidos: banco.obsPedidos,
+            obsCancelamentos: banco.obsCancelamentos,
+            areas: banco.areas,
+            setoresTarefas: banco.setoresTarefas,
+            funcionarios: banco.funcionarios,
+            tarefas: banco.tarefas,
             configsTarefas: {
-                som: db.configsTarefas.som,
-                volume: db.configsTarefas.volume,
-                repeticaoMinutos: db.configsTarefas.repeticaoMinutos
+                som: taskSettings.som,
+                volume: taskSettings.volume,
+                repeticaoMinutos: taskSettings.repeticaoMinutos
             },
             configs: {
-                senhaMestra: db.configs.senhaMestra || '',
-                senhaModo: db.configs.senhaModo || '',
-                somCozinha: db.configs.somCozinha || 'sem_som',
-                somPanelas: db.configs.somPanelas || 'sem_som',
-                volumeCozinha: db.configs.volumeCozinha || '100',
-                volumePanelas: db.configs.volumePanelas || '70',
-                telaAtiva: db.configs.telaAtiva || 'sim',
-                inatividade: db.configs.inatividade || '0',
-                reenvio: db.configs.reenvio || 'permitido'
+                senhaMestra: settings.senhaMestra || '',
+                senhaModo: settings.senhaModo || '',
+                somCozinha: settings.somCozinha || 'sem_som',
+                somPanelas: settings.somPanelas || 'sem_som',
+                volumeCozinha: settings.volumeCozinha || '100',
+                volumePanelas: settings.volumePanelas || '70',
+                telaAtiva: settings.telaAtiva || 'sim',
+                inatividade: settings.inatividade || '0',
+                reenvio: settings.reenvio || 'permitido'
             }
         };
     }
@@ -2145,7 +2227,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.15').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.16').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

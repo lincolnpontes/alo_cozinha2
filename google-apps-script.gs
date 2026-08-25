@@ -1129,6 +1129,7 @@ function doGet(e) {
   if (action === 'historico_atividades') {
     return json_({
       status: 'ok',
+      revision: getAtividadesRevision_(),
       atividades: filtrarHistoricoAtividades_(getAtividadesSheet_(), e.parameter.start, e.parameter.end)
     });
   }

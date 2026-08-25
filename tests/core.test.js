@@ -1038,6 +1038,8 @@ function testV2027TaskExperience() {
     assert.equal(gas.includes("const SHEET_FEIRA_BANCO = 'Alô Feira - Banco'"), true, 'a Lista de Compras deve preservar a aba já usada na mesma implantação');
     assert.equal(gas.includes("e.parameter.app === 'alofeira'"), true, 'a URL única deve rotear as leituras da Lista de Compras');
     assert.equal(gas.includes("action === 'excluir_historico_atividades'"), true, 'o histórico do Checklist deve poder ser apagado separadamente');
+    assert.equal(gas.includes('revision: getAtividadesRevision_()'), true, 'a exclusão do Checklist deve ser confirmada por revisão na leitura seguinte');
+    assert.equal(app.includes("confirmation?.revision === undefined"), true, 'o app não deve confirmar limpeza usando um Apps Script antigo');
     assert.equal(app.includes("function excluirHistoricoModulo(modulo)"), true, 'o painel principal deve apagar históricos por módulo');
     assert.equal(tasks.includes('function clearHistoryLocal()'), true, 'o Checklist deve limpar seu cache após a exclusão confirmada');
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');

@@ -1306,6 +1306,13 @@ let db = carregarBanco();
 
     async function limparHistoricoChecklist() {
         await AloApi.post(db.configs.url, { action: 'excluir_historico_atividades' });
+        const confirmation = await AloApi.getActivityHistory(db.configs.url, '0000-01-01', '9999-12-31');
+        const finalized = Array.isArray(confirmation?.atividades)
+            ? confirmation.atividades.filter(activity => ['concluida', 'nao_realizada'].includes(activity.status))
+            : [];
+        if (confirmation?.revision === undefined || finalized.length) {
+            throw new Error('O Apps Script não confirmou a limpeza do Checklist.');
+        }
         AloTasks.clearHistoryLocal();
     }
 

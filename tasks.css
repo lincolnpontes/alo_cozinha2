@@ -112,14 +112,16 @@
 }
 
 .tasks-header {
-    min-height: 58px;
+    min-height: 52px;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 5px;
-    padding: 7px 12px;
+    padding: 6px 10px;
     background: var(--tasks-green-dark);
     color: #fff;
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .tasks-area-picker { width: fit-content; min-width: 0; max-width: min(260px, 100%); justify-content: center; }
@@ -704,8 +706,8 @@
     .module-nav-button strong { font-size: 16px; }
     .module-nav-back { width: 10px; flex-basis: 10px; font-size: 22px; }
     .module-header-center .header-area-picker,
-    #mainHeader .header-area-picker { width: 100%; max-width: 100%; }
-    .module-header-center .header-area-button { width: 100%; max-width: 100%; min-height: 38px; padding-block: 3px; }
+    #mainHeader .header-area-picker { width: fit-content; max-width: 100%; }
+    .module-header-center .header-area-button { width: fit-content; max-width: 100%; min-height: 38px; padding-block: 3px; }
     .module-header-center .header-area-button strong { font-size: var(--area-name-size-mobile, 14px); }
     .module-header-center .header-area-chevron { font-size: 13px; }
     .tasks-header-title,

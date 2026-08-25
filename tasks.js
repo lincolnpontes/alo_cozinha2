@@ -17,6 +17,7 @@
     let selectedArea = localStorage.getItem(STORAGE_SELECTED_AREA) || 'todos';
     let activeModule = 'home';
     let syncRunning = false;
+    let lastSyncState = navigator.onLine ? 'online' : 'offline';
     let syncTimer = null;
     let alarmTimer = null;
     let alarmAudio = null;
@@ -276,17 +277,20 @@
     function setSyncIndicator(state, count = outbox.length) {
         const indicator = document.getElementById('tasksSyncIndicator');
         if (!indicator) return;
-        if (syncRunning) { indicator.innerText = '↻'; indicator.title = 'Sincronizando tarefas'; return; }
+        if (state === 'online' || state === 'offline') lastSyncState = state;
         if (count) { indicator.innerText = `📤 ${count}`; indicator.title = `${count} alteração(ões) aguardando confirmação`; return; }
-        indicator.innerText = state === 'offline' ? '🔴' : '🟢';
-        indicator.title = state === 'offline' ? 'Sem conexão' : 'Tarefas sincronizadas';
+        indicator.innerText = lastSyncState === 'offline' ? '🔴' : '🟢';
+        indicator.title = syncRunning
+            ? 'Sincronizando Checklist'
+            : (lastSyncState === 'offline' ? 'Sem conexão com o servidor' : 'Checklist sincronizado');
     }
     async function syncNow(force = false) {
         if (syncRunning) return;
         const url = deps.getUrl();
         if (!url || !navigator.onLine) { setSyncIndicator('offline'); return; }
         syncRunning = true;
-        setSyncIndicator('syncing');
+        setSyncIndicator(lastSyncState);
+        let finalSyncState = 'online';
         try {
             const sent = outbox.length > 0;
             if (sent) {
@@ -300,18 +304,17 @@
             if (response.changed) mergeRemote(Array.isArray(response.atividades) ? response.atividades : []);
             if (response.revision !== undefined) revision = String(response.revision);
             saveRuntime();
-            setSyncIndicator('online');
             render();
             checkAlarms();
         } catch (error) {
+            finalSyncState = 'offline';
             activities = activities.map(activity => outbox.some(item => item.activityId === activity.id)
                 ? { ...activity, syncState: 'offline' }
                 : activity);
             saveRuntime();
-            setSyncIndicator('offline');
         } finally {
             syncRunning = false;
-            setSyncIndicator(navigator.onLine ? 'online' : 'offline');
+            setSyncIndicator(finalSyncState);
             scheduleSync();
         }
     }

@@ -621,7 +621,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2021TaskExperience() {
+function testV2022TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -695,12 +695,19 @@ function testV2021TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.0.21</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.21/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.21/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.0.22</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.22/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.22/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
+    assert.equal(html.includes('>↻</button>'), false, 'nenhum módulo deve exibir seta no lugar da bolinha de conexão');
+    assert.equal(html.includes('id="tasksSyncIndicator"') && html.includes('title="Aguardando sincronização">🔴</button>'), true, 'o Checklist deve iniciar com estado vermelho, nunca com seta');
+    assert.equal(tasks.includes("indicator.innerText = '↻'"), false, 'a sincronização do Checklist não deve trocar a bolinha por seta');
+    assert.equal(tasks.includes("let finalSyncState = 'online'"), true, 'o resultado real do servidor deve definir a cor final');
+    assert.equal(tasks.includes('setSyncIndicator(finalSyncState)'), true, 'falha no servidor deve permanecer vermelha mesmo com Wi-Fi');
+    assert.equal(css.includes('min-height: 52px;') && css.includes('padding: 6px 10px;'), true, 'o cabeçalho do Checklist deve ter a mesma altura do KDS');
+    assert.equal(css.includes('#mainHeader .header-area-picker { width: fit-content; max-width: 100%; }'), true, 'os seletores móveis devem acompanhar o nome do setor');
     assert.equal(kdsCss.includes('.header-area-emoji { display: none; }'), false, 'o emoji do setor não pode sumir no celular');
     assert.equal(html.includes('id="tasksSummary"'), false, 'a faixa redundante de resumo deve ser removida');
     assert.equal(html.includes('id="taskTabTotalCount"'), true, 'Total deve mostrar sua contagem na aba');
@@ -953,10 +960,10 @@ async function testCatalogAutoPublish() {
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2021TaskExperience();
+    testV2022TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.21 passaram.');
+    console.log('Testes críticos da v2.0.22 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

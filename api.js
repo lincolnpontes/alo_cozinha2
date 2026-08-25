@@ -70,8 +70,8 @@
 
     async function migrateBackup(baseUrl, payload, wait = ms => new Promise(resolve => setTimeout(resolve, ms))) {
         await post(baseUrl, { action: 'importar_backup', ...payload });
-        for (let attempt = 0; attempt < 20; attempt += 1) {
-            await wait(attempt === 0 ? 350 : 700);
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+            await wait(attempt === 0 ? 500 : 1000);
             const report = await getMigrationStatus(baseUrl, payload.migrationId);
             if (report && ['ok', 'error', 'conflict'].includes(report.status)) return report;
         }

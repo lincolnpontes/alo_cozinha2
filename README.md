@@ -1,9 +1,10 @@
-# Alô Cozinha v2.0.18
+# Alô Cozinha v2.0.19
 
 Aplicativo para operação de restaurante com dois módulos: pedidos entre áreas (KDS) e checklist por setor.
 
 ## Novidades da v2
 
+- A v2.0.19 adiciona o período Tudo ao histórico, liga a tela de hoje ao relatório completo e amplia a confirmação de migrações grandes.
 - A v2.0.18 mantém o histórico migrado na nuvem e limita o cache local a pedidos operacionais, evitando estouro de armazenamento.
 - A v2.0.17 aceita Apps Script independente, usa propriedades do script e cria automaticamente a planilha de dados no Drive.
 - A v2.0.16 migra backups físicos para uma nova implantação, preserva a nova URL e importa o histórico por ID sem duplicar pedidos.

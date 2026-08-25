@@ -1172,6 +1172,12 @@ let db = carregarBanco();
         document.getElementById('modalHistorico').style.display = 'flex';
     }
 
+    function abrirRelatorioCompleto() {
+        fecharModal('modalHistorico');
+        abrirModalMetricas();
+        renderizarMetricasDetalhes('tudo');
+    }
+
     function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
 
     function abrirModalNoTopo(id) {
@@ -1311,6 +1317,7 @@ let db = carregarBanco();
         let timeInicio = 0; let timeFim = Date.now();
 
         if (periodo === 'hoje') { timeInicio = hoje.getTime(); }
+        else if (periodo === 'tudo') { timeInicio = 0; }
         else if (periodo === '7d') { timeInicio = hoje.getTime() - (6 * 86400000); }
         else if (periodo === '15d') { timeInicio = hoje.getTime() - (14 * 86400000); }
         else if (periodo === '30d') { timeInicio = hoje.getTime() - (29 * 86400000); }
@@ -2044,7 +2051,8 @@ let db = carregarBanco();
         hoje.setHours(0, 0, 0, 0);
         let inicio = new Date(hoje);
         let fim = new Date();
-        if (periodo === '7d') inicio.setDate(inicio.getDate() - 6);
+        if (periodo === 'tudo') inicio = new Date('2000-01-01T00:00:00.000Z');
+        else if (periodo === '7d') inicio.setDate(inicio.getDate() - 6);
         else if (periodo === '15d') inicio.setDate(inicio.getDate() - 14);
         else if (periodo === '30d') inicio.setDate(inicio.getDate() - 29);
         else if (periodo === 'custom') {
@@ -2079,7 +2087,7 @@ let db = carregarBanco();
             aplicarPedidosSincronizados(syncConfiavel.orders);
             cacheRelatorios.set(chave, Date.now());
             renderizarMetricasDetalhesLocal(periodo);
-            if (status) status.innerText = 'Dados atualizados';
+            if (status) status.innerText = `${historico.length} pedidos carregados`;
         } catch (error) {
             if (idRequisicao === requisicaoRelatorio && status) status.innerText = 'Exibindo os dados salvos neste aparelho';
         }
@@ -2249,7 +2257,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.18').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.19').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

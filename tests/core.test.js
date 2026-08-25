@@ -385,6 +385,30 @@ function testStandaloneAppsScriptCreatesAndReusesSpreadsheet() {
     assert.equal(vm.runInContext('getLock_()', context), scriptLock);
 }
 
+async function testBackupMigrationWaitsForSlowServer() {
+    let polls = 0;
+    const context = vm.createContext({ console, Date, URL });
+    context.window = context;
+    context.fetch = async (url, options = {}) => {
+        if (options.method === 'POST') return { ok: true };
+        polls += 1;
+        return {
+            ok: true,
+            async json() {
+                return polls <= 25 ? { status: 'processing' } : { status: 'ok', pedidosImportados: 0, pedidosIgnorados: 3421 };
+            }
+        };
+    };
+    loadScript(context, 'api.js');
+    const result = await context.AloApi.migrateBackup(
+        'https://script.google.com/macros/s/teste/exec',
+        { migrationId: 'backup_teste', expectedRevision: 2, dados: {}, pedidos: [] },
+        async () => {}
+    );
+    assert.equal(result.status, 'ok');
+    assert.equal(polls, 26, 'a confirmação deve continuar depois do antigo limite de 20 tentativas');
+}
+
 function testAppsScriptAppendsOrderBatchOnce() {
     const properties = new Map([['kds_pedidos_revision', '7']]);
     const writes = [];
@@ -597,7 +621,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2018TaskExperience() {
+function testV2019TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -610,6 +634,10 @@ function testV2018TaskExperience() {
 
     assert.equal(html.includes('KDS - Sistema de Pedidos'), true);
     assert.equal(html.includes('📥 Migrar backup'), true);
+    assert.equal(html.includes("renderizarMetricasDetalhes('tudo')"), true);
+    assert.equal(html.includes('Histórico completo'), true);
+    assert.equal(app.includes("periodo === 'tudo'"), true);
+    assert.equal(fs.readFileSync(path.join(root, 'api.js'), 'utf8').includes('attempt < 120'), true);
     assert.equal(app.includes("url: current.configs.url"), true, 'a migração deve preservar a URL nova');
     assert.equal(app.includes("AloApi.migrateBackup"), true, 'o backup deve ser confirmado pelo novo servidor');
     assert.equal(gas.includes("action === 'importar_backup'"), true);
@@ -876,15 +904,16 @@ async function testCatalogAutoPublish() {
     await testOldOrphanQueueIsCleaned();
     testAppsScriptRejectsStaleStatus();
     testStandaloneAppsScriptCreatesAndReusesSpreadsheet();
+    await testBackupMigrationWaitsForSlowServer();
     testAppsScriptAppendsOrderBatchOnce();
     testBackupMigrationIsIdempotentAndPreservesHistory();
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2018TaskExperience();
+    testV2019TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.18 passaram.');
+    console.log('Testes críticos da v2.0.19 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

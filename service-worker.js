@@ -1,26 +1,28 @@
-const VERSION = '2.0.20';
+const VERSION = '2.0.21';
 const CACHE_NAME = `alo-cozinha-${VERSION}`;
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=2.0.20',
-  './tasks.css?v=2.0.20',
-  './logic.js?v=2.0.20',
-  './storage.js?v=2.0.20',
-  './api.js?v=2.0.20',
-  './audio.js?v=2.0.20',
-  './sync.js?v=2.0.20',
-  './catalog-sync.js?v=2.0.20',
-  './ui.js?v=2.0.20',
-  './task-templates.js?v=2.0.20',
-  './vendor/qrcode.js?v=2.0.20',
-  './tasks.js?v=2.0.20',
-  './app.js?v=2.0.20',
+  './styles.css?v=2.0.21',
+  './tasks.css?v=2.0.21',
+  './logic.js?v=2.0.21',
+  './storage.js?v=2.0.21',
+  './api.js?v=2.0.21',
+  './audio.js?v=2.0.21',
+  './sync.js?v=2.0.21',
+  './catalog-sync.js?v=2.0.21',
+  './ui.js?v=2.0.21',
+  './task-templates.js?v=2.0.21',
+  './vendor/qrcode.js?v=2.0.21',
+  './tasks.js?v=2.0.21',
+  './app.js?v=2.0.21',
   './assets/sounds/alarme-curto.ogg',
   './assets/sounds/beep-classico.ogg',
   './assets/sounds/sino-forte.ogg',
   './manifest.json',
-  './icon.png?v=2.0.20'
+  './icon.png?v=2.0.21',
+  './assets/module-kds.png?v=2.0.21',
+  './assets/module-checklist.png?v=2.0.21'
 ];
 
 self.addEventListener('install', event => {

@@ -621,11 +621,12 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2019TaskExperience() {
+function testV2021TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     const css = fs.readFileSync(path.join(root, 'tasks.css'), 'utf8');
+    const kdsCss = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
     const ui = fs.readFileSync(path.join(root, 'ui.js'), 'utf8');
     const gas = fs.readFileSync(path.join(root, 'google-apps-script.gs'), 'utf8');
     const templates = fs.readFileSync(path.join(root, 'task-templates.js'), 'utf8');
@@ -652,7 +653,7 @@ function testV2019TaskExperience() {
     assert.equal(html.includes('<strong>KDS</strong>'), true, 'o nome KDS deve aparecer no cabecalho');
     assert.equal(html.includes('Pedidos por Área'), false);
     assert.equal(html.includes('Rotinas e tarefas'), false);
-    assert.equal((html.match(/class="module-wordmark-button"/g) || []).length, 2);
+    assert.equal((html.match(/class="module-nav-button"/g) || []).length, 2, 'cada módulo deve ter retorno compacto no próprio título');
     assert.equal(panel.includes("abrirGerenciar('areas')"), false);
     assert.equal(kdsSettings.includes("abrirGerenciar('areas')"), true);
     assert.equal(html.includes('data-task-tab="total"'), true);
@@ -662,7 +663,7 @@ function testV2019TaskExperience() {
     assert.equal(html.includes('id="modalTaskPop"'), true);
     assert.equal(html.includes('id="modalTaskReschedule"'), true);
     assert.equal((html.match(/class="module-header-switch/g) || []).length, 0);
-    assert.equal((html.match(/class="module-context-name"/g) || []).length, 2, 'os dois cabecalhos devem identificar seus modulos');
+    assert.equal((html.match(/class="module-context-name"/g) || []).length, 0, 'o nome do módulo não deve ser repetido no centro');
     assert.equal(html.includes('aria-label="Trocar de módulo"'), false);
     assert.equal(tasks.includes('function undoFinishedTask(targetStatus)'), true);
     assert.equal(tasks.includes('function openReschedule(id)'), true);
@@ -692,7 +693,15 @@ function testV2019TaskExperience() {
     assert.equal(css.includes('#modalTaskHistory { z-index: 1300; }'), true, 'historico precisa de camada superior');
     assert.equal(gas.includes("'ProcedimentoFormato'"), true, 'o formato do procedimento precisa sincronizar entre aparelhos');
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
-    assert.equal((html.match(/class="module-home-return"/g) || []).length, 2, 'a marca deve indicar o retorno ao inicio');
+    assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
+    assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
+    assert.equal(html.includes('<div class="module-home-version">v2.0.21</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.21/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.21/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
+    assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
+    assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
+    assert.equal(kdsCss.includes('.header-area-emoji { display: none; }'), false, 'o emoji do setor não pode sumir no celular');
     assert.equal(html.includes('id="tasksSummary"'), false, 'a faixa redundante de resumo deve ser removida');
     assert.equal(html.includes('id="taskTabTotalCount"'), true, 'Total deve mostrar sua contagem na aba');
     assert.equal(html.includes('id="taskTabPendingCount"'), true, 'Pendentes deve mostrar sua contagem na aba');
@@ -944,10 +953,10 @@ async function testCatalogAutoPublish() {
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2019TaskExperience();
+    testV2021TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.20 passaram.');
+    console.log('Testes críticos da v2.0.21 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

@@ -127,17 +127,16 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
             .pedido-acoes { width: 100%; }
             .btn-pedido-acao { flex: 1; }
             .emoji-area-opcoes { grid-template-columns: repeat(4, 1fr); }
-            .header-area-button { min-width: 104px; grid-template-columns: minmax(0, 1fr) 15px; gap: 3px; }
+            .header-area-button { min-width: 0; grid-template-columns: 25px minmax(0, 1fr) 14px; gap: 2px; }
             .header-area-button strong {
-                display: -webkit-box;
+                display: block;
                 overflow: hidden;
-                white-space: normal;
+                white-space: nowrap;
                 line-height: 1.05;
-                -webkit-box-orient: vertical;
-                -webkit-line-clamp: 2;
+                text-overflow: ellipsis;
                 font-size: var(--area-name-size-mobile, 14px);
             }
-            .header-area-emoji { display: none; }
+            .header-area-emoji { width: 25px; display: inline-flex; font-size: 20px; }
             .header-area-chevron { font-size: 12px; }
             .header-area-options { position: fixed; top: 62px; left: 10px; width: calc(100vw - 20px); transform: none; }
         }

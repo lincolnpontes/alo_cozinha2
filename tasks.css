@@ -34,8 +34,15 @@
 }
 
 .module-home h1 {
-    margin: 10px 0 28px;
+    margin: 10px 0 2px;
     font-size: 30px;
+}
+
+.module-home-version {
+    margin-bottom: 24px;
+    color: var(--tasks-muted);
+    font-size: 13px;
+    font-weight: 800;
 }
 
 .module-choice-grid {
@@ -63,60 +70,35 @@
 .module-choice-kds { border-top: 5px solid #1565c0; }
 .module-choice-tasks { border-top: 5px solid var(--tasks-green); }
 .module-choice-settings { grid-column: 1 / -1; min-height: 112px; border-top: 5px solid #5b6573; }
-.module-choice-icon { flex: 0 0 auto; font-size: 44px; }
+.module-choice-icon { width: 66px; height: 66px; display: grid; flex: 0 0 66px; place-items: center; object-fit: contain; font-size: 44px; }
 .module-choice strong { display: block; min-width: 0; font-size: 18px; white-space: nowrap; }
 
-.module-wordmark-button {
+.module-nav-button {
     min-width: 0;
     height: 44px;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 0;
-    padding: 0 3px;
+    gap: 5px;
+    padding: 0 2px 0 0;
     border: 0;
     background: transparent;
     color: #fff;
     cursor: pointer;
     text-align: left;
 }
-.module-wordmark-icon { width: 42px; height: 42px; flex: 0 0 42px; margin-right: -2px; object-fit: contain; }
-.module-wordmark-copy { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
-.module-wordmark-copy strong { font-size: 20px; font-weight: 900; line-height: 1; letter-spacing: 0; }
-.module-wordmark-copy small { margin-top: 2px; font-size: 9px; font-weight: 900; line-height: 1; letter-spacing: 0; }
-.module-home-return {
-    width: 22px;
-    height: 22px;
-    display: grid;
-    flex: 0 0 22px;
-    place-items: center;
-    margin-left: 5px;
-    border: 1px solid rgba(255, 255, 255, .5);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .13);
-    font-size: 14px;
-    font-weight: 900;
-}
-.module-wordmark-button:active { opacity: .72; }
+.module-nav-button:active { opacity: .72; }
+.module-nav-back { width: 12px; flex: 0 0 12px; font-size: 25px; font-weight: 500; line-height: 1; opacity: .8; }
+.module-nav-icon { width: 42px; height: 42px; flex: 0 0 42px; object-fit: contain; }
+.module-nav-button strong { min-width: 0; overflow: hidden; font-size: 19px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 
 .module-header-center {
     min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 0;
 }
-.module-context-name {
-    min-width: 0;
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 5px;
-    color: #fff;
-    white-space: nowrap;
-}
-.module-context-name > span { font-size: 25px; line-height: 1; }
-.module-context-name > strong { font-size: 18px; font-weight: 900; }
 
 .tasks-module {
     position: fixed;
@@ -171,18 +153,25 @@
 #mainHeader .header-area-picker { width: fit-content; max-width: min(260px, 100%); justify-content: center; }
 #mainHeader .header-area-button { width: fit-content; max-width: 260px; }
 
-.tasks-header-actions { display: flex; align-items: center; gap: 8px; }
-.tasks-sync-indicator,
-.tasks-settings-button {
-    min-width: 44px;
-    height: 44px;
+.module-header-actions { display: flex; align-items: center; gap: 6px; }
+.module-sync-indicator,
+.module-settings-button {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
     border: 0;
     border-radius: 6px;
     background: rgba(255, 255, 255, .14);
     color: #fff;
-    font-size: 20px;
     font-weight: 800;
+    cursor: pointer;
 }
+.module-sync-indicator { font-size: 12px; }
+.module-settings-button { font-size: 20px; }
 
 .tasks-toolbar {
     display: block;
@@ -705,23 +694,19 @@
 
 @media (max-width: 640px) {
     .module-home { padding: 18px; }
-    .module-home h1 { font-size: 26px; margin-bottom: 20px; }
+    .module-home h1 { font-size: 26px; }
+    .module-home-version { margin-bottom: 18px; }
     .module-choice-grid { grid-template-columns: 1fr; }
     .module-choice { min-height: 112px; padding: 18px; }
-    .module-choice-icon { font-size: 38px; }
+    .module-choice-icon { width: 56px; height: 56px; flex-basis: 56px; font-size: 38px; }
     .module-choice strong { font-size: 17px; }
-    .module-wordmark-button { min-width: 0; }
-    .module-wordmark-icon { width: 38px; height: 38px; flex-basis: 38px; }
-    .module-wordmark-copy strong { font-size: 18px; }
-    .module-home-return { width: 20px; height: 20px; flex-basis: 20px; margin-left: 3px; font-size: 13px; }
-    .module-header-center { flex-direction: column; gap: 1px; }
-    .module-context-name { gap: 4px; }
-    .module-context-name > span { font-size: 22px; }
-    .module-context-name > strong { font-size: 16px; }
+    .module-nav-icon { width: 36px; height: 36px; flex-basis: 36px; }
+    .module-nav-button strong { font-size: 16px; }
+    .module-nav-back { width: 10px; flex-basis: 10px; font-size: 22px; }
     .module-header-center .header-area-picker,
-    #mainHeader .header-area-picker { width: fit-content; max-width: min(132px, 100%); }
-    .module-header-center .header-area-button { min-height: 28px; padding-block: 2px; }
-    .module-header-center .header-area-button strong { font-size: var(--area-name-size-mobile, 14px); text-align: center; }
+    #mainHeader .header-area-picker { width: 100%; max-width: 100%; }
+    .module-header-center .header-area-button { width: 100%; max-width: 100%; min-height: 38px; padding-block: 3px; }
+    .module-header-center .header-area-button strong { font-size: var(--area-name-size-mobile, 14px); }
     .module-header-center .header-area-chevron { font-size: 13px; }
     .tasks-header-title,
     .kds-header-title { font-size: 22px; }
@@ -751,14 +736,16 @@
 }
 
 @media (max-width: 420px) {
-    .tasks-header-title strong,
-    .kds-header-title strong { display: none; }
     .tasks-header { gap: 2px; padding-inline: 6px; }
     #mainHeader { gap: 2px; padding-inline: 6px; }
     .tasks-area-picker .header-area-button,
-    #mainHeader .header-area-button { min-width: 82px; padding-inline: 6px; }
-    .module-context-name > span { font-size: 20px; }
-    .module-context-name > strong { font-size: 14px; }
+    #mainHeader .header-area-button { min-width: 0; padding-inline: 4px; }
+    .module-header-actions { gap: 3px; }
+    .module-sync-indicator,
+    .module-settings-button { width: 36px; min-width: 36px; height: 36px; }
+    .module-nav-button { gap: 3px; }
+    .module-nav-icon { width: 30px; height: 30px; flex-basis: 30px; }
+    .module-nav-button strong { max-width: 76px; font-size: 14px; }
 }
 
 @media (min-width: 641px) and (orientation: portrait) {
@@ -775,11 +762,9 @@
     .module-choice { gap: 12px; padding: 14px; }
     .module-choice-icon { font-size: 32px; }
     .module-choice strong { font-size: 15px; }
-    .module-wordmark-button { min-width: 0; }
-    .module-wordmark-icon { width: 34px; height: 34px; flex-basis: 34px; }
-    .module-wordmark-copy strong { font-size: 16px; }
-    .module-wordmark-copy small { font-size: 7px; }
-    .module-home-return { margin-left: 1px; }
+    .module-nav-icon { width: 28px; height: 28px; flex-basis: 28px; }
+    .module-nav-button strong { max-width: 68px; font-size: 13px; }
+    .module-nav-back { width: 8px; flex-basis: 8px; font-size: 20px; }
 }
 
 @media print {

@@ -1,9 +1,10 @@
-# Alô Cozinha v2.0.20
+# Alô Cozinha v2.0.21
 
 Aplicativo para operação de restaurante com dois módulos: pedidos entre áreas (KDS) e checklist por setor.
 
 ## Novidades da v2
 
+- A v2.0.21 simplifica os cabeçalhos dos módulos, preserva o emoji do setor no celular, padroniza a sincronização e adiciona ícones próprios para KDS e Checklist.
 - A v2.0.20 limita os avisos sonoros das Panelas a uma reprodução por evento, mantém o destaque visual até a confirmação e preserva o alarme contínuo da Cozinha.
 - A v2.0.19 adiciona o período Tudo ao histórico, liga a tela de hoje ao relatório completo e amplia a confirmação de migrações grandes.
 - A v2.0.18 mantém o histórico migrado na nuvem e limita o cache local a pedidos operacionais, evitando estouro de armazenamento.

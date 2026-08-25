@@ -13,8 +13,12 @@
             this.lastFullPullAt = 0;
             this.serverProtocol = 'unknown';
             this.supportsCreateBatch = false;
+            this.supportsAlertAcknowledgement = false;
             this.rerunRequested = false;
             this.forceNextPull = false;
+            this.flushPromise = null;
+            this.flushAgain = false;
+            this.urgentTimer = null;
             this.boundOnline = () => this.syncNow(true, true);
             this.boundVisibility = () => {
                 if (document.visibilityState === 'visible') this.syncNow(true, true);
@@ -56,7 +60,7 @@
             await global.AloStorage.putOrderAndOperation(order, operation);
             this.upsertLocalOrder(order);
             this.emit();
-            this.schedule(0);
+            this.queueImmediateFlush();
             return order;
         }
 
@@ -72,6 +76,7 @@
                 status: novoStatus,
                 motivo: novoStatus === 'cancelado' ? motivo : current.motivo,
                 finalizadoEm: global.AloLogic.isStatusFinal(novoStatus) ? now : '',
+                alertaReconhecidoEm: '',
                 atualizadoEm: now,
                 operacaoId: operationId,
                 syncState: navigator.onLine ? 'queued' : 'offline'
@@ -88,7 +93,32 @@
             await global.AloStorage.replaceStatusOperation(updated, operation);
             this.upsertLocalOrder(updated);
             this.emit();
-            this.schedule(0);
+            this.queueImmediateFlush();
+        }
+
+        async enqueueAcknowledgement(id) {
+            const current = this.orders.find(order => order.id === String(id));
+            if (!current || current.alertaReconhecidoEm) return current;
+            const operationId = global.AloLogic.createId('ciencia');
+            const now = new Date().toISOString();
+            const updated = global.AloLogic.normalizeOrder({
+                ...current,
+                alertaReconhecidoEm: now,
+                atualizadoEm: now,
+                operacaoId: operationId,
+                syncState: navigator.onLine ? 'queued' : 'offline'
+            });
+            const operation = this.newOperation('acknowledgement', updated.id, {
+                action: 'reconhecer_alerta',
+                id: updated.id,
+                reconhecidoEm: now,
+                operationId
+            }, operationId);
+            await global.AloStorage.putOrderAndOperation(updated, operation);
+            this.upsertLocalOrder(updated);
+            this.emit();
+            this.queueImmediateFlush();
+            return updated;
         }
 
         async enqueueDelete(id) {
@@ -102,7 +132,7 @@
             await global.AloStorage.deleteOrdersAndQueue([orderId], operation);
             this.orders = this.orders.filter(order => order.id !== orderId);
             this.emit();
-            this.schedule(0);
+            this.queueImmediateFlush();
         }
 
         async enqueueDeleteToday() {
@@ -115,7 +145,7 @@
             const deleted = new Set(ids);
             this.orders = this.orders.filter(order => !deleted.has(order.id));
             this.emit();
-            this.schedule(0);
+            this.queueImmediateFlush();
         }
 
         async enqueueDeleteAll() {
@@ -129,7 +159,7 @@
             this.revision = '';
             await global.AloStorage.putMeta('ordersRevision', '');
             this.emit();
-            this.schedule(0);
+            this.queueImmediateFlush();
         }
 
         async syncNow(flush = true, force = false) {
@@ -149,11 +179,11 @@
             try {
                 let sent = false;
                 if (flush) {
-                    sent = await this.flushDueOperations();
+                    sent = await this.flushPendingOperations();
                 }
                 await this.pull(sent ? true : forcePull);
                 if (flush) {
-                    const sentAfterPull = await this.flushDueOperations();
+                    const sentAfterPull = await this.flushPendingOperations();
                     if (sentAfterPull) await this.pull(true);
                 }
                 this.lastError = '';
@@ -183,6 +213,7 @@
             }
             if (!data || data.status !== 'ok') throw new Error('Resposta inválida do servidor.');
             this.supportsCreateBatch = Boolean(data.capabilities && data.capabilities.novoPedidoLote);
+            this.supportsAlertAcknowledgement = Boolean(data.capabilities && data.capabilities.reconhecimentoAlerta);
             if (data.changed) {
                 const remoteOrders = Array.isArray(data.pedidos) ? data.pedidos.map(global.AloLogic.normalizeOrder) : [];
                 await this.reconcile(remoteOrders, force);
@@ -195,17 +226,69 @@
             }
         }
 
+        async flushPendingOperations() {
+            if (this.flushPromise) {
+                this.flushAgain = true;
+                return this.flushPromise;
+            }
+            this.flushPromise = (async () => {
+                let sent = false;
+                do {
+                    this.flushAgain = false;
+                    sent = (await this.flushDueOperations()) || sent;
+                } while (this.flushAgain);
+                return sent;
+            })();
+            try {
+                return await this.flushPromise;
+            } finally {
+                this.flushPromise = null;
+            }
+        }
+
+        queueImmediateFlush(delay = 0) {
+            if (this.urgentTimer) clearTimeout(this.urgentTimer);
+            this.urgentTimer = setTimeout(() => {
+                this.urgentTimer = null;
+                this.flushUrgently();
+            }, delay);
+        }
+
+        async flushUrgently() {
+            if (!this.getUrl()) return this.emit();
+            if (!navigator.onLine) {
+                await this.markPendingOffline();
+                this.emit();
+                return this.schedule();
+            }
+            try {
+                const sent = await this.flushPendingOperations();
+                if (sent) {
+                    this.lastError = '';
+                    this.lastSyncAt = Date.now();
+                    await this.syncNow(false, true);
+                }
+            } catch (error) {
+                this.lastError = error && error.message ? error.message : 'Sem conexão com o servidor.';
+                await this.markPendingOffline();
+                this.emit();
+                this.schedule();
+            }
+        }
+
         async flushDueOperations() {
             const all = await global.AloStorage.getAllOperations();
             const now = Date.now();
+            const priority = { create: 0, acknowledgement: 0, status: 1, delete: 2, delete_today: 2, delete_all: 2 };
             const due = all.filter(operation => !operation.nextAttemptAt || operation.nextAttemptAt <= now)
-                .sort((a, b) => a.createdAt - b.createdAt)
+                .sort((a, b) => (priority[a.type] ?? 3) - (priority[b.type] ?? 3) || a.createdAt - b.createdAt)
                 .slice(0, 25);
             if (!due.length) return false;
 
             const creates = due.filter(operation => operation.type === 'create');
             const createOrderIds = new Set(creates.map(operation => operation.orderId));
             const statuses = due.filter(operation => operation.type === 'status' && !createOrderIds.has(operation.orderId));
+            const acknowledgements = due.filter(operation => operation.type === 'acknowledgement');
             const deletions = due.filter(operation => operation.type === 'delete' || operation.type === 'delete_today' || operation.type === 'delete_all');
             let sent = false;
 
@@ -217,6 +300,19 @@
                 sent = true;
             } else {
                 for (const operation of creates) {
+                    await this.dispatch([operation], operation.payload);
+                    sent = true;
+                }
+            }
+
+            if (acknowledgements.length > 1 && this.supportsAlertAcknowledgement) {
+                await this.dispatch(acknowledgements, {
+                    action: 'reconhecer_alertas_lote',
+                    reconhecimentos: acknowledgements.map(operation => operation.payload)
+                });
+                sent = true;
+            } else {
+                for (const operation of acknowledgements) {
                     await this.dispatch([operation], operation.payload);
                     sent = true;
                 }
@@ -295,6 +391,12 @@
                 }
                 if (operation.type === 'create') {
                     confirmed.push(operation.operationId);
+                    return;
+                }
+                if (operation.type === 'acknowledgement') {
+                    if (remote.alertaReconhecidoEm || !['buscar', 'cancelado'].includes(remote.status)) {
+                        confirmed.push(operation.operationId);
+                    }
                     return;
                 }
                 if (operation.type === 'status') {

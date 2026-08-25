@@ -7,11 +7,12 @@ const PROP_ATIVIDADES_REVISION = 'kds_atividades_revision';
 const PROP_FOTOS_TAREFAS = 'kds_fotos_tarefas';
 const PROP_MIGRACAO_PREFIX = 'kds_migracao_';
 const PROP_SPREADSHEET_ID = 'kds_spreadsheet_id';
+const PROP_PEDIDOS_DAY_START_PREFIX = 'kds_pedidos_day_start_';
 const PASTA_FOTOS_TAREFAS = 'Alô Cozinha - Fotos das Tarefas';
 const NOME_PLANILHA_DADOS = 'Alô Cozinha - Banco de Dados';
 const CACHE_PEDIDOS_PREFIX = 'kds_pedidos_visiveis_';
 const BASE_HEADERS = ['ID', 'Produto', 'Status', 'Timestamp', 'FinalizadoEm', 'Motivo'];
-const EXTRA_HEADERS = ['AtualizadoEm', 'Revisao', 'OperacaoId', 'AreaOrigem', 'AreaDestino'];
+const EXTRA_HEADERS = ['AtualizadoEm', 'Revisao', 'OperacaoId', 'AreaOrigem', 'AreaDestino', 'AlertaReconhecidoEm'];
 const HEADERS_PEDIDOS = BASE_HEADERS.concat(EXTRA_HEADERS);
 const FINAL_STATUSES = new Set(['enviado', 'buscar', 'cancelado', 'concluido']);
 const VALID_STATUSES = new Set(['pendente', 'fazendo', 'enviado', 'buscar', 'cancelado', 'concluido']);
@@ -109,7 +110,8 @@ function orderFromRow_(row) {
     revisao: Number(row[7] || 0),
     operacaoId: row[8] || '',
     areaOrigem: row[9] || 'panelas',
-    areaDestino: row[10] || 'cozinha'
+    areaDestino: row[10] || 'cozinha',
+    alertaReconhecidoEm: asIso_(row[11])
   };
 }
 
@@ -186,10 +188,41 @@ function asBoolean_(value) {
   return value === true || String(value).toLowerCase() === 'true';
 }
 
+function findExistingOrderIds_(sheet, ids) {
+  const wanted = [...new Set((ids || []).map(String).filter(Boolean))];
+  const existing = new Set();
+  const lastRow = sheet.getLastRow();
+  if (!wanted.length || lastRow < 2) return existing;
+  const idRange = sheet.getRange(2, 1, lastRow - 1, 1);
+  const escapedIds = wanted.map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  idRange.createTextFinder('^(?:' + escapedIds.join('|') + ')$')
+    .useRegularExpression(true)
+    .findAll()
+    .forEach(cell => existing.add(String(cell.getValue())));
+  return existing;
+}
+
+function findRecordsByIds_(sheet, ids) {
+  const wanted = [...new Set((ids || []).map(String).filter(Boolean))];
+  const records = {};
+  const lastRow = sheet.getLastRow();
+  if (!wanted.length || lastRow < 2) return records;
+  const idRange = sheet.getRange(2, 1, lastRow - 1, 1);
+  const escapedIds = wanted.map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  idRange.createTextFinder('^(?:' + escapedIds.join('|') + ')$')
+    .useRegularExpression(true)
+    .findAll()
+    .forEach(cell => {
+      const id = String(cell.getValue());
+      const row = cell.getRow();
+      records[id] = { row: row, values: sheet.getRange(row, 1, 1, HEADERS_PEDIDOS.length).getValues()[0] };
+    });
+  return records;
+}
+
 function appendNewOrders_(sheet, orders) {
   if (!orders || !orders.length) return { count: 0, revision: getPedidosRevision_() };
-  const records = findRecordsById_(sheet);
-  const knownIds = new Set(Object.keys(records));
+  const knownIds = findExistingOrderIds_(sheet, orders.map(order => order && order.id));
   const rows = [];
   let revision = getPedidosRevision_();
 
@@ -202,7 +235,7 @@ function appendNewOrders_(sheet, orders) {
     revision += 1;
     rows.push([
       id, order.produto, 'pendente', now, '', '', now, revision, order.operationId || '',
-      order.areaOrigem || 'panelas', order.areaDestino || 'cozinha'
+      order.areaOrigem || 'panelas', order.areaDestino || 'cozinha', ''
     ]);
   });
 
@@ -268,7 +301,8 @@ function importBackupOrders_(sheet, orders) {
       revision,
       order.operacaoId || order.operationId || '',
       order.areaOrigem || 'panelas',
-      order.areaDestino || 'cozinha'
+      order.areaDestino || 'cozinha',
+      asIso_(order.alertaReconhecidoEm)
     ]);
   });
 
@@ -332,12 +366,13 @@ function applyStatus_(values, novoStatus, motivo, operationId, expectedStatus, e
   values[6] = now;
   values[7] = revision;
   values[8] = operationId || '';
+  values[11] = '';
   return true;
 }
 
 function updateStatuses_(sheet, updates) {
   if (!updates || !updates.length) return 0;
-  const records = findRecordsById_(sheet);
+  const records = findRecordsByIds_(sheet, updates.map(update => update && update.id));
   let revision = getPedidosRevision_();
   const changedRecords = [];
   updates.forEach(update => {
@@ -360,6 +395,54 @@ function updateStatuses_(sheet, updates) {
   });
   if (!changedRecords.length) return 0;
 
+  changedRecords.sort((a, b) => a.row - b.row);
+  let group = [];
+  const writeGroup = () => {
+    if (!group.length) return;
+    sheet.getRange(group[0].row, 1, group.length, HEADERS_PEDIDOS.length).setValues(group.map(record => record.values));
+    group = [];
+  };
+  changedRecords.forEach(record => {
+    if (group.length && record.row !== group[group.length - 1].row + 1) writeGroup();
+    group.push(record);
+  });
+  writeGroup();
+  getProperties_().setProperty(PROP_PEDIDOS_REVISION, String(revision));
+  return changedRecords.length;
+}
+
+function applyAlertAcknowledgement_(values, acknowledgedAt, operationId, revision) {
+  if (values[2] !== 'buscar' && values[2] !== 'cancelado') return false;
+  if (values[11]) return false;
+  const now = asIso_(acknowledgedAt) || new Date().toISOString();
+  values[6] = now;
+  values[7] = revision;
+  values[8] = operationId || '';
+  values[11] = now;
+  return true;
+}
+
+function acknowledgeAlerts_(sheet, acknowledgements) {
+  if (!acknowledgements || !acknowledgements.length) return 0;
+  const records = findRecordsByIds_(sheet, acknowledgements.map(acknowledgement => acknowledgement && acknowledgement.id));
+  let revision = getPedidosRevision_();
+  const changedRecords = [];
+  acknowledgements.forEach(acknowledgement => {
+    if (!acknowledgement || !acknowledgement.id) return;
+    const record = records[String(acknowledgement.id)];
+    if (!record) return;
+    const nextRevision = revision + 1;
+    if (applyAlertAcknowledgement_(
+      record.values,
+      acknowledgement.reconhecidoEm,
+      acknowledgement.operationId,
+      nextRevision
+    )) {
+      revision = nextRevision;
+      changedRecords.push(record);
+    }
+  });
+  if (!changedRecords.length) return 0;
   changedRecords.sort((a, b) => a.row - b.row);
   let group = [];
   const writeGroup = () => {
@@ -417,13 +500,47 @@ function salvarBanco_(dados, expectedRevision) {
 
 function pedidosVisiveis_(sheet) {
   const now = new Date();
-  const today = now.toDateString();
   const recentLimit = now.getTime() - (5 * 60 * 1000);
-  return getPedidosData_(sheet)
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  const dayKey = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyyMMdd');
+  const dayStartProperty = PROP_PEDIDOS_DAY_START_PREFIX + dayKey;
+  const properties = getProperties_();
+  let todayStartRow = Number(properties.getProperty(dayStartProperty) || 0);
+  if (todayStartRow < 2 || todayStartRow > lastRow + 1) {
+    const timestamps = sheet.getRange(2, 4, lastRow - 1, 1).getValues();
+    const firstTodayIndex = timestamps.findIndex(row => {
+      const timestamp = row[0] instanceof Date ? row[0] : new Date(row[0]);
+      return !isNaN(timestamp.getTime())
+        && Utilities.formatDate(timestamp, Session.getScriptTimeZone(), 'yyyyMMdd') === dayKey;
+    });
+    todayStartRow = firstTodayIndex >= 0 ? firstTodayIndex + 2 : lastRow + 1;
+    properties.setProperty(dayStartProperty, String(todayStartRow));
+  }
+
+  const todayRows = todayStartRow <= lastRow
+    ? sheet.getRange(todayStartRow, 1, lastRow - todayStartRow + 1, HEADERS_PEDIDOS.length).getValues()
+    : [];
+  const olderActiveRows = [];
+  const olderCount = todayStartRow - 2;
+  if (olderCount > 0) {
+    sheet.getRange(2, 3, olderCount, 1)
+      .createTextFinder('^(?:pendente|fazendo)$')
+      .useRegularExpression(true)
+      .findAll()
+      .forEach(cell => {
+        olderActiveRows.push(sheet.getRange(cell.getRow(), 1, 1, HEADERS_PEDIDOS.length).getValues()[0]);
+      });
+  }
+
+  return olderActiveRows.concat(todayRows)
     .map(orderFromRow_)
     .filter(order => {
       if (order.status === 'pendente' || order.status === 'fazendo') return true;
-      if (new Date(order.timestamp).toDateString() === today) return true;
+      const timestamp = new Date(order.timestamp);
+      if (!isNaN(timestamp.getTime())
+          && Utilities.formatDate(timestamp, Session.getScriptTimeZone(), 'yyyyMMdd') === dayKey) return true;
       return order.finalizadoEm && new Date(order.finalizadoEm).getTime() >= recentLimit;
     });
 }
@@ -610,25 +727,26 @@ function doPost(e) {
     locked = true;
     const params = JSON.parse((e.postData && e.postData.contents) || '{}');
     const action = params.action;
-    const sheetPedidos = getPedidosSheet_();
+    let sheetPedidos = null;
+    const pedidosSheet = () => sheetPedidos || (sheetPedidos = getPedidosSheet_());
 
     if (action === 'importar_backup') {
-      return json_(importBackup_(sheetPedidos, params));
+      return json_(importBackup_(pedidosSheet(), params));
     }
 
     if (action === 'novo_pedido') {
       if (!params.id || !params.produto) return json_({ status: 'error', message: 'ID e produto são obrigatórios.' });
-      const result = appendNewOrders_(sheetPedidos, [params]);
+      const result = appendNewOrders_(pedidosSheet(), [params]);
       return json_({ status: 'ok', id: params.id.toString(), revision: result.revision });
     }
 
     if (action === 'novo_pedido_lote') {
-      const result = appendNewOrders_(sheetPedidos, params.pedidos || []);
+      const result = appendNewOrders_(pedidosSheet(), params.pedidos || []);
       return json_({ status: 'ok', count: result.count, revision: result.revision });
     }
 
     if (action === 'atualizar_status') {
-      updateStatuses_(sheetPedidos, [{
+      updateStatuses_(pedidosSheet(), [{
         id: params.id,
         novoStatus: params.novoStatus,
         motivo: params.motivo || '',
@@ -640,7 +758,7 @@ function doPost(e) {
     }
 
     if (action === 'cancelar_pedido') {
-      updateStatuses_(sheetPedidos, [{
+      updateStatuses_(pedidosSheet(), [{
         id: params.id,
         novoStatus: 'cancelado',
         motivo: params.motivo || '',
@@ -652,27 +770,39 @@ function doPost(e) {
     }
 
     if (action === 'atualizar_status_lote') {
-      updateStatuses_(sheetPedidos, params.updates || []);
+      updateStatuses_(pedidosSheet(), params.updates || []);
+      return json_({ status: 'ok', revision: getPedidosRevision_() });
+    }
+
+    if (action === 'reconhecer_alerta') {
+      acknowledgeAlerts_(pedidosSheet(), [params]);
+      return json_({ status: 'ok', revision: getPedidosRevision_() });
+    }
+
+    if (action === 'reconhecer_alertas_lote') {
+      acknowledgeAlerts_(pedidosSheet(), params.reconhecimentos || []);
       return json_({ status: 'ok', revision: getPedidosRevision_() });
     }
 
     if (action === 'excluir_pedido') {
-      const records = findRecordsById_(sheetPedidos);
+      const activeSheet = pedidosSheet();
+      const records = findRecordsByIds_(activeSheet, [params.id]);
       const record = records[(params.id || '').toString()];
       if (record) {
-        sheetPedidos.deleteRow(record.row);
+        activeSheet.deleteRow(record.row);
         nextPedidosRevision_();
       }
       return json_({ status: 'ok', revision: getPedidosRevision_() });
     }
 
     if (action === 'excluir_hoje') {
-      const data = sheetPedidos.getDataRange().getValues();
+      const activeSheet = pedidosSheet();
+      const data = activeSheet.getDataRange().getValues();
       const today = new Date().toDateString();
       let changed = false;
       for (let index = data.length - 1; index >= 1; index--) {
         if (new Date(data[index][3]).toDateString() === today) {
-          sheetPedidos.deleteRow(index + 1);
+          activeSheet.deleteRow(index + 1);
           changed = true;
         }
       }
@@ -681,9 +811,10 @@ function doPost(e) {
     }
 
     if (action === 'excluir_tudo') {
-      const lastRow = sheetPedidos.getLastRow();
+      const activeSheet = pedidosSheet();
+      const lastRow = activeSheet.getLastRow();
       if (lastRow > 1) {
-        sheetPedidos.deleteRows(2, lastRow - 1);
+        activeSheet.deleteRows(2, lastRow - 1);
         nextPedidosRevision_();
       }
       return json_({ status: 'ok', revision: getPedidosRevision_() });
@@ -742,29 +873,30 @@ function doGet(e) {
     });
   }
 
-  const sheetPedidos = getPedidosSheet_();
   if (action === 'sincronizar') {
     const revision = getPedidosRevision_();
     if (String(e.parameter.revision || '') === String(revision)) {
       return json_({
         status: 'ok', changed: false, revision: revision, serverTime: new Date().toISOString(),
-        capabilities: { novoPedidoLote: true }
+        capabilities: { novoPedidoLote: true, reconhecimentoAlerta: true }
       });
     }
+    const sheetPedidos = getPedidosSheet_();
     return json_({
       status: 'ok',
       changed: true,
       revision: revision,
       serverTime: new Date().toISOString(),
-      capabilities: { novoPedidoLote: true },
+      capabilities: { novoPedidoLote: true, reconhecimentoAlerta: true },
       pedidos: pedidosVisiveisCached_(sheetPedidos, revision)
     });
   }
 
   if (action === 'historico') {
-    return json_({ status: 'ok', pedidos: filtrarHistorico_(sheetPedidos, e.parameter.start, e.parameter.end) });
+    return json_({ status: 'ok', pedidos: filtrarHistorico_(getPedidosSheet_(), e.parameter.start, e.parameter.end) });
   }
 
+  const sheetPedidos = getPedidosSheet_();
   return json_(getPedidosData_(sheetPedidos).map(orderFromRow_));
 }
 

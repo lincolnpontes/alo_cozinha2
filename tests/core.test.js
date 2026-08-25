@@ -18,6 +18,7 @@ function createSyncHarness() {
     const requestLog = [];
     let revision = 1;
     let failPost = false;
+    let syncBlocker = null;
 
     const storage = {
         async openDatabase() {},
@@ -68,6 +69,7 @@ function createSyncHarness() {
             motivo: order.motivo || '', atualizadoEm: order.atualizadoEm || order.timestamp || new Date().toISOString(),
             revisao: Number(order.revisao || 0), operacaoId: order.operacaoId || '',
             areaOrigem: order.areaOrigem || 'panelas', areaDestino: order.areaDestino || 'cozinha',
+            alertaReconhecidoEm: order.alertaReconhecidoEm || '',
             syncState: order.syncState || 'confirmed', localOnly: Boolean(order.localOnly)
         })
     };
@@ -75,9 +77,15 @@ function createSyncHarness() {
     const api = {
         async sync() {
             requestLog.push('get');
+            if (syncBlocker) {
+                const blocker = syncBlocker;
+                blocker.markStarted();
+                await blocker.promise;
+                if (syncBlocker === blocker) syncBlocker = null;
+            }
             return {
                 status: 'ok', changed: true, revision,
-                capabilities: { novoPedidoLote: true },
+                capabilities: { novoPedidoLote: true, reconhecimentoAlerta: true },
                 pedidos: [...remoteOrders.values()]
             };
         },
@@ -110,6 +118,25 @@ function createSyncHarness() {
                         status: update.novoStatus,
                         motivo: update.motivo || '',
                         operacaoId: update.operationId,
+                        revisao: revision + 1
+                    });
+                });
+            } else if (payload.action === 'reconhecer_alerta') {
+                const order = remoteOrders.get(String(payload.id));
+                if (order) remoteOrders.set(String(payload.id), {
+                    ...order,
+                    alertaReconhecidoEm: payload.reconhecidoEm || new Date().toISOString(),
+                    operacaoId: payload.operationId,
+                    revisao: revision + 1
+                });
+            } else if (payload.action === 'reconhecer_alertas_lote') {
+                payload.reconhecimentos.forEach(acknowledgement => {
+                    const order = remoteOrders.get(String(acknowledgement.id));
+                    if (!order) return;
+                    remoteOrders.set(String(acknowledgement.id), {
+                        ...order,
+                        alertaReconhecidoEm: acknowledgement.reconhecidoEm || new Date().toISOString(),
+                        operacaoId: acknowledgement.operationId,
                         revisao: revision + 1
                     });
                 });
@@ -148,6 +175,14 @@ function createSyncHarness() {
         remoteOrders,
         postPayloads,
         requestLog,
+        blockNextSync() {
+            let release;
+            let markStarted;
+            const started = new Promise(resolve => { markStarted = resolve; });
+            const promise = new Promise(resolve => { release = resolve; });
+            syncBlocker = { promise, markStarted };
+            return { started, release };
+        },
         setFailPost(value) { failPost = value; }
     };
 }
@@ -243,6 +278,98 @@ async function testNewOrdersUseSingleBatch() {
     assert.equal(harness.operations.size, 0);
 }
 
+async function testNewOrderDoesNotWaitForSlowPull() {
+    const harness = createSyncHarness();
+    harness.manager.serverProtocol = 'modern';
+    harness.manager.supportsCreateBatch = true;
+    const gate = harness.blockNextSync();
+    const slowPull = harness.manager.syncNow(false, true);
+    await gate.started;
+
+    const local = await harness.manager.enqueueNewOrder({
+        produto: 'Feijão', areaOrigem: 'panelas', areaDestino: 'cozinha'
+    });
+    await new Promise(resolve => setTimeout(resolve, 25));
+
+    assert.equal(
+        harness.postPayloads.some(payload => payload.action === 'novo_pedido'),
+        true,
+        'um pedido novo deve sair mesmo quando uma leitura anterior ainda está lenta'
+    );
+    gate.release();
+    await slowPull;
+    assert.equal(harness.remoteOrders.has(local.id), true);
+    assert.equal(harness.operations.size, 0);
+}
+
+async function testNewOrderJumpsAheadOfOldQueue() {
+    const harness = createSyncHarness();
+    for (let index = 0; index < 25; index += 1) {
+        harness.operations.set(`status-antigo-${index}`, {
+            operationId: `status-antigo-${index}`,
+            type: 'status',
+            orderId: `antigo-${index}`,
+            payload: { id: `antigo-${index}`, novoStatus: 'fazendo', operationId: `status-antigo-${index}` },
+            createdAt: index,
+            attempts: 0,
+            nextAttemptAt: 0
+        });
+    }
+    await harness.manager.enqueueNewOrder({ produto: 'Arroz', areaOrigem: 'panelas', areaDestino: 'cozinha' });
+    await harness.manager.flushPendingOperations();
+
+    assert.equal(harness.postPayloads[0].action, 'novo_pedido', 'pedido novo deve ter prioridade sobre operações antigas');
+}
+
+async function testAlertAcknowledgementIsConfirmedByServer() {
+    const harness = createSyncHarness();
+    const order = {
+        id: 'buscar-1', produto: 'Batata', status: 'buscar', revisao: 4,
+        timestamp: new Date().toISOString(), finalizadoEm: new Date().toISOString()
+    };
+    harness.manager.orders = [order];
+    harness.localOrders.set(order.id, order);
+    harness.remoteOrders.set(order.id, order);
+    harness.manager.supportsAlertAcknowledgement = true;
+
+    await harness.manager.enqueueAcknowledgement(order.id);
+    assert.notEqual(harness.manager.orders[0].alertaReconhecidoEm, '', 'o alarme deve parar imediatamente neste aparelho');
+    await harness.manager.flushPendingOperations();
+    await harness.manager.pull(true);
+
+    assert.notEqual(harness.remoteOrders.get(order.id).alertaReconhecidoEm, '', 'a ciência deve ser gravada para os outros aparelhos');
+    assert.equal(harness.operations.size, 0);
+
+    await harness.manager.enqueueStatus(order.id, 'fazendo');
+    assert.equal(harness.manager.orders[0].alertaReconhecidoEm, '', 'uma nova etapa deve limpar a ciência do alerta anterior');
+    await harness.manager.flushPendingOperations();
+    await harness.manager.pull(true);
+    assert.equal(harness.operations.size, 0);
+}
+
+async function testAlertAcknowledgementRetriesAfterOfflineFailure() {
+    const harness = createSyncHarness();
+    const order = {
+        id: 'buscar-offline', produto: 'Couve', status: 'buscar', revisao: 2,
+        timestamp: new Date().toISOString(), finalizadoEm: new Date().toISOString()
+    };
+    harness.manager.orders = [order];
+    harness.localOrders.set(order.id, order);
+    harness.remoteOrders.set(order.id, order);
+    harness.manager.queueImmediateFlush = () => {};
+    await harness.manager.enqueueAcknowledgement(order.id);
+
+    harness.setFailPost(true);
+    await assert.rejects(() => harness.manager.flushPendingOperations());
+    assert.equal(harness.operations.size, 1, 'a ciência deve permanecer na fila quando a rede falhar');
+
+    harness.setFailPost(false);
+    for (const operation of harness.operations.values()) operation.nextAttemptAt = 0;
+    await harness.manager.syncNow(true, true);
+    assert.notEqual(harness.remoteOrders.get(order.id).alertaReconhecidoEm, '');
+    assert.equal(harness.operations.size, 0);
+}
+
 async function testOldServerFallsBackToIndividualOrders() {
     const harness = createSyncHarness();
     harness.manager.serverProtocol = 'modern';
@@ -320,7 +447,7 @@ async function testOldOrphanQueueIsCleaned() {
 function testAppsScriptRejectsStaleStatus() {
     const context = vm.createContext({ console, Date, Set });
     loadScript(context, 'google-apps-script.gs');
-    context.testRow = ['srv-1', 'Feijão', 'fazendo', new Date().toISOString(), '', '', '', 5, 'acao_atual', 'panelas', 'cozinha'];
+    context.testRow = ['srv-1', 'Feijão', 'fazendo', new Date().toISOString(), '', '', '', 5, 'acao_atual', 'panelas', 'cozinha', ''];
 
     const staleApplied = vm.runInContext(
         "applyStatus_(testRow, 'enviado', '', 'acao_atrasada', 'pendente', 4, 6)",
@@ -336,6 +463,42 @@ function testAppsScriptRejectsStaleStatus() {
     assert.equal(currentApplied, true);
     assert.equal(context.testRow[2], 'enviado');
     assert.equal(context.testRow[7], 6);
+}
+
+function testAppsScriptAcknowledgesAlertOnce() {
+    const context = vm.createContext({ console, Date, Set });
+    loadScript(context, 'google-apps-script.gs');
+    context.testRow = [
+        'srv-alerta', 'Batata', 'buscar', new Date().toISOString(), new Date().toISOString(), '',
+        '', 5, 'acao_buscar', 'panelas', 'cozinha', ''
+    ];
+    const first = vm.runInContext(
+        "applyAlertAcknowledgement_(testRow, '2026-08-25T12:00:00.000Z', 'ciencia-1', 6)",
+        context
+    );
+    assert.equal(first, true);
+    assert.equal(context.testRow[11], '2026-08-25T12:00:00.000Z');
+    assert.equal(context.testRow[7], 6);
+
+    const repeated = vm.runInContext(
+        "applyAlertAcknowledgement_(testRow, '2026-08-25T12:01:00.000Z', 'ciencia-2', 7)",
+        context
+    );
+    assert.equal(repeated, false, 'repetir a ciência não deve criar nova alteração');
+    assert.equal(context.testRow[7], 6);
+
+    const reopened = vm.runInContext(
+        "applyStatus_(testRow, 'fazendo', '', 'reabrir', 'buscar', 6, 7)",
+        context
+    );
+    assert.equal(reopened, true);
+    assert.equal(context.testRow[11], '', 'uma nova etapa deve poder gerar um novo alerta depois');
+
+    const ignored = vm.runInContext(
+        "applyAlertAcknowledgement_(testRow, '2026-08-25T12:02:00.000Z', 'ciencia-invalida', 8)",
+        context
+    );
+    assert.equal(ignored, false, 'não deve reconhecer alerta quando o pedido não está aguardando retirada ou cancelado');
 }
 
 function testStandaloneAppsScriptCreatesAndReusesSpreadsheet() {
@@ -443,6 +606,82 @@ function testAppsScriptAppendsOrderBatchOnce() {
     assert.equal(result.revision, 9);
     assert.equal(writes.length, 1, 'o lote deve gerar uma única gravação na planilha');
     assert.equal(writes[0].values.length, 2);
+}
+
+function testOperationalSyncUsesCurrentDayAndKeepsOldActiveOrders() {
+    const today = new Date();
+    const yesterday = new Date(today.getTime() - 86400000);
+    const rows = Array.from({ length: 600 }, (_, index) => [
+        `pedido-${index}`,
+        `Produto ${index}`,
+        index === 0 ? 'pendente' : 'concluido',
+        (index < 300 ? yesterday : today).toISOString(),
+        (index < 300 ? yesterday : today).toISOString(),
+        '',
+        (index < 300 ? yesterday : today).toISOString(),
+        index + 1,
+        '',
+        'panelas',
+        'cozinha',
+        ''
+    ]);
+    const fullWidthReads = [];
+    const properties = new Map();
+    let timestampScans = 0;
+    const formatDay = value => {
+        const date = new Date(value);
+        return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
+    };
+    const context = vm.createContext({
+        console,
+        Date,
+        Set,
+        Utilities: { formatDate: value => formatDay(value) },
+        Session: { getScriptTimeZone: () => 'UTC' },
+        PropertiesService: {
+            getDocumentProperties() {
+                return {
+                    getProperty(key) { return properties.get(key) || null; },
+                    setProperty(key, value) { properties.set(key, String(value)); }
+                };
+            }
+        }
+    });
+    loadScript(context, 'google-apps-script.gs');
+    context.testSheet = {
+        getLastRow() { return rows.length + 1; },
+        getRange(row, column, rowCount, columnCount) {
+            if (column === 1 && columnCount === 12) fullWidthReads.push(rowCount);
+            if (column === 4 && columnCount === 1) timestampScans += 1;
+            const values = rows.slice(row - 2, row - 2 + rowCount).map(source => source.slice(column - 1, column - 1 + columnCount));
+            return {
+                getValues() { return values.map(value => value.slice()); },
+                createTextFinder(pattern) {
+                    let regexEnabled = false;
+                    return {
+                        useRegularExpression(value) { regexEnabled = value; return this; },
+                        findAll() {
+                            const matcher = regexEnabled ? new RegExp(pattern) : null;
+                            const cells = [];
+                            values.forEach((value, index) => {
+                                const text = String(value[0]);
+                                if ((matcher && matcher.test(text)) || (!matcher && text === pattern)) {
+                                    cells.push({ getRow: () => row + index, getValue: () => text });
+                                }
+                            });
+                            return cells;
+                        }
+                    };
+                }
+            };
+        }
+    };
+
+    const visible = vm.runInContext('pedidosVisiveis_(testSheet)', context);
+    assert.equal(visible.some(order => order.id === 'pedido-0'), true, 'pedido ativo antigo deve continuar visível');
+    assert.equal(Math.max(...fullWidthReads), 300, 'a sincronização deve carregar todos os pedidos do dia, sem corte arbitrário');
+    vm.runInContext('pedidosVisiveis_(testSheet)', context);
+    assert.equal(timestampScans, 1, 'a primeira linha do expediente deve ser localizada apenas uma vez por dia');
 }
 
 function testBackupMigrationIsIdempotentAndPreservesHistory() {
@@ -621,10 +860,11 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2023TaskExperience() {
+function testV2024TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const sync = fs.readFileSync(path.join(root, 'sync.js'), 'utf8');
     const css = fs.readFileSync(path.join(root, 'tasks.css'), 'utf8');
     const kdsCss = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
     const ui = fs.readFileSync(path.join(root, 'ui.js'), 'utf8');
@@ -646,7 +886,11 @@ function testV2023TaskExperience() {
     assert.equal(gas.includes('PropertiesService.getScriptProperties()'), true);
     assert.equal(gas.includes("SpreadsheetApp.create(NOME_PLANILHA_DADOS)"), true);
     assert.equal(gas.includes('LockService.getScriptLock()'), true);
-    assert.equal(app.includes('function pedidosParaCacheLocal(limite = 250)'), true);
+    assert.equal(sync.includes('queueImmediateFlush'), true, 'pedidos novos devem usar o canal urgente de envio');
+    assert.equal(sync.includes("priority = { create: 0, acknowledgement: 0"), true, 'pedidos e ciências devem furar filas antigas');
+    assert.equal(gas.includes("action === 'reconhecer_alerta'"), true, 'a ciência das Panelas deve ser compartilhada pelo servidor');
+    assert.equal(gas.includes('PROP_PEDIDOS_DAY_START_PREFIX'), true, 'a sincronização operacional deve localizar o expediente por dia');
+    assert.equal(app.includes('function pedidosParaCacheLocal()'), true);
     assert.equal(app.includes("localStorage.removeItem('kds_pedidos_local')"), true);
     assert.equal(app.includes('pedidosServidor = Array.isArray(importedData.pedidos)'), false, 'a migração não deve copiar todo o histórico para o localStorage');
     assert.equal(html.includes('<strong>Checklist</strong>'), true, 'o modulo de atividades deve se chamar Checklist');
@@ -695,9 +939,9 @@ function testV2023TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.0.23</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.23/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.23/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.0.24</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.24/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.24/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
@@ -890,6 +1134,14 @@ function testAudioMode() {
 
     context.AloAudio.manage({
         mode: 'panelas',
+        configs: { somPanelas: 'beep', volumePanelas: 70 },
+        orders: [{ id: 'outro-aparelho', status: 'buscar', finalizadoEm: finalizedAt, alertaReconhecidoEm: new Date().toISOString() }],
+        knownIds: new Set()
+    });
+    assert.equal(classes.has('alerta-pisca-buscar'), false, 'a ciência recebida de outro aparelho deve encerrar o alerta');
+
+    context.AloAudio.manage({
+        mode: 'panelas',
         configs: { somPanelas: 'sem_som', volumePanelas: 70 },
         orders: [{ id: '6', status: 'buscar', finalizadoEm: new Date().toISOString() }],
         knownIds: new Set()
@@ -948,22 +1200,28 @@ async function testCatalogAutoPublish() {
     await testDeleteDoesNotReturn();
     await testNewOrderKeepsAreaRoute();
     await testNewOrdersUseSingleBatch();
+    await testNewOrderDoesNotWaitForSlowPull();
+    await testNewOrderJumpsAheadOfOldQueue();
+    await testAlertAcknowledgementIsConfirmedByServer();
+    await testAlertAcknowledgementRetriesAfterOfflineFailure();
     await testOldServerFallsBackToIndividualOrders();
     await testSameStatusFromAnotherDeviceClearsQueue();
     await testNewerRemoteActionWinsOverStaleTablet();
     await testOldOrphanQueueIsCleaned();
     testAppsScriptRejectsStaleStatus();
+    testAppsScriptAcknowledgesAlertOnce();
     testStandaloneAppsScriptCreatesAndReusesSpreadsheet();
     await testBackupMigrationWaitsForSlowServer();
     testAppsScriptAppendsOrderBatchOnce();
+    testOperationalSyncUsesCurrentDayAndKeepsOldActiveOrders();
     testBackupMigrationIsIdempotentAndPreservesHistory();
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2023TaskExperience();
+    testV2024TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.23 passaram.');
+    console.log('Testes críticos da v2.0.24 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

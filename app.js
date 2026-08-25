@@ -409,17 +409,16 @@ let db = carregarBanco();
     }
     function salvarFilaStatus() { localStorage.setItem('kds_fila_status', JSON.stringify(filaRetentativaStatus)); }
 
-    function pedidosParaCacheLocal(limite = 250) {
+    function pedidosParaCacheLocal() {
         const agora = Date.now();
         const hoje = new Date().toDateString();
-        return pedidosServidor.filter(order => {
+        const operacionais = pedidosServidor.filter(order => {
             if (order.status === 'pendente' || order.status === 'fazendo') return true;
-            const timestamp = new Date(order.timestamp).getTime();
             const finalizadoEm = new Date(order.finalizadoEm || 0).getTime();
             return new Date(order.timestamp).toDateString() === hoje
-                || (Number.isFinite(finalizadoEm) && agora - finalizadoEm < 10 * 60 * 1000)
-                || (Number.isFinite(timestamp) && agora - timestamp < 24 * 60 * 60 * 1000);
-        }).slice(-limite);
+                || (Number.isFinite(finalizadoEm) && agora - finalizadoEm < 10 * 60 * 1000);
+        });
+        return operacionais.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     }
 
     function salvarHistoricoLocal() {
@@ -925,7 +924,24 @@ let db = carregarBanco();
         }
     }
 
-    function darCiencia(id) { pedidosCientes.add(id.toString()); salvarHistoricoLocal(); renderizarUltimosPedidos(); gerenciarAlarme(); }
+    function alertaPedidoReconhecido(pedido) {
+        return Boolean(pedido && pedido.alertaReconhecidoEm) || pedidosCientes.has(String(pedido && pedido.id));
+    }
+
+    async function darCiencia(id) {
+        const orderId = String(id);
+        pedidosCientes.add(orderId);
+        salvarHistoricoLocal();
+        renderizarUltimosPedidos();
+        gerenciarAlarme();
+        if (!syncConfiavel) return;
+        try {
+            await syncConfiavel.enqueueAcknowledgement(orderId);
+            aplicarPedidosSincronizados(syncConfiavel.orders);
+        } catch (error) {
+            alert('A confirmação ficou apenas neste aparelho. Toque novamente quando a conexão voltar.');
+        }
+    }
 
     function renderizarUltimosPedidos() {
         const lista = document.getElementById('listaUltimosPedidosPanelas'); const agora = Date.now(); lista.innerHTML = '';
@@ -937,7 +953,7 @@ let db = carregarBanco();
 
         let itensAtencao = []; let itensNormais = [];
         todosRecentes.forEach(p => {
-            if((p.status === 'buscar' || p.status === 'cancelado') && !pedidosCientes.has(p.id.toString())) { itensAtencao.push(p); } else { itensNormais.push(p); }
+            if((p.status === 'buscar' || p.status === 'cancelado') && !alertaPedidoReconhecido(p)) { itensAtencao.push(p); } else { itensNormais.push(p); }
         });
 
         let recentes = [...itensAtencao, ...itensNormais].slice(0, 15);
@@ -950,11 +966,11 @@ let db = carregarBanco();
             else if (p.status === 'enviado') { statusTraduzido = 'Enviado'; corStatus = '#9e9e9e'; exibirTempo = false; }
             else if (p.status === 'cancelado') {
                 exibirTempo = false; let motivoTxt = p.motivo ? ` (Motivo: ${p.motivo})` : '';
-                if(!pedidosCientes.has(p.id.toString())) { statusTraduzido = 'Cancelado' + motivoTxt; corStatus = '#d32f2f'; piscaClass = 'alerta-pisca-buscar'; onclickHtml = `onclick="darCiencia('${p.id}')"`; } else { statusTraduzido = 'Cancelado' + motivoTxt; corStatus = '#d32f2f'; }
+                if(!alertaPedidoReconhecido(p)) { statusTraduzido = 'Cancelado' + motivoTxt; corStatus = '#d32f2f'; piscaClass = 'alerta-pisca-buscar'; onclickHtml = `onclick="darCiencia('${p.id}')"`; } else { statusTraduzido = 'Cancelado' + motivoTxt; corStatus = '#d32f2f'; }
             }
             else if (p.status === 'buscar') {
                 exibirTempo = false;
-                if(!pedidosCientes.has(p.id.toString())) { statusTraduzido = 'Pode ir buscar'; corStatus = '#d32f2f'; piscaClass = 'alerta-pisca-buscar'; onclickHtml = `onclick="darCiencia('${p.id}')"`; } else { statusTraduzido = 'Pode ir buscar'; corStatus = '#9e9e9e'; }
+                if(!alertaPedidoReconhecido(p)) { statusTraduzido = 'Pode ir buscar'; corStatus = '#d32f2f'; piscaClass = 'alerta-pisca-buscar'; onclickHtml = `onclick="darCiencia('${p.id}')"`; } else { statusTraduzido = 'Pode ir buscar'; corStatus = '#9e9e9e'; }
             } else { statusTraduzido = 'Finalizado'; corStatus = '#9e9e9e'; exibirTempo = false; }
 
             let textoTempo = exibirTempo ? ` - ${getTempoRelativo(p.timestamp)}` : '';
@@ -1085,7 +1101,7 @@ let db = carregarBanco();
             if(pedidosServidor.some(p => p.status === 'pendente' && new Date(p.timestamp).toDateString() === dataHoje)) { h.classList.add('alerta-pisca'); if(db.configs.somCozinha !== "sem_som") { deveTocar = true; configSom = db.configs.somCozinha; } }
         } else if (db.configs.modo === 'panelas') {
             const agora = Date.now();
-            if(pedidosServidor.some(p => { const ehRecente = (agora - new Date(p.finalizadoEm).getTime()) < 300000; return ehRecente && (p.status === 'buscar' || p.status === 'cancelado') && !pedidosCientes.has(p.id.toString()); })) { h.classList.add('alerta-pisca-buscar'); if(db.configs.somPanelas !== "sem_som") { deveTocar = true; configSom = db.configs.somPanelas; } }
+            if(pedidosServidor.some(p => { const ehRecente = (agora - new Date(p.finalizadoEm).getTime()) < 300000; return ehRecente && (p.status === 'buscar' || p.status === 'cancelado') && !alertaPedidoReconhecido(p); })) { h.classList.add('alerta-pisca-buscar'); if(db.configs.somPanelas !== "sem_som") { deveTocar = true; configSom = db.configs.somPanelas; } }
         }
         if (deveTocar) {
             configSom = normalizarSom(configSom, db.configs.modo === 'panelas' ? 'beep' : 'alarme');
@@ -1893,6 +1909,10 @@ let db = carregarBanco();
 
     function aplicarPedidosSincronizados(novosPedidos) {
         pedidosServidor = novosPedidos;
+        pedidosServidor.forEach(pedido => {
+            if (pedido.alertaReconhecidoEm) pedidosCientes.add(String(pedido.id));
+            else if (pedido.status === 'buscar' || pedido.status === 'cancelado') pedidosCientes.delete(String(pedido.id));
+        });
         salvarHistoricoLocal();
         if (db.configs.modo === 'cozinha') renderizarListaCozinha();
         else renderizarUltimosPedidos();
@@ -2257,7 +2277,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.23').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.24').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

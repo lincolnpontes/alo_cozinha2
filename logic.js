@@ -39,6 +39,7 @@
             operacaoId: order.operacaoId || '',
             areaOrigem: order.areaOrigem || 'panelas',
             areaDestino: order.areaDestino || 'cozinha',
+            alertaReconhecidoEm: order.alertaReconhecidoEm || '',
             syncState: order.syncState || 'confirmed',
             localOnly: Boolean(order.localOnly)
         };

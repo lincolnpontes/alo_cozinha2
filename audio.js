@@ -263,7 +263,8 @@
         const now = Date.now();
         const needsConfirmation = order => {
             const elapsed = now - new Date(order.finalizadoEm).getTime();
-            return Number.isFinite(elapsed) && elapsed >= -60000 && elapsed < 300000 && !knownIds.has(String(order.id));
+            return Number.isFinite(elapsed) && elapsed >= -60000 && elapsed < 300000
+                && !order.alertaReconhecidoEm && !knownIds.has(String(order.id));
         };
         const alerts = orders.filter(order => (order.status === 'cancelado' || order.status === 'buscar') && needsConfirmation(order));
         if (!alerts.length) return stop();

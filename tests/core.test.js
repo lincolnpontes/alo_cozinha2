@@ -302,6 +302,26 @@ async function testNewOrderDoesNotWaitForSlowPull() {
     assert.equal(harness.operations.size, 0);
 }
 
+async function testSuccessfulPostTurnsIndicatorGreenBeforeFullPull() {
+    const harness = createSyncHarness();
+    harness.manager.queueImmediateFlush = () => {};
+    const order = await harness.manager.enqueueNewOrder({
+        produto: 'Caldo', areaOrigem: 'panelas', areaDestino: 'cozinha'
+    });
+    assert.equal(await harness.manager.getPendingCount(), 1);
+
+    await harness.manager.flushPendingOperations();
+
+    const operation = [...harness.operations.values()][0];
+    assert.equal(Number(operation.submittedAt) > 0, true, 'o POST concluído deve ser reconhecido sem esperar uma segunda leitura');
+    assert.equal(await harness.manager.getPendingCount(), 0, 'a bolinha deve ficar verde logo após o POST terminar');
+    assert.equal(harness.manager.orders.find(item => item.id === order.id).syncState, 'submitted');
+    assert.equal(harness.operations.size, 1, 'a operação deve continuar guardada até a verificação posterior');
+
+    await harness.manager.pull(true);
+    assert.equal(harness.operations.size, 0, 'a leitura posterior deve apenas encerrar a garantia durável');
+}
+
 async function testNewOrderJumpsAheadOfOldQueue() {
     const harness = createSyncHarness();
     for (let index = 0; index < 25; index += 1) {
@@ -608,7 +628,7 @@ function testAppsScriptAppendsOrderBatchOnce() {
     assert.equal(writes[0].values.length, 2);
 }
 
-function testOperationalSyncUsesCurrentDayAndKeepsOldActiveOrders() {
+function testOperationalSyncUsesCurrentShiftAndLeavesOldOrdersInHistory() {
     const today = new Date();
     const yesterday = new Date(today.getTime() - 86400000);
     const rows = Array.from({ length: 600 }, (_, index) => [
@@ -678,7 +698,7 @@ function testOperationalSyncUsesCurrentDayAndKeepsOldActiveOrders() {
     };
 
     const visible = vm.runInContext('pedidosVisiveis_(testSheet)', context);
-    assert.equal(visible.some(order => order.id === 'pedido-0'), true, 'pedido ativo antigo deve continuar visível');
+    assert.equal(visible.some(order => order.id === 'pedido-0'), false, 'pedido de expediente antigo deve ficar apenas no histórico');
     assert.equal(Math.max(...fullWidthReads), 300, 'a sincronização deve carregar todos os pedidos do dia, sem corte arbitrário');
     vm.runInContext('pedidosVisiveis_(testSheet)', context);
     assert.equal(timestampScans, 1, 'a primeira linha do expediente deve ser localizada apenas uma vez por dia');
@@ -860,7 +880,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2024TaskExperience() {
+function testV2025TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -889,7 +909,10 @@ function testV2024TaskExperience() {
     assert.equal(sync.includes('queueImmediateFlush'), true, 'pedidos novos devem usar o canal urgente de envio');
     assert.equal(sync.includes("priority = { create: 0, acknowledgement: 0"), true, 'pedidos e ciências devem furar filas antigas');
     assert.equal(gas.includes("action === 'reconhecer_alerta'"), true, 'a ciência das Panelas deve ser compartilhada pelo servidor');
-    assert.equal(gas.includes('PROP_PEDIDOS_DAY_START_PREFIX'), true, 'a sincronização operacional deve localizar o expediente por dia');
+    assert.equal(gas.includes('PROP_PEDIDOS_SHIFT_START_PREFIX'), true, 'a sincronização operacional deve localizar o expediente sem limite numérico');
+    assert.equal(gas.includes('PEDIDOS_SHIFT_START_HOUR = 4'), true, 'o expediente deve atravessar a madrugada sem carregar pedidos antigos');
+    assert.equal(kdsCss.includes('.pedido-meta-acoes { width: 100%; flex-direction: column;'), true, 'no celular o emoji da origem deve subir para liberar os botões');
+    assert.equal(kdsCss.includes('.btn-pedido-acao { min-width: 0; flex: 1 1 0; }'), true, 'as três ações devem caber na mesma linha no celular');
     assert.equal(app.includes('function pedidosParaCacheLocal()'), true);
     assert.equal(app.includes("localStorage.removeItem('kds_pedidos_local')"), true);
     assert.equal(app.includes('pedidosServidor = Array.isArray(importedData.pedidos)'), false, 'a migração não deve copiar todo o histórico para o localStorage');
@@ -939,9 +962,9 @@ function testV2024TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.0.24</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.24/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.24/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.0.25</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.25/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.25/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
@@ -1201,6 +1224,7 @@ async function testCatalogAutoPublish() {
     await testNewOrderKeepsAreaRoute();
     await testNewOrdersUseSingleBatch();
     await testNewOrderDoesNotWaitForSlowPull();
+    await testSuccessfulPostTurnsIndicatorGreenBeforeFullPull();
     await testNewOrderJumpsAheadOfOldQueue();
     await testAlertAcknowledgementIsConfirmedByServer();
     await testAlertAcknowledgementRetriesAfterOfflineFailure();
@@ -1213,15 +1237,15 @@ async function testCatalogAutoPublish() {
     testStandaloneAppsScriptCreatesAndReusesSpreadsheet();
     await testBackupMigrationWaitsForSlowServer();
     testAppsScriptAppendsOrderBatchOnce();
-    testOperationalSyncUsesCurrentDayAndKeepsOldActiveOrders();
+    testOperationalSyncUsesCurrentShiftAndLeavesOldOrdersInHistory();
     testBackupMigrationIsIdempotentAndPreservesHistory();
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2024TaskExperience();
+    testV2025TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.24 passaram.');
+    console.log('Testes críticos da v2.0.25 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

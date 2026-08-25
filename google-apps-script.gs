@@ -7,7 +7,8 @@ const PROP_ATIVIDADES_REVISION = 'kds_atividades_revision';
 const PROP_FOTOS_TAREFAS = 'kds_fotos_tarefas';
 const PROP_MIGRACAO_PREFIX = 'kds_migracao_';
 const PROP_SPREADSHEET_ID = 'kds_spreadsheet_id';
-const PROP_PEDIDOS_DAY_START_PREFIX = 'kds_pedidos_day_start_';
+const PROP_PEDIDOS_SHIFT_START_PREFIX = 'kds_pedidos_shift_start_';
+const PEDIDOS_SHIFT_START_HOUR = 4;
 const PASTA_FOTOS_TAREFAS = 'Alô Cozinha - Fotos das Tarefas';
 const NOME_PLANILHA_DADOS = 'Alô Cozinha - Banco de Dados';
 const CACHE_PEDIDOS_PREFIX = 'kds_pedidos_visiveis_';
@@ -498,51 +499,38 @@ function salvarBanco_(dados, expectedRevision) {
   return { status: 'ok', revision: revision };
 }
 
+function pedidosShiftKey_(value) {
+  const date = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+  if (isNaN(date.getTime())) return '';
+  date.setTime(date.getTime() - (PEDIDOS_SHIFT_START_HOUR * 60 * 60 * 1000));
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyyMMdd');
+}
+
 function pedidosVisiveis_(sheet) {
   const now = new Date();
-  const recentLimit = now.getTime() - (5 * 60 * 1000);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
-  const dayKey = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyyMMdd');
-  const dayStartProperty = PROP_PEDIDOS_DAY_START_PREFIX + dayKey;
+  const dayKey = pedidosShiftKey_(now);
+  const dayStartProperty = PROP_PEDIDOS_SHIFT_START_PREFIX + dayKey;
   const properties = getProperties_();
   let todayStartRow = Number(properties.getProperty(dayStartProperty) || 0);
   if (todayStartRow < 2 || todayStartRow > lastRow + 1) {
     const timestamps = sheet.getRange(2, 4, lastRow - 1, 1).getValues();
     const firstTodayIndex = timestamps.findIndex(row => {
-      const timestamp = row[0] instanceof Date ? row[0] : new Date(row[0]);
-      return !isNaN(timestamp.getTime())
-        && Utilities.formatDate(timestamp, Session.getScriptTimeZone(), 'yyyyMMdd') === dayKey;
+      return pedidosShiftKey_(row[0]) === dayKey;
     });
     todayStartRow = firstTodayIndex >= 0 ? firstTodayIndex + 2 : lastRow + 1;
     properties.setProperty(dayStartProperty, String(todayStartRow));
   }
 
-  const todayRows = todayStartRow <= lastRow
+  const shiftRows = todayStartRow <= lastRow
     ? sheet.getRange(todayStartRow, 1, lastRow - todayStartRow + 1, HEADERS_PEDIDOS.length).getValues()
     : [];
-  const olderActiveRows = [];
-  const olderCount = todayStartRow - 2;
-  if (olderCount > 0) {
-    sheet.getRange(2, 3, olderCount, 1)
-      .createTextFinder('^(?:pendente|fazendo)$')
-      .useRegularExpression(true)
-      .findAll()
-      .forEach(cell => {
-        olderActiveRows.push(sheet.getRange(cell.getRow(), 1, 1, HEADERS_PEDIDOS.length).getValues()[0]);
-      });
-  }
 
-  return olderActiveRows.concat(todayRows)
+  return shiftRows
     .map(orderFromRow_)
-    .filter(order => {
-      if (order.status === 'pendente' || order.status === 'fazendo') return true;
-      const timestamp = new Date(order.timestamp);
-      if (!isNaN(timestamp.getTime())
-          && Utilities.formatDate(timestamp, Session.getScriptTimeZone(), 'yyyyMMdd') === dayKey) return true;
-      return order.finalizadoEm && new Date(order.finalizadoEm).getTime() >= recentLimit;
-    });
+    .filter(order => pedidosShiftKey_(order.timestamp) === dayKey);
 }
 
 function pedidosVisiveisCached_(sheet, revision) {

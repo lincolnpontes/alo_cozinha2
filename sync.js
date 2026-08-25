@@ -1,4 +1,6 @@
 (function (global) {
+    const SUBMISSION_VERIFY_AFTER_MS = 15000;
+
     class SyncManager {
         constructor(options) {
             this.getUrl = options.getUrl;
@@ -363,8 +365,23 @@
             await Promise.all(retrying.map(operation => global.AloStorage.updateOperation(operation)));
             try {
                 await global.AloApi.post(this.getUrl(), payload);
+                const submittedAt = Date.now();
+                const submitted = retrying.map(operation => ({
+                    ...operation,
+                    submittedAt,
+                    nextAttemptAt: submittedAt + SUBMISSION_VERIFY_AFTER_MS,
+                    lastError: ''
+                }));
+                await Promise.all(submitted.map(operation => global.AloStorage.updateOperation(operation)));
+                const submittedIds = new Set(submitted.map(operation => String(operation.orderId)));
+                const changedOrders = this.orders
+                    .filter(order => submittedIds.has(order.id))
+                    .map(order => global.AloLogic.normalizeOrder({ ...order, syncState: 'submitted' }));
+                changedOrders.forEach(order => this.upsertLocalOrder(order));
+                await global.AloStorage.putOrders(changedOrders);
+                await this.emit();
             } catch (error) {
-                const failed = retrying.map(operation => ({ ...operation, lastError: 'Aguardando internet.' }));
+                const failed = retrying.map(operation => ({ ...operation, submittedAt: 0, lastError: 'Aguardando internet.' }));
                 await Promise.all(failed.map(operation => global.AloStorage.updateOperation(operation)));
                 throw error;
             }
@@ -477,7 +494,7 @@
 
         async retryNow() {
             const operations = await global.AloStorage.getAllOperations();
-            await Promise.all(operations.map(operation => global.AloStorage.updateOperation({ ...operation, nextAttemptAt: 0 })));
+            await Promise.all(operations.map(operation => global.AloStorage.updateOperation({ ...operation, submittedAt: 0, nextAttemptAt: 0 })));
             return this.syncNow(true, true);
         }
 
@@ -489,6 +506,7 @@
                 payload,
                 createdAt: Date.now(),
                 attempts: 0,
+                submittedAt: 0,
                 nextAttemptAt: 0,
                 lastError: ''
             };
@@ -507,7 +525,10 @@
         }
 
         async getPendingCount() {
-            return (await global.AloStorage.getAllOperations()).length;
+            const now = Date.now();
+            return (await global.AloStorage.getAllOperations())
+                .filter(operation => !operation.submittedAt || Number(operation.nextAttemptAt || 0) <= now)
+                .length;
         }
 
         async emit() {

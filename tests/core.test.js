@@ -621,7 +621,7 @@ function testPasswordDialogsHaveExplicitConfirmation() {
     assert.equal(app.includes('Senha incorreta. Tente novamente.'), true);
 }
 
-function testV2022TaskExperience() {
+function testV2023TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -695,9 +695,9 @@ function testV2022TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.0.22</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.22/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.22/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.0.23</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.23/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.23/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
@@ -960,10 +960,10 @@ async function testCatalogAutoPublish() {
     testAppsScriptKeepsActivityIdempotentAndRejectsStaleStatus();
     testOldClientPreservesV2TaskCatalog();
     testPasswordDialogsHaveExplicitConfirmation();
-    testV2022TaskExperience();
+    testV2023TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.22 passaram.');
+    console.log('Testes críticos da v2.0.23 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

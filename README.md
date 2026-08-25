@@ -1,9 +1,10 @@
-# Alô Cozinha v2.0.19
+# Alô Cozinha v2.0.20
 
 Aplicativo para operação de restaurante com dois módulos: pedidos entre áreas (KDS) e checklist por setor.
 
 ## Novidades da v2
 
+- A v2.0.20 limita os avisos sonoros das Panelas a uma reprodução por evento, mantém o destaque visual até a confirmação e preserva o alarme contínuo da Cozinha.
 - A v2.0.19 adiciona o período Tudo ao histórico, liga a tela de hoje ao relatório completo e amplia a confirmação de migrações grandes.
 - A v2.0.18 mantém o histórico migrado na nuvem e limita o cache local a pedidos operacionais, evitando estouro de armazenamento.
 - A v2.0.17 aceita Apps Script independente, usa propriedades do script e cria automaticamente a planilha de dados no Drive.
@@ -97,6 +98,6 @@ A v2 preserva pedidos, produtos, categorias, observações, áreas, configuraç�
 7. Marque uma tarefa como remarcável, leve-a para amanhã e confirme que ela sai de `Hoje`, mas continua em `Pendentes`.
 8. Marque uma tarefa como POP, conclua com um funcionário e confira o registro em `Relatórios por Tarefas`.
 
-## Branch de teste
+## Publicação
 
-Esta versão é desenvolvida na branch `codex/v2-tarefas`. A branch `main` não recebe essas mudanças até a aprovação dos testes práticos.
+A versão aprovada é publicada na branch `main` do repositório `lincolnpontes/alo_cozinha2`.

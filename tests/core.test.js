@@ -798,9 +798,12 @@ function testV2019TaskExperience() {
 
 function testAudioMode() {
     let playCount = 0;
+    let playerLoop = false;
     const classes = new Set();
     class FakeAudio {
-        constructor() { this.paused = true; this.src = ''; }
+        constructor() { this.paused = true; this.src = ''; this._loop = false; this.currentTime = 0; }
+        set loop(value) { this._loop = Boolean(value); playerLoop = this._loop; }
+        get loop() { return this._loop; }
         play() { this.paused = false; playCount += 1; return Promise.resolve(); }
         pause() { this.paused = true; }
     }
@@ -828,24 +831,55 @@ function testAudioMode() {
     });
     assert.equal(classes.has('alerta-pisca'), true);
     assert.equal(playCount, 1);
+    assert.equal(playerLoop, true, 'o alarme da cozinha deve continuar ate o pedido ser aceito');
     context.AloAudio.stop();
 
     context.AloAudio.manage({
+        mode: 'cozinha',
+        configs: { somCozinha: 'sem_som', volumeCozinha: 100 },
+        orders: [{ id: '4', status: 'pendente', timestamp: new Date().toISOString() }],
+        knownIds: new Set()
+    });
+    assert.equal(classes.has('alerta-pisca'), true, 'sem som deve manter o aviso visual da cozinha');
+    assert.equal(playCount, 1, 'sem som nao deve reproduzir audio na cozinha');
+    context.AloAudio.stop();
+
+    const finalizedAt = new Date().toISOString();
+    context.AloAudio.manage({
         mode: 'panelas',
         configs: { somPanelas: 'sem_som', volumePanelas: 70 },
-        orders: [{ id: '5', status: 'cancelado', finalizadoEm: new Date().toISOString() }],
+        orders: [{ id: '5', status: 'cancelado', finalizadoEm: finalizedAt }],
         knownIds: new Set()
     });
     assert.equal(classes.has('alerta-pisca-buscar'), true);
     assert.equal(playCount, 2, 'cancelamento novo deve beepar mesmo com o som comum desativado');
+    assert.equal(playerLoop, false, 'o aviso das panelas nunca deve tocar indefinidamente');
+
+    context.AloAudio.manage({
+        mode: 'panelas',
+        configs: { somPanelas: 'beep', volumePanelas: 70 },
+        orders: [{ id: '5', status: 'cancelado', finalizadoEm: finalizedAt }],
+        knownIds: new Set()
+    });
+    assert.equal(playCount, 2, 'a sincronizacao nao deve reiniciar o mesmo aviso');
+    assert.equal(classes.has('alerta-pisca-buscar'), true, 'o alerta visual deve continuar ate a ciencia');
 
     context.AloAudio.manage({
         mode: 'panelas',
         configs: { somPanelas: 'sem_som', volumePanelas: 70 },
-        orders: [{ id: '5', status: 'cancelado', finalizadoEm: new Date().toISOString() }],
+        orders: [{ id: '5', status: 'cancelado', finalizadoEm: finalizedAt }],
         knownIds: new Set(['5'])
     });
     assert.equal(classes.has('alerta-pisca-buscar'), false);
+
+    context.AloAudio.manage({
+        mode: 'panelas',
+        configs: { somPanelas: 'sem_som', volumePanelas: 70 },
+        orders: [{ id: '6', status: 'buscar', finalizadoEm: new Date().toISOString() }],
+        knownIds: new Set()
+    });
+    assert.equal(classes.has('alerta-pisca-buscar'), true, 'sem som deve manter o aviso visual das panelas');
+    assert.equal(playCount, 2, 'sem som nao deve reproduzir audio ao mandar buscar');
     context.AloAudio.stop();
 }
 
@@ -913,7 +947,7 @@ async function testCatalogAutoPublish() {
     testV2019TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.19 passaram.');
+    console.log('Testes críticos da v2.0.20 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

@@ -14,8 +14,12 @@
     let previewTimer = null;
     let context = null;
     let syntheticTimer = null;
+    let finiteSoundTimer = null;
     let playingKey = 'sem_som';
     let playingVolume = -1;
+    let playingMode = '';
+    const playedPanelAlerts = new Set();
+    const MAX_PLAYED_PANEL_ALERTS = 300;
 
     function normalize(value, fallback) {
         return value === 'sem_som' || sounds[value] ? value : fallback;
@@ -123,6 +127,8 @@
     function stopSynthetic() {
         if (syntheticTimer) clearInterval(syntheticTimer);
         syntheticTimer = null;
+        if (finiteSoundTimer) clearTimeout(finiteSoundTimer);
+        finiteSoundTimer = null;
     }
 
     function startSyntheticLoop(key, volume, interval) {
@@ -130,13 +136,93 @@
         syntheticTimer = setInterval(() => playSynthetic(key, volume), interval);
     }
 
-    function stop() {
+    function resetPlayerPosition() {
+        try { player.currentTime = 0; } catch (error) {}
+    }
+
+    function stopPlayback() {
         player.pause();
+        player.loop = false;
+        player.onerror = null;
+        player.onended = null;
+        resetPlayerPosition();
         stopSynthetic();
         playingKey = 'sem_som';
         playingVolume = -1;
+        playingMode = '';
+    }
+
+    function stop() {
+        stopPlayback();
         const header = document.getElementById('mainHeader');
         if (header) header.classList.remove('alerta-pisca', 'alerta-pisca-buscar');
+    }
+
+    function startContinuousSound(key, volume) {
+        if (playingMode === 'cozinha' && playingKey === key && Math.abs(playingVolume - volume) < 0.01) return;
+        stopPlayback();
+        const sound = sounds[key];
+        playingKey = key;
+        playingVolume = volume;
+        playingMode = 'cozinha';
+        if (sound.type === 'audio') {
+            player.src = sound.url;
+            player.loop = true;
+            player.volume = volume;
+            const useSyntheticSound = () => {
+                if (playingMode !== 'cozinha' || playingKey !== key || syntheticTimer) return;
+                player.pause();
+                startSyntheticLoop(key, volume, key === 'beep' ? 1000 : 1200);
+            };
+            player.onerror = useSyntheticSound;
+            player.play().catch(useSyntheticSound);
+            return;
+        }
+        startSyntheticLoop(key, volume, sound.interval);
+    }
+
+    function startPanelSoundOnce(key, volume) {
+        stopPlayback();
+        const sound = sounds[key];
+        playingKey = key;
+        playingVolume = volume;
+        playingMode = 'panelas';
+        if (sound.type === 'audio') {
+            let usedFallback = false;
+            player.src = sound.url;
+            player.loop = false;
+            player.volume = volume;
+            player.onended = () => {
+                if (playingMode === 'panelas' && playingKey === key) stopPlayback();
+            };
+            const useSyntheticSound = () => {
+                if (usedFallback || playingMode !== 'panelas' || playingKey !== key) return;
+                usedFallback = true;
+                player.pause();
+                playSynthetic(key, volume);
+                finiteSoundTimer = setTimeout(() => {
+                    if (playingMode === 'panelas' && playingKey === key) stopPlayback();
+                }, 1500);
+            };
+            player.onerror = useSyntheticSound;
+            player.play().catch(useSyntheticSound);
+            return;
+        }
+        playSynthetic(key, volume);
+        finiteSoundTimer = setTimeout(() => {
+            if (playingMode === 'panelas' && playingKey === key) stopPlayback();
+        }, 1500);
+    }
+
+    function panelAlertKey(order) {
+        return `${String(order.id)}:${order.status}:${order.finalizadoEm || order.atualizadoEm || ''}`;
+    }
+
+    function rememberPanelAlerts(alerts) {
+        alerts.forEach(order => playedPanelAlerts.add(panelAlertKey(order)));
+        while (playedPanelAlerts.size > MAX_PLAYED_PANEL_ALERTS) {
+            playedPanelAlerts.delete(playedPanelAlerts.values().next().value);
+        }
     }
 
     function previewSound(selectId) {
@@ -162,44 +248,36 @@
         const header = document.getElementById('mainHeader');
         if (!header) return;
         header.classList.remove('alerta-pisca', 'alerta-pisca-buscar');
-        let key = 'sem_som';
         if (mode === 'cozinha') {
-            if (orders.some(order => order.status === 'pendente' && global.AloLogic.isToday(order.timestamp))) {
-                header.classList.add('alerta-pisca');
-                key = normalize(configs.somCozinha || 'sem_som', 'sirene_cozinha');
-            }
-        } else {
-            const now = Date.now();
-            const precisaConfirmar = order => (now - new Date(order.finalizadoEm).getTime()) < 300000 && !knownIds.has(String(order.id));
-            const cancelamentoNovo = orders.some(order => order.status === 'cancelado' && precisaConfirmar(order));
-            const retiradaNova = orders.some(order => order.status === 'buscar' && precisaConfirmar(order));
-            if (cancelamentoNovo || retiradaNova) {
-                header.classList.add('alerta-pisca-buscar');
-                key = cancelamentoNovo ? 'beep' : normalize(configs.somPanelas || 'sem_som', 'beep');
-            }
+            const hasPendingOrder = orders.some(order => order.status === 'pendente' && global.AloLogic.isToday(order.timestamp));
+            if (!hasPendingOrder) return stop();
+            header.classList.add('alerta-pisca');
+            const key = normalize(configs.somCozinha || 'sem_som', 'sirene_cozinha');
+            if (key === 'sem_som') return stopPlayback();
+            const volume = Math.max(0, Math.min(100, Number(configs.volumeCozinha || 100))) / 100;
+            startContinuousSound(key, volume);
+            return;
         }
-        if (key === 'sem_som') return stop();
-        const sound = sounds[key];
-        const volume = Math.max(0, Math.min(100, Number(mode === 'panelas' ? configs.volumePanelas || 70 : configs.volumeCozinha || 100))) / 100;
-        if (playingKey === key && Math.abs(playingVolume - volume) < 0.01) return;
-        player.pause();
-        stopSynthetic();
-        playingKey = key;
-        playingVolume = volume;
-        if (sound.type === 'audio') {
-            player.src = sound.url;
-            player.loop = true;
-            player.volume = volume;
-            const usarSomLocal = () => {
-                if (playingKey !== key || syntheticTimer) return;
-                player.pause();
-                startSyntheticLoop(key, volume, key === 'beep' ? 1000 : 1200);
-            };
-            player.onerror = usarSomLocal;
-            player.play().catch(usarSomLocal);
-        } else {
-            startSyntheticLoop(key, volume, sound.interval);
-        }
+
+        if (playingMode === 'cozinha') stopPlayback();
+        const now = Date.now();
+        const needsConfirmation = order => {
+            const elapsed = now - new Date(order.finalizadoEm).getTime();
+            return Number.isFinite(elapsed) && elapsed >= -60000 && elapsed < 300000 && !knownIds.has(String(order.id));
+        };
+        const alerts = orders.filter(order => (order.status === 'cancelado' || order.status === 'buscar') && needsConfirmation(order));
+        if (!alerts.length) return stop();
+        header.classList.add('alerta-pisca-buscar');
+
+        const newAlerts = alerts.filter(order => !playedPanelAlerts.has(panelAlertKey(order)));
+        if (!newAlerts.length) return;
+        rememberPanelAlerts(newAlerts);
+
+        const hasCancellation = newAlerts.some(order => order.status === 'cancelado');
+        const key = hasCancellation ? 'beep' : normalize(configs.somPanelas || 'sem_som', 'beep');
+        if (key === 'sem_som') return stopPlayback();
+        const volume = Math.max(0, Math.min(100, Number(configs.volumePanelas || 70))) / 100;
+        startPanelSoundOnce(key, volume);
     }
 
     function unlock() {

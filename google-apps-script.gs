@@ -708,13 +708,270 @@ function filtrarHistorico_(sheet, start, end) {
     });
 }
 
+const SHEET_FEIRA_BANCO = 'Alô Feira - Banco';
+const FEIRA_CELL_LIMIT = 45000;
+
+function isFeiraPayload_(payload) {
+  return Boolean(payload && (
+    payload.app_id === 'alofeira' ||
+    (payload.dados && payload.dados.app_id === 'alofeira')
+  ));
+}
+
+function feiraEmptyBank_() {
+  return {
+    app_id: 'alofeira',
+    schemaVersion: 2,
+    syncRevision: 0,
+    pedidosAtivos: [],
+    produtos: [],
+    categorias: [],
+    fornecedores: [],
+    colaboradores: [],
+    configs: {}
+  };
+}
+
+function getFeiraSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  return spreadsheet.getSheetByName(SHEET_FEIRA_BANCO) || spreadsheet.insertSheet(SHEET_FEIRA_BANCO);
+}
+
+function readFeiraBank_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 1) return feiraEmptyBank_();
+  const values = sheet.getRange(1, 1, lastRow, 1).getDisplayValues();
+  const text = values.map(row => row[0] || '').join('');
+  if (!text) return feiraEmptyBank_();
+  const bank = JSON.parse(text);
+  if (!bank || bank.app_id !== 'alofeira') throw new Error('Banco do Alô Feira armazenado inválido.');
+  bank.syncRevision = Number(bank.syncRevision || 0);
+  return bank;
+}
+
+function writeFeiraBank_(sheet, bank) {
+  const text = JSON.stringify(bank);
+  const parts = [];
+  for (let index = 0; index < text.length; index += FEIRA_CELL_LIMIT) {
+    parts.push([text.substring(index, index + FEIRA_CELL_LIMIT)]);
+  }
+  sheet.clearContents();
+  sheet.getRange(1, 1, parts.length, 1).setValues(parts);
+  SpreadsheetApp.flush();
+}
+
+function feiraCopyWithoutFields_(value, fields) {
+  const copy = JSON.parse(JSON.stringify(value || {}));
+  fields.forEach(field => delete copy[field]);
+  return copy;
+}
+
+function feiraChangedWithoutFields_(previous, next, fields) {
+  return JSON.stringify(feiraCopyWithoutFields_(previous, fields)) !== JSON.stringify(feiraCopyWithoutFields_(next, fields));
+}
+
+function feiraIndexById_(items, idField) {
+  const map = {};
+  (items || []).forEach(item => {
+    if (item && item[idField]) map[item[idField]] = item;
+  });
+  return map;
+}
+
+function feiraOrderTimes_(order) {
+  const summary = { idUnico: order.idUnico };
+  ['dataStatus', 'dataEnvio', 'dataPedidoFornecedor', 'dataConclusao', 'dataExclusao'].forEach(field => {
+    summary[field] = order[field] === undefined ? null : order[field];
+  });
+  return summary;
+}
+
+function applyFeiraServerTimes_(current, nextBank, now, force) {
+  const result = {
+    pedidosAtualizados: [],
+    temposEstruturais: { produtos: [], categorias: [], fornecedores: [], colaboradores: [] },
+    restauranteAtualizadoEm: null,
+    configAtualizadoEm: null
+  };
+  if (force) return result;
+
+  const currentOrders = feiraIndexById_(current.pedidosAtivos, 'idUnico');
+  const orderTimeFields = ['dataStatus', 'dataEnvio', 'dataPedidoFornecedor', 'dataConclusao', 'dataExclusao', 'transicaoProgresso', 'statusAnterior'];
+  (nextBank.pedidosAtivos || []).forEach(order => {
+    const previous = currentOrders[order.idUnico];
+    if (!previous || !feiraChangedWithoutFields_(previous, order, orderTimeFields)) return;
+    order.dataStatus = now;
+    if (previous.status !== order.status) {
+      if (order.status === 'pendente' && previous.status === 'rascunho') order.dataEnvio = now;
+      if (order.status === 'pedido_forn') order.dataPedidoFornecedor = now;
+      if (order.status === 'comprado' || order.status === 'entregue') order.dataConclusao = now;
+    }
+    if (!previous.excluido && order.excluido) order.dataExclusao = now;
+    result.pedidosAtualizados.push(feiraOrderTimes_(order));
+  });
+
+  ['produtos', 'categorias', 'fornecedores', 'colaboradores'].forEach(name => {
+    const currentMap = feiraIndexById_(current[name], 'id');
+    (nextBank[name] || []).forEach(record => {
+      const previous = currentMap[record.id];
+      if (!previous || !feiraChangedWithoutFields_(previous, record, ['atualizadoEm'])) return;
+      record.atualizadoEm = now;
+      result.temposEstruturais[name].push({ id: record.id, atualizadoEm: now });
+    });
+  });
+
+  if (current.restaurante && nextBank.restaurante && feiraChangedWithoutFields_(current.restaurante, nextBank.restaurante, ['atualizadoEm'])) {
+    nextBank.restaurante.atualizadoEm = now;
+    result.restauranteAtualizadoEm = now;
+  }
+  if (feiraChangedWithoutFields_(current.configs, nextBank.configs, ['atualizadoEm', 'ultimaMudancaLocal'])) {
+    nextBank.configs = nextBank.configs || {};
+    nextBank.configs.atualizadoEm = now;
+    result.configAtualizadoEm = now;
+  }
+  return result;
+}
+
+function saveNewFeiraOrders_(sheet, current, payload, currentRevision, now) {
+  if (!Array.isArray(payload.pedidos) || payload.pedidos.length < 1) {
+    return json_({ status: 'erro', msg: 'Nenhum pedido recebido.', serverNow: now });
+  }
+  const existing = feiraIndexById_(current.pedidosAtivos, 'idUnico');
+  const existingProducts = feiraIndexById_(current.produtos, 'id');
+  const updated = [];
+  const updatedProducts = [];
+  let changed = false;
+  current.pedidosAtivos = current.pedidosAtivos || [];
+  current.produtos = current.produtos || [];
+
+  (payload.produtos || []).forEach(source => {
+    if (!source || !source.id || existingProducts[source.id]) return;
+    const product = JSON.parse(JSON.stringify(source));
+    product.atualizadoEm = now;
+    current.produtos.push(product);
+    existingProducts[product.id] = product;
+    updatedProducts.push({ id: product.id, atualizadoEm: now });
+    changed = true;
+  });
+
+  payload.pedidos.forEach(source => {
+    if (!source || !source.idUnico || !source.produtoId) return;
+    if (existing[source.idUnico]) {
+      updated.push(feiraOrderTimes_(existing[source.idUnico]));
+      return;
+    }
+    const order = JSON.parse(JSON.stringify(source));
+    order.status = 'pendente';
+    order.dataEnvio = now;
+    order.dataStatus = now;
+    delete order.dataPedidoFornecedor;
+    delete order.dataConclusao;
+    delete order.dataExclusao;
+    current.pedidosAtivos.push(order);
+    existing[order.idUnico] = order;
+    updated.push(feiraOrderTimes_(order));
+    changed = true;
+  });
+
+  if (changed) {
+    current.schemaVersion = 2;
+    current.syncRevision = currentRevision + 1;
+    writeFeiraBank_(sheet, current);
+  }
+  return json_({
+    status: 'sucesso',
+    revision: changed ? current.syncRevision : currentRevision,
+    serverNow: now,
+    pedidosAtualizados: updated,
+    temposEstruturais: { produtos: updatedProducts, categorias: [], fornecedores: [], colaboradores: [] }
+  });
+}
+
+function handleFeiraGet_(e) {
+  const lock = getLock_();
+  let locked = false;
+  try {
+    lock.waitLock(15000);
+    locked = true;
+    const bank = readFeiraBank_(getFeiraSheet_());
+    const now = Date.now();
+    if (e && e.parameter && e.parameter.meta === '1') {
+      return json_({ status: 'sucesso', app_id: 'alofeira', revision: Number(bank.syncRevision || 0), serverNow: now });
+    }
+    bank.serverNow = now;
+    return json_(bank);
+  } catch (error) {
+    return json_({ status: 'erro', msg: error.toString(), serverNow: Date.now() });
+  } finally {
+    if (locked) lock.releaseLock();
+  }
+}
+
+function handleFeiraPost_(payload) {
+  const lock = getLock_();
+  let locked = false;
+  try {
+    lock.waitLock(30000);
+    locked = true;
+    const sheet = getFeiraSheet_();
+    const current = readFeiraBank_(sheet);
+    const now = Date.now();
+    const currentRevision = Number(current.syncRevision || 0);
+    const usesRevision = payload.baseRevision !== undefined && payload.baseRevision !== null;
+    const clientRevision = Number(payload.baseRevision || 0);
+
+    if (!payload.force && usesRevision && clientRevision !== currentRevision) {
+      return json_({
+        status: 'conflito',
+        msg: 'A nuvem possui uma versão mais recente.',
+        revision: currentRevision,
+        dados: current,
+        serverNow: now
+      });
+    }
+
+    if (payload.action === 'enviar_pedidos') {
+      return saveNewFeiraOrders_(sheet, current, payload, currentRevision, now);
+    }
+    if (payload.action !== 'salvar_banco' || !payload.dados || payload.dados.app_id !== 'alofeira') {
+      return json_({ status: 'erro', msg: 'Ação ou banco do Alô Feira inválido.', serverNow: now });
+    }
+
+    const nextBank = payload.dados;
+    const times = applyFeiraServerTimes_(current, nextBank, now, Boolean(payload.force));
+    nextBank.schemaVersion = 2;
+    nextBank.syncRevision = currentRevision + 1;
+    writeFeiraBank_(sheet, nextBank);
+    return json_({
+      status: 'sucesso',
+      revision: nextBank.syncRevision,
+      serverNow: now,
+      pedidosAtualizados: times.pedidosAtualizados,
+      temposEstruturais: times.temposEstruturais,
+      restauranteAtualizadoEm: times.restauranteAtualizadoEm,
+      configAtualizadoEm: times.configAtualizadoEm
+    });
+  } catch (error) {
+    return json_({ status: 'erro', msg: error.toString(), serverNow: Date.now() });
+  } finally {
+    if (locked) lock.releaseLock();
+  }
+}
+
 function doPost(e) {
+  let params;
+  try {
+    params = JSON.parse((e.postData && e.postData.contents) || '{}');
+  } catch (error) {
+    return json_({ status: 'error', message: 'Conteúdo inválido.' });
+  }
+  if (isFeiraPayload_(params)) return handleFeiraPost_(params);
+
   const lock = getLock_();
   let locked = false;
   try {
     lock.waitLock(10000);
     locked = true;
-    const params = JSON.parse((e.postData && e.postData.contents) || '{}');
     const action = params.action;
     let sheetPedidos = null;
     const pedidosSheet = () => sheetPedidos || (sheetPedidos = getPedidosSheet_());
@@ -839,6 +1096,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
+  if (e && e.parameter && e.parameter.app === 'alofeira') return handleFeiraGet_(e);
   const action = e && e.parameter ? e.parameter.action : '';
   if (action === 'carregar_banco') return json_(bancosComRevisao_());
   if (action === 'foto_tarefa') return json_(fotoTarefa_(e.parameter.tarefaId));

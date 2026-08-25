@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1565C0" id="metaThemeColor">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.png">
+    <title>Alô Feira v2.1.0</title>
+    <link rel="stylesheet" href="src/styles/base.css?v=2.1.0-feira-r1">
+    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.0-feira-r1">
+    <link rel="stylesheet" href="src/styles/components.css?v=2.1.0-feira-r1">
+    <link rel="stylesheet" href="src/styles/features.css?v=2.1.0-feira-r1">
+    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.0-feira-r1">
+</head>
+<body class="theme-pedido">
+<div id="splashScreen">
+    <img src="icon.png" alt="Ícone" class="splash-logo" onerror="this.style.display='none'">
+    <div class="splash-titulo">Alô Feira</div>
+    <div class="splash-versao">v2.1.0</div>
+    <button onclick="forcarAtualizacao()" style="margin-top: 30px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; pointer-events: auto;">🔄 Forçar Atualização do App</button>
+</div>
+<div id="syncIndicador" class="sync-indicador oculto" role="status" aria-live="polite"></div>
+<div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div id="loadingText">Processando...<br><span style="font-size: 14px; font-weight: normal; margin-top: 10px; display: block;">Por favor, aguarde. Não feche o app.</span></div>
+</div>
+<div class="app-container">
+    <div class="header" id="mainHeader">
+        <div class="header-mode">
+            <select class="header-select" id="seletorModo" aria-label="Modo do aplicativo" onchange="alterarModo(this.value)">
+                <option value="pedido">📝 Pedido</option>
+                <option value="compras">🛒 Compras</option>
+            </select>
+            <div id="dicasCabecalho" class="dicas-cabecalho"></div>
+        </div>
+        <div class="header-profile">
+            <button id="btnTrocarPerfil" class="btn-perfil" aria-label="Trocar perfil" title="Trocar perfil" onclick="abrirSelecaoColaboradorInicial(true)">👤 Perfil</button>
+        </div>
+        <div class="header-actions">
+            <button id="btnAdmin" aria-label="Configurações" title="Configurações" onclick="document.getElementById('modalPainelUnificado').style.display='flex'">⚙️</button>
+        </div>
+    </div>
+    <div class="area-conteudo">
+        <div class="filters">
+            <div class="filtros-principais" id="containerFiltros"></div>
+            <div class="filtros-centro" id="filtrosCentroCompras" style="display:none;">
+                <div class="filtros-acoes-selecao" id="acoesSelecaoCompras" style="display:none;">
+                    <button onclick="acaoEmMassa('pedido_forn')" id="btnMassaPedForn" style="background:#521565;" title="Pedido ao fornecedor" aria-label="Marcar como pedido ao fornecedor"><svg class="icone-send icone-send-barra" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7Z"></path><path d="M22 2 11 13"></path></svg></button>
+                    <button onclick="acaoEmMassa('concluir')" id="btnMassaComprado" style="background:#145218;" title="Concluir compra ou recebimento" aria-label="Concluir compra ou recebimento">✓</button>
+                    <button onclick="abrirModalMassaVincular()" id="btnMassaVincular" style="background:#1565C0;" title="Vincular fornecedor" aria-label="Vincular fornecedor">🔗</button>
+                </div>
+                <button id="btnDesfazerBar" class="btn-desfazer-filtros" style="display:none;" aria-label="Desfazer última ação" title="Desfazer" onclick="desfazerAcao()">↩️</button>
+            </div>
+            <div class="filtros-acoes">
+                <button id="btnHistHoje" style="display:none;" aria-label="Pedidos enviados hoje" title="Pedidos enviados hoje" onclick="abrirPedidosHoje()">📋</button>
+                <button id="btnLimparComprasBar" style="display:none;" aria-label="Limpar itens comprados e recebidos" title="Limpar comprados e recebidos" onclick="limparComprasAntigas()">🧹</button>
+                <button id="btnRelatorioBar" style="display:none;" aria-label="Criar relatório para fornecedor" title="Relatório para fornecedor" onclick="abrirModalRelatorio()">📄</button>
+            </div>
+        </div>
+        <div class="scroll-area">
+            <ul class="list" id="listaPrincipal"></ul>
+        </div>
+    </div>
+    <div class="container-envio-rodape" id="containerBotoesEnvio" style="display: none;">
+        <button class="btn-enviar-pedidos" onclick="enviarPedidosParaCompras()">Enviar Pedido</button>
+        <button class="btn-cancelar-selecao" aria-label="Cancelar pedido em preparação" title="Cancelar pedido em preparação" onclick="cancelarRascunhos()">✕</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalMassaVincular">
+    <div class="modal">
+        <div class="modal-title">Vincular Fornecedor (Massa)</div>
+        <div class="form-group">
+            <label>Selecione o Fornecedor:</label>
+            <select id="massaVincularForn"></select>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalMassaVincular')">Cancelar</button>
+            <button class="btn-action" onclick="confirmarMassaVincular()">Vincular</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFiltroFornCompras">
+    <div class="modal">
+        <div class="modal-title">Filtrar por Fornecedor</div>
+        <div class="form-group">
+            <label>Mostrar apenas itens vinculados a:</label>
+            <select id="filtroComprasForn"></select>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="zerarFiltroForn()">Zerar Filtros</button>
+            <button class="btn-action" onclick="aplicarFiltroFornCompras()">Aplicar Filtro</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalConfirmarCancelamento">
+    <div class="modal modal-destaque compras">
+        <div class="modal-title" style="border-color:#521565;">Cancelar item</div>
+        <p id="textoConfirmarCancelamento" style="font-size:14px; color:#444; line-height:1.4; margin-top:0;"></p>
+        <input type="hidden" id="cancelamentoCompraId">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalConfirmarCancelamento'); renderizarLista();">Voltar</button>
+            <button class="btn-danger" onclick="confirmarCancelamentoCompra()">Cancelar</button>
+        </div>
+    </div>
+</div>
+<div class="menu-compra-overlay" id="modalAcaoCompra" onclick="fecharMenuAcaoCompra()">
+    <div class="menu-compra" id="menuAcaoCompra" role="menu" aria-label="Ações do item" onclick="event.stopPropagation()">
+        <div id="acoesDisponiveisCompra" class="menu-compra-acoes"></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalPrecoRapido" role="dialog" aria-modal="true" aria-labelledby="tituloPrecoRapido">
+    <div class="modal modal-preco-rapido">
+        <div class="modal-title titulo-preco-rapido" id="tituloPrecoRapido">Preço e fornecedor</div>
+        <div class="produto-preco-rapido" id="produtoPrecoRapido"></div>
+        <input type="hidden" id="precoRapidoPedidoId">
+        <div class="form-group campo-preco-destaque">
+            <label for="precoRapidoValor">Preço</label>
+            <div class="entrada-preco-rapido"><span>R$</span><input type="text" id="precoRapidoValor" inputmode="numeric" autocomplete="off" oninput="maskMoeda(this)" placeholder="0,00"></div>
+        </div>
+        <div class="grade-preco-rapido">
+            <div class="form-group"><label for="precoRapidoFornecedor">Fornecedor</label><select id="precoRapidoFornecedor"></select></div>
+            <div class="form-group"><label for="precoRapidoUnidade">Unidade</label><select id="precoRapidoUnidade"></select></div>
+        </div>
+        <div class="historico-preco-rapido" id="historicoPrecoRapido"></div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalPrecoRapido')">Cancelar</button>
+            <button class="btn-salvar-preco" id="btnSalvarPrecoRapido" onclick="salvarPrecoRapido()">Salvar preço</button>
+        </div>
+    </div>
+</div>
+<div class="menu-compra-overlay" id="overlayMenuFerramentas" onclick="fecharMenuFerramentas()">
+    <div class="menu-ferramentas" id="menuFerramentas" role="menu" aria-label="Visualização e categorias da lista" onclick="event.stopPropagation()"></div>
+</div>
+<div class="modal-overlay modal-confirmacao-global" id="modalConfirmacaoApp" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmacaoApp">
+    <div class="modal modal-confirmacao-app">
+        <div class="modal-title" id="tituloConfirmacaoApp">Confirmar ação</div>
+        <p id="mensagemConfirmacaoApp" class="texto-confirmacao-item"></p>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="cancelarConfirmacaoApp()">Voltar</button>
+            <button class="btn-action" id="btnConfirmacaoApp" onclick="executarConfirmacaoApp()">Confirmar</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFormAvulso">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Novo Item Avulso</div>
+        <input type="hidden" id="avulsoCatId">
+        <div class="form-group"><label>Nome do Item:</label><input type="text" id="avulsoNome" placeholder="Ex: Papel Alumínio Extra"></div>
+        <div style="display: flex; gap:10px;">
+            <div class="form-group" style="flex:1;"><label>Qtd (opc):</label><input type="text" id="avulsoQtd" inputmode="decimal"></div>
+            <div class="form-group" style="flex:1;"><label>Unidade (opc):</label><input type="text" id="avulsoUn" placeholder="Ex: rolo, un"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalFormAvulso')">Cancelar</button>
+            <button class="btn-action" onclick="salvarAvulso()">Adicionar</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalPedidosHoje">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Pedidos Enviados Hoje</div>
+        <div id="listaPedidosHoje" style="max-height: 50vh; overflow-y: auto; padding-right: 5px;"></div>
+        <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+            <button class="btn-drive" onclick="compartilharTxtNativo()">↗️ Compartilhar / Salvar Relatório (.txt)</button>
+            <div class="modal-actions" style="margin-top: 0;">
+                <button class="btn-cancel" onclick="fecharModal('modalPedidosHoje')" style="width: 100%;">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalColaboradorObrigatorio">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Identificação</div>
+        <div class="form-group"><label>Quem está operando o sistema?</label><select id="selectColabInicial" onchange="focarSenhaColab()"></select></div>
+        <div class="form-group"><label>Senha do Perfil:</label><input type="password" id="inputSenhaColab" placeholder="Deixe em branco se não houver" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onkeypress="if(event.key === 'Enter') definirColaboradorAtivo()" autofocus></div>
+        <div class="modal-actions" style="display: flex; gap: 8px;">
+            <button class="btn-danger" id="btnSairSistema" style="display:none; flex: 1;" onclick="sairDoSistema()">Sair do App</button>
+            <button class="btn-cancel" id="btnCancelColab" style="display:none; flex: 1;" onclick="fecharModal('modalColaboradorObrigatorio')">Cancelar</button>
+            <button class="btn-action" style="flex: 1;" onclick="definirColaboradorAtivo()">Entrar</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalSenhaAvancada">
+    <div class="modal">
+        <div class="modal-title" id="tituloSenhaAvancada" style="color:#d32f2f;">Acesso avançado</div>
+        <p id="ajudaSenhaAvancada" class="texto-ajuda-form">Digite sua senha para continuar.</p>
+        <div class="form-group"><label>Senha avançada:</label><input type="password" id="senhaAvancada" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onkeydown="if(event.key === 'Enter') confirmarSenhaAvancada()"></div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalSenhaAvancada')">Cancelar</button><button class="btn-action" onclick="confirmarSenhaAvancada()">Continuar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalEditarPedido">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="tituloModalEditarPedido" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Detalhes do Pedido</span>
+            <button id="btnEditProdPedido" style="display:none; background:none; border:none; font-size:20px; cursor:pointer; padding:0 0 0 10px;">⚙️</button>
+        </div>
+        <input type="hidden" id="editPedidoId">
+        <div id="editPedidoArea">
+            <div style="display: flex; gap:10px;">
+                <div class="form-group" style="flex:1;"><label>Quantidade:</label>
+                    <input type="text" inputmode="decimal" id="editPedidoQtd" onfocus="this.select();">
+                </div>
+                <div class="form-group" style="flex:1;"><label>Unidade:</label><select id="editPedidoUnidade"></select></div>
+            </div>
+            <div class="form-group"><label>Observação (Opcional):</label>
+                <input type="text" id="editPedidoObs" placeholder="Ex: maduro, marca tal..." onfocus="this.select();">
+            </div>
+            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        </div>
+        <div class="historico-pedido-resumo">
+            <div id="resumoHistPedidosEdit"></div>
+            <button id="btnHistoricoCompletoPedido" class="btn-historico-pedido" onclick="abrirHistoricoCompletoPedido()" aria-label="Abrir histórico completo" title="Histórico completo">🕘</button>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" id="btnCancelarEdicaoPedido" onclick="cancelarEdicaoPedido()">Cancelar</button>
+            <button class="btn-action" id="btnSalvarEdicaoPedido" onclick="salvarEdicaoPedido()">Salvar Pedido</button>
+        </div>
+        <button class="btn-remover-pedido-edicao" id="btnRemoverPedidoEdicao" onclick="removerPedidoPelaEdicao()">Remover do pedido</button>
+    </div>
+</div>
+<div class="modal-overlay modal-historico-pedidos" id="modalHistoricoPedidosProduto" role="dialog" aria-modal="true" aria-labelledby="tituloHistoricoPedidosProduto">
+    <div class="modal modal-historico-pedido">
+        <div class="modal-title" id="tituloHistoricoPedidosProduto">Histórico de pedidos</div>
+        <div id="completoHistPedidosEdit" class="historico-pedido-completo"></div>
+        <div class="modal-actions">
+            <button class="btn-action" onclick="fecharModal('modalHistoricoPedidosProduto')">Fechar</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalHistoricoCompra">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="tituloModalHistoricoCompra" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Painel de Compra</span>
+            <button id="btnEditProdCompra" style="display:none; background:none; border:none; font-size:20px; cursor:pointer; padding:0 0 0 10px;">⚙️</button>
+        </div>
+        <input type="hidden" id="histCompraId">
+        <div id="histCompraDataConclusao"></div>
+        <div style="background:#f1f8e9; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #c5e1a5;">
+            <div style="display:flex; gap:10px; margin-bottom:5px;">
+                <div class="form-group" style="flex:1; margin-bottom:0;"><label>Qtd:</label>
+                    <input type="text" inputmode="decimal" id="histCompraQtd" onfocus="this.select();">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom:0;"><label>Und:</label><select id="histCompraUnd"></select></div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;"><label>Obs:</label>
+                <input type="text" id="histCompraObs" onfocus="this.select();">
+            </div>
+        </div>
+        <h4 style="margin:0 0 5px 0; font-size:14px; color:#333;">Histórico de Preços</h4>
+        <div style="background:#fff3e0; padding:10px; border-radius:5px; margin-bottom:15px;">
+            <div style="display: flex; gap: 4px; margin-bottom: 10px; align-items: flex-end; border-bottom: 1px dashed #ffb74d; padding-bottom: 10px;">
+                <div class="form-group" style="flex:1.2; margin-bottom:0;">
+                    <label style="color:#e65100; font-size:11px;">R$:</label>
+                    <input type="text" id="novoPrecoCompra" inputmode="decimal" oninput="maskMoeda(this)" placeholder="0,00" style="padding: 6px 4px; font-size: 13px;">
+                </div>
+                <div class="form-group" style="flex:1.2; margin-bottom:0;">
+                    <label style="color:#e65100; font-size:11px;">Und:</label>
+                    <select id="novoPrecoUndCompra" style="padding: 6px 2px; font-size: 13px;"></select>
+                </div>
+                <div class="form-group" style="flex:2.5; margin-bottom:0;">
+                    <label style="color:#e65100; font-size:11px;">Local:</label>
+                    <select id="novoPrecoFornCompra" style="padding: 6px 2px; font-size: 13px;"></select>
+                </div>
+                <button class="btn-action" style="padding: 0; width: 32px; height: 32px; flex-shrink: 0; background:#e65100; display:flex; align-items:center; justify-content:center; font-size: 14px;" onclick="adicionarPrecoRapido()">➕</button>
+            </div>
+            <div id="resumoHistPrecosCompra"></div>
+            <button onclick="toggleDiv('completoHistPrecosCompra')" style="background:none;border:none;color:#e65100;font-size:12px;padding:5px 0 0 0;cursor:pointer;">Ver detalhes e excluir...</button>
+            <div id="completoHistPrecosCompra" style="display:none; margin-top:5px; border-top:1px solid #ccc; padding-top:5px; max-height:100px; overflow-y:auto;"></div>
+        </div>
+        <h4 style="margin:0 0 5px 0; font-size:14px; color:#333;">Análise de Compras</h4>
+        <div style="background:#e3f2fd; padding:10px; border-radius:5px; margin-bottom:15px;">
+            <div id="resumoAnaliseCompras"></div>
+            <button onclick="toggleDiv('completoAnaliseCompras')" style="background:none;border:none;color:#1565C0;font-size:12px;padding:5px 0 0 0;cursor:pointer;">Ver histórico passado...</button>
+            <div id="completoAnaliseCompras" style="display:none; margin-top:5px; border-top:1px solid #ccc; padding-top:5px; max-height:100px; overflow-y:auto;"></div>
+        </div>
+        <h4 style="margin:0 0 5px 0; font-size:14px; color:#333;">Marcas no Relatório</h4>
+        <div id="histMarcasLista" style="font-size:13px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:5px; border:1px solid #eee;"></div>
+        <h4 style="margin:0 0 5px 0; font-size:14px; color:#333;">Edições deste Pedido Atual</h4>
+        <div id="histCompraLista" style="font-size:13px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:5px; max-height: 80px; overflow-y: auto; border:1px solid #eee;"></div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="fecharModal('modalHistoricoCompra')">Cancelar</button>
+            <button class="btn-action" onclick="salvarDetalhesCompra()">Salvar Alterações</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalRelatorio">
+    <div class="modal">
+        <div class="modal-title" style="border-color:#25d366; display: flex; justify-content: space-between; align-items: center;">Relatório para Fornecedor</div>
+        <div class="form-group"><label>Fornecedor:</label><select id="relatFornecedor" onchange="selecionarFornecedorRelatorio()"></select></div>
+        <div style="background:#f1f8e9; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #c5e1a5; display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+            <div style="display:flex; align-items:center;">
+                <label class="switch"><input type="checkbox" id="relatToggleCab" checked onchange="gerarTextoRelatorio()"><span class="slider"></span></label>
+                <span style="font-size:12px; font-weight:bold; color:#555;">Cabeçalho</span>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <label class="switch"><input type="checkbox" id="relatToggleCat" checked onchange="gerarTextoRelatorio()"><span class="slider"></span></label>
+                <span style="font-size:12px; font-weight:bold; color:#555;">Agrupar categorias</span>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <label class="switch"><input type="checkbox" id="relatToggleItens" checked onchange="toggleExclusivoRelatorio('cotacao'); gerarTextoRelatorio()"><span class="slider"></span></label>
+                <span style="font-size:12px; font-weight:bold; color:#555;">Cotação</span>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <label class="switch"><input type="checkbox" id="relatTogglePedido" onchange="toggleExclusivoRelatorio('pedido'); gerarTextoRelatorio()"><span class="slider"></span></label>
+                <span style="font-size:12px; font-weight:bold; color:#555;">Pedido</span>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <label class="switch"><input type="checkbox" id="relatToggleQtd" checked onchange="gerarTextoRelatorio()"><span class="slider"></span></label>
+                <span style="font-size:12px; font-weight:bold; color:#555;">Mostrar quantidade</span>
+            </div>
+        </div>
+        <div class="form-group"><textarea id="relatTexto" rows="8" style="font-size: 12px; background: #f9f9f9;"></textarea></div>
+        <div style="margin-top: 15px;">
+            <button class="btn-whatsapp" id="btnEnviarWhatsAppRelatorio" onclick="enviarWhatsAppAPI()" disabled title="Selecione um fornecedor">
+                <span class="icon">📞</span>
+                <span>Enviar Whatsapp</span>
+            </button>
+            <button class="btn-cancel" style="width: 100%; margin-top: 8px;" onclick="fecharModal('modalRelatorio')">Voltar</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalPainelUnificado">
+    <div class="modal" style="padding-top: 25px;">
+        <div class="marca-sistema">
+            <img src="icon.png" alt="Logotipo Alô Feira" onerror="this.style.display='none'">
+            <div class="titulo">Alô Feira</div>
+            <div class="versao">v2.1.0</div>
+        </div>
+        <button class="btn-outline" onclick="abrirGerenciar('restaurante')">🏢 Dados do Restaurante</button>
+        <button class="btn-outline" onclick="abrirGerenciar('produtos')">🍔 Gerenciar Produtos</button>
+        <button class="btn-outline" onclick="abrirGerenciar('colaboradores')">👥 Gerenciar Colaboradores</button>
+        <button class="btn-outline" onclick="abrirGerenciar('fornecedores')">🚚 Gerenciar Fornecedores</button>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+        <div class="form-group" style="display:flex; align-items:center;">
+            <label class="switch"><input type="checkbox" id="configExigirColab" onchange="toggleExigirColab()"><span class="slider"></span></label>
+            <span style="font-weight:bold; font-size:14px; color:#555; padding-top:2px;">Exigir Identificação ao Abrir App</span>
+        </div>
+        <h3 style="font-size: 16px; color: #d32f2f; margin-top: 25px; margin-bottom: 10px;">Avançado</h3>
+        <button class="btn-danger" style="width: 100%; margin-bottom: 10px;" onclick="solicitarAcessoAvancado()">⚠️ Configurações Avançadas</button>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalPainelUnificado'); renderizarLista();">Fechar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalConfigAvancadas">
+    <div class="modal" style="max-height: 90vh; overflow-y: auto;">
+        <div class="modal-title" style="color:#d32f2f; display: flex; justify-content: space-between; align-items: center;">Zona de Risco</div>
+        <input type="hidden" id="configUrlApp">
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+            <button id="btnSalvarNuvem" class="btn-action" style="margin: 0; width: 100%; font-size: 15px; margin-bottom: 10px;" onclick="forcarEnvioNuvemCompleto()">☁️ Forçar Envio Completo pra Nuvem</button>
+            <button class="btn-outline" style="margin: 0; width: 100%; font-size: 13px; border-color:#1565C0; color:#1565C0; text-align: center;" onclick="exportarDados()">⬇️ Exportar Dados</button>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <div class="form-group"><label>Segurança:</label><button class="btn-outline" style="width:100%; text-align:center;" onclick="abrirTrocaSenhaAvancada()">Alterar senha avançada</button></div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 13px; color: #555; margin-bottom: 5px;">Atenção: A ação abaixo é irreversível.</p>
+        <div class="form-group"><label>Para apagar todos os pedidos, digite: <b>quero excluir todo o histórico</b></label><input type="text" id="inputExcluirTudo" placeholder="digite a frase exata"><button class="btn-danger" style="margin-top: 10px; width: 100%;" onclick="excluirTodoHistorico()">🗑️ Apagar Todo o Histórico</button></div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <div class="form-group"><label>App travou ou quer puxar versão nova?</label><button class="btn-outline" style="border-color:#fbc02d; color:#fbc02d; width: 100%; text-align: center;" onclick="forcarAtualizacao()">🔄 Forçar Atualização do App</button></div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalConfigAvancadas'); document.getElementById('modalPainelUnificado').style.display='flex';">Voltar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalListagem">
+    <div class="modal" style="position: relative; width: 95%; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="modal-title titulo-listagem" style="flex-shrink:0;">
+            <span id="tituloListagem">Gerenciar</span>
+            <button type="button" id="btnCategoriasProdutos" class="btn-categorias-produtos" style="display:none;" onclick="abrirCategoriasDosProdutos()" aria-label="Gerenciar categorias" title="Gerenciar categorias"><span aria-hidden="true">🏷️</span><span>Categorias</span></button>
+        </div>
+        <div class="form-group" id="filtroGerenciarCatBox" style="display: none; flex-shrink: 0; flex-direction: column; gap: 8px;">
+            <div style="display:flex; align-items:center; position:relative;">
+                <span style="position:absolute; left:10px; font-size:16px;">🔎</span>
+                <input type="text" id="inputBuscaProd" oninput="renderizarFiltroGerenciar()" placeholder="Buscar produto..." style="width:100%; padding:10px 10px 10px 35px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box; font-size:14px;">
+            </div>
+            <button type="button" id="btnFiltroGerenciarCat" class="btn-filtro-categorias-produtos" onclick="abrirFiltroCategoriasProdutos()"><span id="corFiltroGerenciarCat" class="filtro-categoria-amostra"></span><span id="rotuloFiltroGerenciarCat">Todas as categorias</span><span class="filtro-categoria-seta" aria-hidden="true">⌄</span></button>
+            <select id="filtroGerenciarCat" class="select-filtro-categorias-oculto" tabindex="-1" aria-hidden="true" onchange="renderizarFiltroGerenciar()"></select>
+        </div>
+        <button class="btn-action" id="btnNovoListagem" style="width: 100%; margin-bottom: 15px; flex-shrink: 0;">+ Novo</button>
+        <div id="conteudoListagem" style="flex: 1; overflow-y: auto; padding-right: 25px; min-height: 40vh;"></div>
+        <div class="sidebar-alfabeto" id="sidebarAlfabeto" style="display: none;"></div>
+        <div class="modal-actions" style="flex-shrink: 0;"><button class="btn-cancel" onclick="voltarDaListagem()" style="width: 100%;">Voltar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFiltroCategoriasProdutos" role="dialog" aria-modal="true" aria-labelledby="tituloFiltroCategoriasProdutos">
+    <div class="modal modal-filtro-categorias-produtos">
+        <div class="modal-title" id="tituloFiltroCategoriasProdutos">Filtrar produtos</div>
+        <div id="opcoesFiltroCategoriasProdutos" class="opcoes-filtro-categorias"></div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFiltroCategoriasProdutos')">Fechar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFormRestaurante">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Restaurante</div>
+        <div class="form-group"><label>Nome Fantasia:</label><input type="text" id="restNome"></div>
+        <div class="form-group"><label>CNPJ:</label><input type="text" id="restCNPJ" inputmode="numeric" oninput="maskCNPJ(this)" maxlength="18"></div>
+        <div class="form-group"><label>Rua:</label><input type="text" id="restRua"></div>
+        <div style="display: flex; gap:10px;"><div class="form-group" style="flex:1;"><label>Número:</label><input type="text" id="restNum" inputmode="numeric"></div><div class="form-group" style="flex:3;"><label>Bairro:</label><input type="text" id="restBairro"></div></div>
+        <div style="display: flex; gap:10px;"><div class="form-group" style="flex:2;"><label>Cidade:</label><input type="text" id="restCidade"></div><div class="form-group" style="flex:1;"><label>UF:</label><select id="restUF"><option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option></select></div></div>
+        <div class="form-group"><label>Ponto de Referência (Opcional):</label><input type="text" id="restPonto"></div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormRestaurante'); document.getElementById('modalPainelUnificado').style.display='flex';">Cancelar</button><button class="btn-action" onclick="salvarRestaurante()">Salvar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFormProduto">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Produto</div>
+        <input type="hidden" id="prodId">
+        <div class="form-group"><label>Nome (Visão Interna):</label><input type="text" id="prodNome"></div>
+        <div class="form-group"><label>Nome para o Relatório (Opcional):</label><input type="text" id="prodDesc"></div>
+        <div class="form-group"><label>Observação Padrão (Opcional):</label><input type="text" id="prodObsPadrao" placeholder="Ex: maduro, marca tal..."></div>
+        <div class="form-group"><label>Categoria:</label><select id="prodCategoria" onchange="atualizarComboSubcat()"></select></div>
+        <div class="form-group"><label>Subcategoria (Opcional):</label><select id="prodSubcategoria"></select></div>
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+                <label style="white-space: nowrap;">Qtd Padrão (opc):</label>
+                <input type="text" inputmode="decimal" id="prodQtdPadrao" placeholder="">
+            </div>
+            <div class="form-group" style="flex: 1.5;">
+                <label>Unidades (vírgula):</label>
+                <input type="text" id="prodUnidades" placeholder="ex: kg, cx" autocapitalize="none">
+            </div>
+        </div>
+        <div class="form-group"><label>Marcas Aprovadas:</label><input type="text" id="prodMarcasOk" placeholder="Ex: Sadia, Perdigão"></div>
+        <div class="form-group"><label>Marcas Reprovadas:</label><input type="text" id="prodMarcasNok"></div>
+        <div class="form-group">
+            <label>Fornecedores Vinculados:</label>
+            <div id="listaFornecedoresVinculados" style="margin-bottom: 8px; display: flex; flex-direction: column; gap: 5px;"></div>
+            <button class="btn-outline" style="border-style: dashed; margin-bottom: 0;" onclick="abrirModalSelecaoFornecedores()">+ Selecionar Fornecedores</button>
+        </div>
+        <div style="background:#fff3e0; padding:10px; border-radius:5px; margin-bottom:10px;">
+            <strong style="font-size:12px; display:block; margin-bottom:8px; color:#e65100;">Registrar Novo Preço</strong>
+            <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+                <div class="form-group" style="flex:1; margin-bottom:0;"><label>Preço (R$):</label><input type="text" id="prodPreco" inputmode="decimal" oninput="maskMoeda(this)" placeholder="0,00"></div>
+                <div class="form-group" style="flex:1; margin-bottom:0;"><label>Data:</label><input type="date" id="prodPrecoData"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label>Fornecedor (Opcional):</label>
+                <select id="prodPrecoForn"></select>
+            </div>
+        </div>
+        <div id="boxHistoricoPrecos" style="background:#fafafa; border:1px solid #ccc; border-radius:5px; padding:8px; margin-bottom:10px; display:none;">
+            <strong style="font-size:12px; display:block; margin-bottom:5px;">Histórico Gravado de Preços:</strong>
+            <div id="resumoPrecosProduto" style="font-size:13px; margin-bottom:5px;"></div>
+            <button class="btn-outline" style="border:none; color:#1565C0; padding:0; margin:0; text-align:left; font-size:12px; width:auto;" onclick="toggleDiv('listaPrecosProduto')">Ver detalhes e excluir...</button>
+            <div id="listaPrecosProduto" style="display:none; margin-top:8px; border-top:1px solid #eee; padding-top:8px; max-height:120px; overflow-y:auto;"></div>
+        </div>
+        <div id="boxHistoricoPedidosProdutoForm" style="background:#e3f2fd; border:1px solid #ccc; border-radius:5px; padding:8px; margin-bottom:15px;">
+            <strong style="font-size:12px; display:block; margin-bottom:5px;">Histórico de Pedidos:</strong>
+            <div id="resumoPedidosProdutoForm" style="font-size:13px; margin-bottom:5px;"></div>
+            <button class="btn-outline" style="border:none; color:#1565C0; padding:0; margin:0; text-align:left; font-size:12px; width:auto;" onclick="toggleDiv('listaHistoricoPedidosProdutoForm')">Ver detalhes e excluir...</button>
+            <div id="listaHistoricoPedidosProdutoForm" style="display:none; margin-top:8px; border-top:1px solid #eee; padding-top:8px; max-height:120px; overflow-y:auto;"></div>
+        </div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="cancelarFormProduto()">Cancelar</button><button class="btn-action" onclick="salvarProduto()">Salvar Produto</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalSelecaoFornecedores" style="z-index: 1005;">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Selecionar Fornecedores</div>
+        <div id="boxListaFornecedoresSelecao" style="max-height: 50vh; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; padding: 5px;"></div>
+        <div class="modal-actions">
+            <button class="btn-action" onclick="confirmarSelecaoFornecedores()" style="width: 100%;">Confirmar Seleção</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFormCategoria">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Categoria</div>
+        <input type="hidden" id="catId">
+        <div class="form-group"><label>Nome:</label><input type="text" id="catNome"></div>
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex:1;"><label>Cor Fundo:</label><input type="color" class="input-cor" id="catCor"></div>
+            <div class="form-group" style="flex:1;"><label>Cor Texto:</label><input type="color" class="input-cor" id="catCorTexto"></div>
+        </div>
+        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        <div class="form-group" style="display:flex; align-items:center; margin-bottom:15px;">
+            <label class="switch"><input type="checkbox" id="catPermiteAvulso"><span class="slider"></span></label>
+            <span style="font-weight:bold; font-size:12px; color:#555;">Permitir Itens Avulsos <br><span style="font-size:9px; font-weight:normal;">(Apenas marcável na criação da categoria)</span></span>
+        </div>
+        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        <div class="form-group">
+            <label style="color:#1565C0; font-size:14px;">Subcategorias (Opcional):</label>
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <input type="text" id="novaSubcatNome" placeholder="Ex: Bebidas, Sobremesas...">
+                <button class="btn-action" style="flex-shrink:0; padding:10px 15px;" onclick="addFormSubcat()">+</button>
+            </div>
+            <div id="listaSubcatsForm" style="display:flex; flex-direction:column; gap:5px; max-height:180px; overflow-y:auto; padding-right:5px;"></div>
+        </div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormCategoria'); abrirGerenciar('categorias', true);">Cancelar</button><button class="btn-action" onclick="salvarCategoria()">Salvar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFormColaborador">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Colaborador</div>
+        <input type="hidden" id="colabId">
+        <div class="form-group"><label>Nome:</label><input type="text" id="colabNome"></div>
+        <div class="form-group"><label>Emoji:</label><select id="colabEmoji"><option value="👤">👤 Pessoa</option><option value="🧑">🧑 Pessoa</option><option value="👨">👨 Homem</option><option value="👩">👩 Mulher</option><option value="🧑‍🍳">🧑‍🍳 Cozinha</option><option value="👨‍🍳">👨‍🍳 Cozinheiro</option><option value="👩‍🍳">👩‍🍳 Cozinheira</option><option value="🧑‍💼">🧑‍💼 Gestão</option><option value="👨‍💼">👨‍💼 Gestor</option><option value="👩‍💼">👩‍💼 Gestora</option></select></div>
+        <div class="form-group"><label>PIN do perfil:</label><input type="password" id="colabSenha" placeholder="Opcional" inputmode="numeric" autocomplete="new-password" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+        <div class="form-group" style="background:#e3f2fd; padding:10px; border-radius:5px; margin-bottom:15px; display:flex; align-items:center;">
+            <label class="switch"><input type="checkbox" id="colabIsAdmin"><span class="slider"></span></label>
+            <span style="font-weight:bold; font-size:12px; color:#1565C0;">Administrador do Sistema</span>
+        </div>
+        <div class="form-group" style="background:#ffebee; padding:10px; border-radius:5px; margin-bottom:15px; display:flex; align-items:center;">
+            <label class="switch"><input type="checkbox" id="colabApenasReceber"><span class="slider"></span></label>
+            <span style="font-weight:bold; font-size:12px; color:#c62828;">Apenas Receber (Modo Compras)</span>
+        </div>
+        <div class="form-group"><label>Categorias Permitidas:</label>
+            <div id="colabCategoriasBox" style="font-size:14px; max-height:220px; overflow-y:auto; border:1px solid #ccc; padding:10px; border-radius:4px; background:#fafafa;"></div>
+        </div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormColaborador'); abrirGerenciar('colaboradores', true);">Cancelar</button><button class="btn-action" onclick="salvarColaborador()">Salvar</button></div>
+    </div>
+</div>
+<div class="modal-overlay" id="modalFormFornecedor">
+    <div class="modal">
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">Fornecedor</div>
+        <input type="hidden" id="fornId">
+        <div class="form-group"><label>Nome da Empresa:</label><input type="text" id="fornNome"></div>
+        <div class="form-group"><label>Nome do Vendedor (Opcional):</label><input type="text" id="fornVendedor"></div>
+        <div class="form-group"><label>WhatsApp Vendedor (Opcional):</label><input type="text" id="fornTel" inputmode="numeric" oninput="maskTelefone(this)" placeholder="(00) 00000-0000" maxlength="15"></div>
+        <div class="form-group"><label>Nome do Gerente (Opcional):</label><input type="text" id="fornNomeGerente"></div>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1;"><label>Tel. Gerente (Opcional):</label><input type="text" id="fornTelGerente" inputmode="numeric" oninput="maskTelefone(this)" maxlength="15"></div>
+            <div class="form-group" style="flex:1;"><label>Tel. Empresa (Opcional):</label><input type="text" id="fornTelEmpresa" inputmode="numeric" oninput="maskTelefone(this)" maxlength="15"></div>
+        </div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormFornecedor'); abrirGerenciar('fornecedores', true);">Cancelar</button><button class="btn-action" onclick="salvarFornecedor()">Salvar</button></div>
+    </div>
+</div>
+<script src="src/scripts/domain.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/core.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/security.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/sync.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/auth.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/orders.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/catalog.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/drafts.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/purchases.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/purchase-details.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/reports.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/settings.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/catalog-settings.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/people-settings.js?v=2.1.0-feira-r1"></script>
+<script src="src/scripts/app.js?v=2.1.0-feira-r1"></script>
+</body>
+</html>

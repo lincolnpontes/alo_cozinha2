@@ -1171,18 +1171,21 @@
         document.getElementById('moduleHome').style.display = 'flex';
         document.getElementById('kdsModule').style.display = 'none';
         document.getElementById('tasksModule').style.display = 'none';
+        document.getElementById('feiraModule').style.display = 'none';
     }
     function openModule(module) {
         activeModule = module;
         document.getElementById('moduleHome').style.display = 'none';
         document.getElementById('kdsModule').style.display = module === 'kds' ? 'flex' : 'none';
         document.getElementById('tasksModule').style.display = module === 'tasks' ? 'flex' : 'none';
+        document.getElementById('feiraModule').style.display = module === 'feira' ? 'flex' : 'none';
         if (module === 'tasks') {
             generateToday();
             render();
             syncNow(true);
             checkAlarms();
         }
+        if (module === 'feira') global.AloFeiraModule?.open();
     }
     function setTab(tab) { selectedTab = tab; render(); }
     function setArea(area) {
@@ -1432,6 +1435,7 @@
         document.getElementById('moduleHome').style.display = 'none';
         document.getElementById('kdsModule').style.display = 'none';
         document.getElementById('tasksModule').style.display = 'none';
+        document.getElementById('feiraModule').style.display = 'none';
         view.style.display = 'block';
         if (!apiUrl || !taskId) {
             content.innerHTML = '<div class="public-task-error"><strong>Consulta indisponível</strong><span>O QR Code está incompleto. Gere um novo código nas configurações da tarefa.</span></div>';

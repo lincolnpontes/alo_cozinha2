@@ -1,0 +1,22 @@
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:3px solid rgba(21,101,192,.35); outline-offset:2px; }
+        button:disabled { opacity:.5; cursor:not-allowed; }
+
+        @media (max-width: 350px) {
+            .header { padding-left:6px; padding-right:6px; }
+            .header-select { max-width:98px; font-size:15px; }
+            .header-actions button { width:40px; font-size:22px; }
+            .header-profile { max-width:112px; }
+            .header-profile .btn-perfil { max-width:112px; padding:0 3px; }
+            .perfil-emoji { font-size:21px; }
+            .perfil-nome { font-size:15px; }
+            .filters.com-centro { gap:2px; }
+            .filters.com-centro .filtros-acoes-selecao button { width:30px; height:34px; font-size:16px; }
+            .filters.com-centro .btn-cancelar-selecao-inline { width:30px; height:38px; }
+        }
+        @media (min-width: 760px) {
+            .app-container { max-width:760px; left:50%; transform:translateX(-50%); border-left:1px solid #ddd; border-right:1px solid #ddd; }
+            .header-profile, .header-profile .btn-perfil { max-width:180px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+        }

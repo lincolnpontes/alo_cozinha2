@@ -1584,6 +1584,7 @@ let db = carregarBanco();
             if(!bancoNuvemValido(nuvemDB) || !respostaSync || respostaSync.status !== 'ok') throw new Error('Servidor incompatível.');
 
             db.configs.url = urlInput;
+            window.AloFeiraModule?.syncServerUrl();
             db.configs.dadosBaixados = true;
             db.configs.revisaoBanco = Number(nuvemDB._revision || 0);
             if(Array.isArray(nuvemDB.produtos)) {
@@ -2042,6 +2043,7 @@ let db = carregarBanco();
         document.addEventListener('touchstart', () => AloAudio.unlock(), { once: true });
         document.addEventListener('click', () => AloAudio.unlock(), { once: true });
         iniciar();
+        window.AloFeiraModule?.configure({ getServerUrl: () => db.configs.url });
         if (window.AloTasks) {
             AloTasks.init({
                 getDatabase: () => db,
@@ -2277,7 +2279,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.0.27').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.0').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

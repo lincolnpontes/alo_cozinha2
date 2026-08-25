@@ -1,0 +1,16 @@
+:root { --pedido:#1565c0; --compras:#521565; --sucesso:#267447; --alerta:#b45309; --perigo:#c62828; --texto:#202124; --texto-suave:#687078; --borda:#dfe3e7; --fundo:#f3f5f7; --raio:8px; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; position: fixed; overflow: hidden; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; }
+        input, select, textarea, .modal { user-select: text; -webkit-user-select: text; font-family: inherit; }
+        .app-container { width: 100%; max-width: 100%; height: 100%; background-color: #ffffff; display: flex; flex-direction: column; position: absolute; top: 0; left: 0; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        #splashScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #1565C0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease; }
+        .splash-logo { width: 90px; height: 90px; margin-bottom: 15px; object-fit: contain; background-color: transparent; }
+        .splash-titulo { font-size: 28px; font-weight: bold; letter-spacing: 1px; }
+        .splash-versao { font-size: 14px; margin-top: 5px; opacity: 0.8; }
+        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; text-align: center; padding: 20px; box-sizing: border-box; }
+        .spinner { border: 6px solid #f3f3f3; border-top: 6px solid #1565C0; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
+        .shake { animation: shake 0.3s ease-in-out; }

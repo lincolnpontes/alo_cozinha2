@@ -2,40 +2,44 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="icon.png?v=2.0.27">
-    <link rel="apple-touch-icon" href="icon.png?v=2.0.27">
+    <link rel="icon" href="icon.png?v=2.1.0">
+    <link rel="apple-touch-icon" href="icon.png?v=2.1.0">
     <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v2.0.27</title>
+    <title>Alô Cozinha v2.1.0</title>
 
-    <link rel="stylesheet" href="styles.css?v=2.0.27">
-    <link rel="stylesheet" href="tasks.css?v=2.0.27">
+    <link rel="stylesheet" href="styles.css?v=2.1.0">
+    <link rel="stylesheet" href="tasks.css?v=2.1.0">
 </head>
 <body class="theme-panelas" oncontextmenu="return false;">
 
 <div id="overlayInatividade"></div>
 
 <div id="splashScreen">
-    <img src="icon.png?v=2.0.27" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
+    <img src="icon.png?v=2.1.0" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v2.0.27</div>
+    <div class="splash-versao">v2.1.0</div>
 </div>
 
 <main id="moduleHome" class="module-home" aria-label="Escolher módulo">
     <div class="module-home-inner">
-        <img src="icon.png?v=2.0.27" alt="Alô Cozinha" class="module-home-logo">
+        <img src="icon.png?v=2.1.0" alt="Alô Cozinha" class="module-home-logo">
         <h1>Alô Cozinha</h1>
-        <div class="module-home-version">v2.0.27</div>
+        <div class="module-home-version">v2.1.0</div>
         <div class="module-choice-grid">
             <button class="module-choice module-choice-kds" onclick="AloTasks.openModule('kds')">
-                <img class="module-choice-icon" src="assets/module-kds.png?v=2.0.27" alt="">
+                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.0" alt="">
                 <strong>KDS - Sistema de Pedidos</strong>
             </button>
             <button class="module-choice module-choice-tasks" onclick="AloTasks.openModule('tasks')">
-                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.0.27" alt="">
+                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.0" alt="">
                 <strong>Checklist</strong>
+            </button>
+            <button class="module-choice module-choice-feira" onclick="AloTasks.openModule('feira')">
+                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.0" alt="">
+                <strong>Alô Feira</strong>
             </button>
             <button class="module-choice module-choice-settings" onclick="abrirLoginAdmin('painel')">
                 <span class="module-choice-icon">⚙️</span>
@@ -46,7 +50,7 @@
 </main>
 
 <section id="publicTaskView" class="public-task-view" style="display:none" aria-label="Consulta da atividade">
-    <header><img src="icon.png?v=2.0.27" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
+    <header><img src="icon.png?v=2.1.0" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
     <main id="publicTaskContent"><div class="tasks-empty">Carregando atividade...</div></main>
 </section>
 
@@ -66,7 +70,7 @@
     <div class="header" id="mainHeader">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="KDS, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-kds.png?v=2.0.27" class="module-nav-icon" alt="">
+            <img src="assets/module-kds.png?v=2.1.0" class="module-nav-icon" alt="">
             <strong>KDS</strong>
         </button>
         <div class="module-header-center">
@@ -231,7 +235,7 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.0.27</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.0</div>
 
         <button class="btn-outline" onclick="abrirConfiguracoesKds()">🍽️ Configurações KDS</button>
         <button class="btn-outline" onclick="AloTasks.openSettingsMenu()" style="border-color:#00695c; color:#00695c;">📋 Configurações Tarefas</button>
@@ -410,7 +414,7 @@
     <header class="tasks-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Checklist, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-checklist.png?v=2.0.27" class="module-nav-icon" alt="">
+            <img src="assets/module-checklist.png?v=2.1.0" class="module-nav-icon" alt="">
             <strong>Checklist</strong>
         </button>
         <div class="module-header-center">
@@ -440,6 +444,22 @@
     <div class="tasks-scroll">
         <ul id="tasksList" class="tasks-list"></ul>
     </div>
+</section>
+
+<section id="feiraModule" class="feira-module" style="display:none;" aria-label="Alô Feira">
+    <header class="feira-module-header">
+        <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Alô Feira, voltar aos módulos" title="Voltar aos módulos">
+            <span class="module-nav-back" aria-hidden="true">‹</span>
+            <img src="assets/module-feira.png?v=2.1.0" class="module-nav-icon" alt="">
+            <strong>Alô Feira</strong>
+        </button>
+        <button class="feira-import-button" type="button" onclick="AloFeiraModule.pickImportFile()">
+            <span aria-hidden="true">⬆</span>
+            <strong>Importar dados</strong>
+        </button>
+        <input id="feiraImportInput" type="file" hidden accept=".json,.txt,application/json,text/plain" onchange="AloFeiraModule.importBackup(event)">
+    </header>
+    <iframe id="feiraFrame" class="feira-frame" title="Módulo Alô Feira" data-src="modules/alo-feira/index.html?v=2.1.0"></iframe>
 </section>
 
 <div class="modal-overlay" id="modalMenuProdutos">
@@ -646,16 +666,17 @@
     </div>
 </div>
 
-<script defer src="logic.js?v=2.0.27"></script>
-<script defer src="storage.js?v=2.0.27"></script>
-<script defer src="api.js?v=2.0.27"></script>
-<script defer src="audio.js?v=2.0.27"></script>
-<script defer src="sync.js?v=2.0.27"></script>
-<script defer src="catalog-sync.js?v=2.0.27"></script>
-<script defer src="ui.js?v=2.0.27"></script>
-<script defer src="task-templates.js?v=2.0.27"></script>
-<script defer src="vendor/qrcode.js?v=2.0.27"></script>
-<script defer src="tasks.js?v=2.0.27"></script>
-<script defer src="app.js?v=2.0.27"></script>
+<script defer src="logic.js?v=2.1.0"></script>
+<script defer src="storage.js?v=2.1.0"></script>
+<script defer src="api.js?v=2.1.0"></script>
+<script defer src="audio.js?v=2.1.0"></script>
+<script defer src="sync.js?v=2.1.0"></script>
+<script defer src="catalog-sync.js?v=2.1.0"></script>
+<script defer src="ui.js?v=2.1.0"></script>
+<script defer src="task-templates.js?v=2.1.0"></script>
+<script defer src="vendor/qrcode.js?v=2.1.0"></script>
+<script defer src="feira-module.js?v=2.1.0"></script>
+<script defer src="tasks.js?v=2.1.0"></script>
+<script defer src="app.js?v=2.1.0"></script>
 </body>
 </html>

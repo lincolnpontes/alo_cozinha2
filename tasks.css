@@ -23,7 +23,7 @@
 }
 
 .module-home-inner {
-    width: min(720px, 100%);
+    width: min(960px, 100%);
     text-align: center;
 }
 
@@ -51,6 +51,17 @@
     gap: 14px;
 }
 
+@media (min-width: 841px) {
+    .module-choice-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, .85fr) minmax(0, .8fr); }
+    .module-choice-kds { gap: 10px; padding-inline: 14px; }
+    .module-choice-kds .module-choice-icon { width: 56px; height: 56px; flex-basis: 56px; }
+    .module-choice-kds strong { font-size: 17px; }
+}
+
+@media (min-width: 641px) and (max-width: 840px) {
+    .module-choice-feira { grid-column: 1 / -1; }
+}
+
 .module-choice {
     min-height: 150px;
     display: flex;
@@ -69,6 +80,7 @@
 .module-choice:active { transform: translateY(1px); }
 .module-choice-kds { border-top: 5px solid #1565c0; }
 .module-choice-tasks { border-top: 5px solid var(--tasks-green); }
+.module-choice-feira { border-top: 5px solid #d77913; }
 .module-choice-settings { grid-column: 1 / -1; min-height: 112px; border-top: 5px solid #5b6573; }
 .module-choice-icon { width: 66px; height: 66px; display: grid; flex: 0 0 66px; place-items: center; object-fit: contain; font-size: 44px; }
 .module-choice strong { display: block; min-width: 0; font-size: 18px; white-space: nowrap; }
@@ -91,6 +103,43 @@
 .module-nav-back { width: 12px; flex: 0 0 12px; font-size: 25px; font-weight: 500; line-height: 1; opacity: .8; }
 .module-nav-icon { width: 42px; height: 42px; flex: 0 0 42px; object-fit: contain; }
 .module-nav-button strong { min-width: 0; overflow: hidden; font-size: 19px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+
+.feira-module {
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+}
+.feira-module-header {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 10px;
+    box-sizing: border-box;
+    background: #114f87;
+    color: #fff;
+    flex: 0 0 auto;
+}
+.feira-module-header .module-nav-icon { width: 38px; height: 38px; flex-basis: 38px; }
+.feira-import-button {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 12px;
+    border: 1px solid rgba(255,255,255,.36);
+    border-radius: 6px;
+    background: rgba(255,255,255,.13);
+    color: #fff;
+    cursor: pointer;
+}
+.feira-import-button span { font-size: 19px; line-height: 1; }
+.feira-import-button strong { font-size: 13px; white-space: nowrap; }
+.feira-import-button:active { background: rgba(255,255,255,.23); }
+.feira-frame { width: 100%; min-height: 0; flex: 1 1 auto; border: 0; background: #f4f6f8; }
 
 .module-header-center {
     min-width: 0;
@@ -748,6 +797,9 @@
     .module-nav-button { gap: 3px; }
     .module-nav-icon { width: 30px; height: 30px; flex-basis: 30px; }
     .module-nav-button strong { max-width: 76px; font-size: 14px; }
+    .feira-module-header { padding-inline: 6px; }
+    .feira-module-header .module-nav-button strong { max-width: none; }
+    .feira-import-button { padding-inline: 9px; }
 }
 
 @media (min-width: 641px) and (orientation: portrait) {

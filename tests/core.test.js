@@ -977,7 +977,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('<strong>KDS</strong>'), true, 'o nome KDS deve aparecer no cabecalho');
     assert.equal(html.includes('Pedidos por Área'), false);
     assert.equal(html.includes('Rotinas e tarefas'), false);
-    assert.equal((html.match(/class="module-nav-button"/g) || []).length, 2, 'cada módulo deve ter retorno compacto no próprio título');
+    assert.equal((html.match(/class="module-nav-button"/g) || []).length, 3, 'cada módulo deve ter retorno compacto no próprio título');
     assert.equal(panel.includes("abrirGerenciar('areas')"), false);
     assert.equal(kdsSettings.includes("abrirGerenciar('areas')"), true);
     assert.equal(html.includes('data-task-tab="total"'), true);
@@ -1017,13 +1017,19 @@ function testV2027TaskExperience() {
     assert.equal(css.includes('#modalTaskHistory { z-index: 1300; }'), true, 'historico precisa de camada superior');
     assert.equal(gas.includes("'ProcedimentoFormato'"), true, 'o formato do procedimento precisa sincronizar entre aparelhos');
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
-    assert.equal((html.match(/class="module-nav-back"/g) || []).length, 2, 'o retorno deve usar uma indicação simples integrada ao módulo');
+    assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.0.27</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.0\.27/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.0\.27/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.0</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.0/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.0/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.0/g) || []).length, 2, 'o Alô Feira deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
+    assert.equal(fs.existsSync(path.join(root, 'modules', 'alo-feira', 'index.html')), true, 'o Alô Feira completo deve acompanhar o app');
+    assert.equal(html.includes('id="feiraImportInput"'), true, 'a importação temporária do Alô Feira deve estar disponível');
+    assert.equal(gas.includes("const SHEET_FEIRA_BANCO = 'Alô Feira - Banco'"), true, 'a nuvem do Feira deve ficar isolada na mesma implantação');
+    assert.equal(gas.includes("e.parameter.app === 'alofeira'"), true, 'a URL única deve rotear as leituras do Alô Feira');
     assert.equal((html.match(/class="status-conexao module-sync-indicator"/g) || []).length, 2, 'os módulos devem compartilhar o indicador de sincronização');
     assert.equal(html.includes('>↻</button>'), false, 'nenhum módulo deve exibir seta no lugar da bolinha de conexão');
     assert.equal(html.includes('id="tasksSyncIndicator"') && html.includes('title="Aguardando sincronização">🔴</button>'), true, 'o Checklist deve iniciar com estado vermelho, nunca com seta');
@@ -1276,6 +1282,60 @@ async function testCatalogAutoPublish() {
     assert.equal(conflicted.confirmed, false);
 }
 
+async function testFeiraImportStaysIsolated() {
+    const storage = new Map([
+        ['kds_banco', '{"produtos":[{"nome":"Feijão"}]}'],
+        ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
+    ]);
+    const frame = {
+        dataset: { src: 'modules/alo-feira/index.html?v=2.1.0' },
+        getAttribute() { return ''; },
+        setAttribute() {}
+    };
+    const context = vm.createContext({
+        console,
+        Date,
+        JSON,
+        localStorage: {
+            getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+            setItem(key, value) { storage.set(key, value); }
+        },
+        document: {
+            getElementById(id) { return id === 'feiraFrame' ? frame : null; }
+        },
+        AloUiDialog: {
+            async confirm() { return true; },
+            async notice() {}
+        }
+    });
+    context.window = context;
+    loadScript(context, 'feira-module.js');
+    context.AloFeiraModule.configure({ getServerUrl: () => 'https://script.google.com/macros/s/unificado/exec' });
+
+    const input = {
+        value: 'backup.json',
+        files: [{
+            async text() {
+                return JSON.stringify({
+                    app_id: 'alofeira', schemaVersion: 2,
+                    produtos: [{ id: 'produto-feira', nome: 'Tomate' }],
+                    pedidosAtivos: [], categorias: [], fornecedores: [], colaboradores: [], configs: {}
+                });
+            }
+        }]
+    };
+    await context.AloFeiraModule.importBackup({ currentTarget: input });
+
+    const feira = JSON.parse(storage.get('alofeira_v1'));
+    assert.equal(feira.produtos[0].nome, 'Tomate');
+    assert.equal(feira.configs.url, 'https://script.google.com/macros/s/unificado/exec');
+    assert.equal(feira.configs.syncPendente, true);
+    assert.equal(feira.configs.importacaoInicialPendente, true, 'a importação deve aguardar um backend identificado como Alô Feira');
+    assert.equal(storage.get('kds_banco'), '{"produtos":[{"nome":"Feijão"}]}');
+    assert.equal(storage.get('kds_pedidos_local'), '[{"id":"pedido-kds"}]');
+    assert.equal(input.value, '');
+}
+
 (async () => {
     await testAcceptAndConfirm();
     await testOfflineRetry();
@@ -1305,7 +1365,8 @@ async function testCatalogAutoPublish() {
     testV2027TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
-    console.log('Testes críticos da v2.0.27 passaram.');
+    await testFeiraImportStaysIsolated();
+    console.log('Testes críticos da v2.1.0 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

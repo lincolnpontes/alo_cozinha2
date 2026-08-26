@@ -327,12 +327,15 @@ function importBackup_(sheet, params) {
     }
 
     const orders = Array.isArray(params.pedidos) ? params.pedidos : [];
+    const activities = Array.isArray(params.atividades) ? params.atividades : [];
+    if (activities.length > 10000) throw new Error('O backup ultrapassa o limite de 10.000 atividades por migração.');
     const bankResult = salvarBanco_(params.dados || {}, currentBankRevision);
     if (bankResult.status !== 'ok') {
       saveMigrationStatus_(migrationId, bankResult);
       return bankResult;
     }
     const orderResult = importBackupOrders_(sheet, orders);
+    const activityResult = saveActivities_(getAtividadesSheet_(), activities);
     const report = {
       status: 'ok',
       migrationId: String(migrationId),
@@ -340,8 +343,11 @@ function importBackup_(sheet, params) {
       pedidosRecebidos: orders.length,
       pedidosImportados: orderResult.imported,
       pedidosIgnorados: orderResult.ignored,
+      atividadesRecebidas: activities.length,
+      atividadesImportadas: activityResult.count,
       bancoRevision: bankResult.revision,
-      pedidosRevision: orderResult.revision
+      pedidosRevision: orderResult.revision,
+      atividadesRevision: activityResult.revision
     };
     saveMigrationStatus_(migrationId, report);
     return report;
@@ -465,6 +471,7 @@ function bancosComRevisao_() {
   const bancoStr = getProperties_().getProperty(PROP_BANCO);
   const banco = bancoStr ? JSON.parse(bancoStr) : {};
   banco._revision = Number(getProperties_().getProperty(PROP_BANCO_REVISION) || '0');
+  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true };
   return banco;
 }
 

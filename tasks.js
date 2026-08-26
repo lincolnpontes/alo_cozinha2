@@ -278,11 +278,19 @@
         const indicator = document.getElementById('tasksSyncIndicator');
         if (!indicator) return;
         if (state === 'online' || state === 'offline') lastSyncState = state;
-        if (count) { indicator.innerText = `📤 ${count}`; indicator.title = `${count} alteração(ões) aguardando confirmação`; return; }
-        indicator.innerText = lastSyncState === 'offline' ? '🔴' : '🟢';
+        if (count) {
+            indicator.className = `app-sync-indicator ${lastSyncState === 'offline' ? 'offline' : 'sincronizando'}`;
+            indicator.title = lastSyncState === 'offline'
+                ? `${count} alteração(ões) aguardando internet`
+                : `${count} alteração(ões) aguardando confirmação`;
+            indicator.setAttribute('aria-label', indicator.title);
+            return;
+        }
+        indicator.className = `app-sync-indicator ${syncRunning ? 'sincronizando' : (lastSyncState === 'offline' ? 'offline' : 'sincronizado')}`;
         indicator.title = syncRunning
             ? 'Sincronizando Checklist'
             : (lastSyncState === 'offline' ? 'Sem conexão com o servidor' : 'Checklist sincronizado');
+        indicator.setAttribute('aria-label', indicator.title);
     }
     async function syncNow(force = false) {
         if (syncRunning) return;
@@ -1167,11 +1175,13 @@
     }
 
     function showHome() {
+        const previousModule = activeModule;
         activeModule = 'home';
         document.getElementById('moduleHome').style.display = 'flex';
         document.getElementById('kdsModule').style.display = 'none';
         document.getElementById('tasksModule').style.display = 'none';
         document.getElementById('feiraModule').style.display = 'none';
+        global.encerrarSessaoModulo?.(previousModule);
     }
     function openModule(module) {
         activeModule = module;
@@ -1731,6 +1741,12 @@
         setSyncIndicator(navigator.onLine ? 'online' : 'offline');
         scheduleSync(0);
     }
+    function getBackupData() {
+        return {
+            atividades: JSON.parse(JSON.stringify(activities)),
+            filaPendente: JSON.parse(JSON.stringify(outbox))
+        };
+    }
     function init(options) {
         if (initialized) return;
         deps = options;
@@ -1774,7 +1790,7 @@
     }
 
     global.AloTasks = Object.freeze({
-        init, refreshDefinitions, clearHistoryLocal, showHome, openModule, setTab, setArea, toggleAreaPicker, syncNow,
+        init, refreshDefinitions, clearHistoryLocal, getBackupData, showHome, openModule, setTab, setArea, toggleAreaPicker, syncNow,
         startTask, completeTask, markTaskNotDone, confirmEmployeeSelection,
         openTaskDetails, openFinishedTask, closeFinishedTask, undoFinishedTask, returnTaskToPending,
         toggleTaskStatusEditMenu, runTaskDetailAction,

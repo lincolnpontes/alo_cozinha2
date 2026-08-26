@@ -10,6 +10,8 @@ let db = carregarBanco();
     let wakeLock = null;
     let acaoPendente = null;
     let parametroAcao = null;
+    let tituloAcaoPendente = 'Confirmação';
+    let descricaoAcaoPendente = '';
 
     let filaRetentativaStatus = JSON.parse(localStorage.getItem('kds_fila_status') || '[]');
     let processandoFilaStatus = false;
@@ -386,7 +388,7 @@ let db = carregarBanco();
             if(typeof local.configs.dadosBaixados === 'undefined') local.configs.dadosBaixados = false;
             if(typeof local.configs.bancoPendente === 'undefined') local.configs.bancoPendente = false;
             if(typeof local.configs.revisaoBanco === 'undefined') local.configs.revisaoBanco = 0;
-            if(typeof local.configs.senhaMestra === 'undefined') local.configs.senhaMestra = '1999';
+            if(typeof local.configs.senhaMestra === 'undefined') local.configs.senhaMestra = '';
             if(!local.configs.telaAtiva) local.configs.telaAtiva = "sim";
             if(!local.configs.inatividade) local.configs.inatividade = "0";
             if(!local.configs.reenvio) local.configs.reenvio = "permitido";
@@ -471,8 +473,7 @@ let db = carregarBanco();
     function confirmarSenhaModo() {
         const input = document.getElementById('inputSenhaModo');
         const valor = input.value;
-        const senhaValida = (db.configs.senhaModo && valor === db.configs.senhaModo)
-            || (db.configs.senhaMestra && valor === db.configs.senhaMestra);
+        const senhaValida = db.configs.senhaModo && valor === db.configs.senhaModo;
         if (!senhaValida) return senhaIncorreta('inputSenhaModo', 'erroSenhaModo');
         input.blur();
         document.getElementById('modalSenhaModo').style.display = 'none';
@@ -1144,34 +1145,26 @@ let db = carregarBanco();
     }
 
     async function solicitarAutorizacaoAcao() {
-        if (!db.configs.senhaMestra) {
-            const descricao = document.getElementById('descModalAcao').innerText;
-            const confirmed = await AloUiDialog.confirm(descricao, {
-                title: document.getElementById('tituloModalAcao').innerText,
-                icon: '🗑️', tone: 'danger', confirmText: 'Excluir'
-            });
-            if (confirmed) executarAcaoPendenteAutorizada();
-            else { acaoPendente = null; parametroAcao = null; }
-            return;
-        }
-        document.getElementById('inputSenhaAcao').value = '';
-        limparErroSenha('erroSenhaAcao');
-        document.getElementById('modalSenhaAcao').style.display = 'flex';
-        setTimeout(() => document.getElementById('inputSenhaAcao').focus(), 100);
+        const confirmed = await AloUiDialog.confirm(descricaoAcaoPendente, {
+            title: tituloAcaoPendente,
+            icon: '🗑️', tone: 'danger', confirmText: 'Excluir'
+        });
+        if (confirmed) executarAcaoPendenteAutorizada();
+        else { acaoPendente = null; parametroAcao = null; }
     }
 
     function solicitarExclusaoHistorico(id) {
         acaoPendente = 'excluir_item';
         parametroAcao = id;
-        document.getElementById('tituloModalAcao').innerText = "Excluir Pedido?";
-        document.getElementById('descModalAcao').innerText = "Isso apagará este pedido do sistema para sempre.";
+        tituloAcaoPendente = 'Excluir pedido?';
+        descricaoAcaoPendente = 'Isso apagará este pedido do sistema para sempre.';
         solicitarAutorizacaoAcao();
     }
 
     function limparHistoricoHoje() {
         acaoPendente = 'zerar_expediente';
-        document.getElementById('tituloModalAcao').innerText = "Zerar Expediente?";
-        document.getElementById('descModalAcao').innerText = "Isso apagará os pedidos de hoje da tela e do servidor.";
+        tituloAcaoPendente = 'Zerar expediente?';
+        descricaoAcaoPendente = 'Isso apagará os pedidos de hoje da tela e do servidor.';
         solicitarAutorizacaoAcao();
     }
 
@@ -1210,6 +1203,9 @@ let db = carregarBanco();
     }
 
     let destinoConfiguracoes = 'painel';
+    let destinoLoginOperador = 'painel';
+    let sessaoCompras = null;
+    let sessaoAdministrativaAtiva = false;
 
     function abrirPainelControle() {
         document.getElementById('configUrlApp').value = db.configs.url || '';
@@ -1259,16 +1255,65 @@ let db = carregarBanco();
         if (destinoConfiguracoes !== 'compras') abrirModalNoTopo('modalPainelUnificado');
     }
 
-    function abrirLoginAdmin(destino = 'painel') {
-        destinoConfiguracoes = ['painel', 'kds', 'tasks', 'compras'].includes(destino) ? destino : 'painel';
-        if (!db.configs.senhaMestra) {
+    async function abrirModuloCompras() {
+        await abrirLoginAdmin('compras_modulo');
+    }
+
+    async function abrirLoginAdmin(destino = 'painel') {
+        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'compras_modulo', 'trocar_compras'];
+        destinoLoginOperador = destinosValidos.includes(destino) ? destino : 'painel';
+        if (['painel', 'kds', 'tasks', 'compras'].includes(destinoLoginOperador)) destinoConfiguracoes = destinoLoginOperador;
+        if (destinoLoginOperador === 'compras' && sessaoCompras) {
             abrirDestinoConfiguracoes();
             return;
         }
-        document.getElementById('senhaAdmin').value = '';
+
+        const modal = document.getElementById('modalLoginAdmin');
+        const select = document.getElementById('operadorAdmin');
+        const input = document.getElementById('senhaAdmin');
+        const button = document.getElementById('btnConfirmarLoginOperador');
+        document.getElementById('tituloLoginOperador').innerText = destinoLoginOperador === 'compras_modulo'
+            ? 'Entrar na Lista de Compras'
+            : (destinoLoginOperador === 'trocar_compras' ? 'Trocar operador' : 'Acesso às configurações');
+        select.innerHTML = '<option value="">Carregando operadores...</option>';
+        select.disabled = true;
+        input.value = '';
+        input.disabled = true;
+        button.disabled = true;
         limparErroSenha('erroSenhaAdmin');
-        document.getElementById('modalLoginAdmin').style.display = 'flex';
-        setTimeout(()=>document.getElementById('senhaAdmin').focus(), 100);
+        modal.style.display = 'flex';
+
+        try {
+            const operadores = await AloFeiraModule.prepareLogin();
+            if (!operadores.length) {
+                fecharModal('modalLoginAdmin');
+                if (destinoLoginOperador === 'painel') {
+                    sessaoAdministrativaAtiva = true;
+                    abrirPainelControle();
+                    return;
+                }
+                await AloUiDialog.notice('Cadastre o primeiro operador nas Configurações do Alô Cozinha.', {
+                    title: 'Nenhum operador cadastrado', icon: '👤', confirmText: 'Entendi'
+                });
+                return;
+            }
+            select.innerHTML = '<option value="">Selecione o operador</option>';
+            operadores.forEach(operador => {
+                const option = document.createElement('option');
+                option.value = operador.id;
+                option.textContent = `${operador.emoji} ${operador.nome}`;
+                select.appendChild(option);
+            });
+            select.disabled = false;
+            input.disabled = false;
+            button.disabled = false;
+            setTimeout(() => select.focus(), 80);
+        } catch (error) {
+            fecharModal('modalLoginAdmin');
+            await AloUiDialog.notice(error.message || 'Não foi possível carregar os operadores.', {
+                title: 'Login indisponível', icon: '!', tone: 'danger', confirmText: 'Entendi'
+            });
+        }
     }
 
     function abrirConfiguracoesAvancadas() {
@@ -1497,25 +1542,64 @@ let db = carregarBanco();
 
     var sincronizarPuxarNuvem;
 
-    function exportarDadosFisicos() {
+    async function exportarDadosFisicos() {
+        const button = document.getElementById('btnExportarBackupCompleto');
+        const status = document.getElementById('statusImportacaoBackup');
+        const originalText = button?.innerText || '';
         try {
-            const dataToExport = { db: db, pedidos: pedidosServidor, cientes: Array.from(pedidosCientes) };
-            const dataStr = JSON.stringify(dataToExport);
-            const blob = new Blob([dataStr], { type: "text/plain" });
+            if (button) { button.disabled = true; button.innerText = 'Preparando backup...'; }
+            if (status) status.innerText = 'Conferindo todos os módulos e históricos...';
+            const runtimeChecklist = AloTasks.getBackupData();
+            let pedidos = pedidosServidor;
+            let atividades = runtimeChecklist.atividades;
+            if (db.configs.url) {
+                const [historicoKds, historicoChecklist] = await Promise.all([
+                    AloApi.getHistory(db.configs.url, '2000-01-01T00:00:00.000Z', '9999-12-31T23:59:59.999Z'),
+                    AloApi.getActivityHistory(db.configs.url, '0000-01-01', '9999-12-31')
+                ]);
+                pedidos = Array.isArray(historicoKds?.pedidos) ? historicoKds.pedidos : [];
+                atividades = Array.isArray(historicoChecklist?.atividades) ? historicoChecklist.atividades : [];
+            }
+            const compras = await AloFeiraModule.getBackup();
+            const dataToExport = {
+                app: 'alo_cozinha',
+                format: 'backup_completo',
+                schemaVersion: 1,
+                version: '2.1.3',
+                exportadoEm: new Date().toISOString(),
+                kdsChecklist: {
+                    db: JSON.parse(JSON.stringify(db)),
+                    pedidos,
+                    atividades,
+                    filaChecklistPendente: runtimeChecklist.filaPendente,
+                    cientes: Array.from(pedidosCientes)
+                },
+                compras
+            };
+            const dataStr = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
             const data = new Date();
-            const nomeArquivo = `alo_cozinha_backup_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.txt`;
+            const nomeArquivo = `alo_cozinha_backup_completo_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.json`;
 
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], nomeArquivo, {type: "text/plain"})] })) {
-                const file = new File([blob], nomeArquivo, {type: "text/plain"});
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], nomeArquivo, {type: 'application/json'})] })) {
+                const file = new File([blob], nomeArquivo, {type: 'application/json'});
                 navigator.share({
                     title: 'Backup Alô Cozinha',
-                    text: 'Aqui está o arquivo TXT com o cardápio e os pedidos do restaurante.',
+                    text: 'Backup completo do KDS, Checklist e Lista de Compras.',
                     files: [file]
                 }).catch(err => { baixarComoArquivo(blob, nomeArquivo); });
             } else {
                 baixarComoArquivo(blob, nomeArquivo);
             }
-        } catch(e) { alert("Erro ao exportar: " + e.message); }
+            if (status) status.innerText = 'Backup completo gerado.';
+        } catch(error) {
+            if (status) status.innerText = '';
+            await AloUiDialog.notice(error.message || 'Não foi possível gerar o backup completo.', {
+                title: 'Backup não gerado', icon: '!', tone: 'danger', confirmText: 'Entendi'
+            });
+        } finally {
+            if (button) { button.disabled = false; button.innerText = originalText; }
+        }
     }
 
     function baixarComoArquivo(blob, nomeArquivo) {
@@ -1580,6 +1664,14 @@ let db = carregarBanco();
         });
     }
 
+    function separarModulosDoBackup(importedData) {
+        if (importedData?.format === 'backup_completo' && importedData?.app === 'alo_cozinha') {
+            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, completo: true };
+        }
+        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, completo: false };
+        return { kdsChecklist: importedData, compras: null, completo: false };
+    }
+
     async function importarDadosFisicos(event) {
         const input = event.target;
         const file = input.files[0];
@@ -1587,51 +1679,77 @@ let db = carregarBanco();
         const button = document.getElementById('btnImportarBackup');
         const status = document.getElementById('statusImportacaoBackup');
         const originalText = button ? button.innerText : '';
+        const etapasConcluidas = [];
         try {
             if (!db.configs.url || !ehUrlAppsScript(db.configs.url)) {
                 throw new Error('Cadastre e valide primeiro a URL do novo Google Apps Script.');
             }
             const importedData = JSON.parse(await lerArquivoTexto(file));
-            const preparedBank = bancoPreparadoDoBackup(importedData);
-            const summary = resumoBackup(importedData);
+            const modulos = separarModulosDoBackup(importedData);
+            if (!modulos.kdsChecklist && !modulos.compras) throw new Error('O arquivo não contém dados reconhecidos.');
+            const summary = modulos.kdsChecklist ? resumoBackup(modulos.kdsChecklist) : { produtos: 0, categorias: 0, areas: 0, pedidos: 0 };
+            const atividades = Array.isArray(modulos.kdsChecklist?.atividades) ? modulos.kdsChecklist.atividades : [];
+            const comprasSummary = modulos.compras ? {
+                produtos: Array.isArray(modulos.compras.produtos) ? modulos.compras.produtos.length : 0,
+                operadores: Array.isArray(modulos.compras.colaboradores) ? modulos.compras.colaboradores.length : 0,
+                pedidos: Array.isArray(modulos.compras.pedidosAtivos) ? modulos.compras.pedidosAtivos.filter(item => item?.status !== 'rascunho').length : 0
+            } : null;
+            const detalhes = [];
+            if (modulos.kdsChecklist) detalhes.push(`KDS e Checklist: ${summary.produtos} produtos, ${summary.pedidos} pedidos e ${atividades.length} registros de atividades`);
+            if (comprasSummary) detalhes.push(`Compras: ${comprasSummary.produtos} produtos, ${comprasSummary.operadores} operadores e ${comprasSummary.pedidos} pedidos`);
             const confirmed = await AloUiDialog.confirm(
-                `Este backup contém ${summary.produtos} produtos, ${summary.categorias} categorias, ${summary.areas} áreas e ${summary.pedidos} pedidos. A URL nova será preservada e pedidos repetidos não serão duplicados.`,
-                { title: 'Migrar backup', icon: '📥', confirmText: 'Iniciar migração' }
+                `${detalhes.join('. ')}. A URL atual será preservada e registros repetidos não serão duplicados.`,
+                { title: modulos.completo ? 'Restaurar backup completo' : 'Restaurar backup', icon: '📥', confirmText: 'Restaurar na nuvem' }
             );
             if (!confirmed) return;
 
-            if (button) { button.disabled = true; button.innerText = 'Migrando...'; }
-            if (status) status.innerText = 'Enviando e conferindo os dados...';
-            const currentBank = await AloApi.getBank(db.configs.url);
-            if (!bancoNuvemValido(currentBank)) throw new Error('O novo Apps Script não possui suporte à migração.');
-            const migrationId = `backup_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-            const report = await AloApi.migrateBackup(db.configs.url, {
-                migrationId,
-                expectedRevision: Number(currentBank._revision || 0),
-                dados: dadosBancoParaNuvem(preparedBank),
-                pedidos: Array.isArray(importedData.pedidos) ? importedData.pedidos : []
-            });
-            if (report.status === 'conflict') throw new Error('Os dados na nuvem mudaram durante a migração. Abra novamente e repita a operação.');
-            if (report.status !== 'ok') throw new Error(report.message || 'A migração não foi confirmada pelo servidor.');
+            if (button) { button.disabled = true; button.innerText = 'Restaurando...'; }
+            if (status) status.innerText = 'Enviando e conferindo os módulos...';
 
-            db = preparedBank;
-            db.configs.revisaoBanco = Number(report.bancoRevision || 0);
-            db.configs.bancoPendente = false;
-            pedidosCientes = new Set(Array.isArray(importedData.cientes) ? importedData.cientes : []);
-            normalizarAreasERotas();
-            normalizarSonsConfigurados();
-            salvarBancoLocal();
-            salvarHistoricoLocal();
-            if (status) status.innerText = 'Migração concluída e confirmada.';
-            await AloUiDialog.notice(
-                `${report.pedidosImportados} pedidos foram importados e ${report.pedidosIgnorados} já existiam ou foram ignorados.`,
-                { title: 'Migração concluída', icon: '✓', confirmText: 'Abrir aplicativo' }
-            );
+            if (modulos.kdsChecklist) {
+                const preparedBank = bancoPreparadoDoBackup(modulos.kdsChecklist);
+                const currentBank = await AloApi.getBank(db.configs.url);
+                if (!bancoNuvemValido(currentBank)) throw new Error('O Google Apps Script não possui suporte à restauração.');
+                if (atividades.length && !currentBank._capabilities?.atividadesBackup) {
+                    throw new Error('Atualize primeiro o Google Apps Script para restaurar também o histórico do Checklist.');
+                }
+                const migrationId = `backup_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+                const report = await AloApi.migrateBackup(db.configs.url, {
+                    migrationId,
+                    expectedRevision: Number(currentBank._revision || 0),
+                    dados: dadosBancoParaNuvem(preparedBank),
+                    pedidos: Array.isArray(modulos.kdsChecklist.pedidos) ? modulos.kdsChecklist.pedidos : [],
+                    atividades
+                });
+                if (report.status === 'conflict') throw new Error('Os dados na nuvem mudaram durante a restauração. Abra novamente e repita a operação.');
+                if (report.status !== 'ok') throw new Error(report.message || 'KDS e Checklist não foram confirmados pelo servidor.');
+
+                db = preparedBank;
+                db.configs.revisaoBanco = Number(report.bancoRevision || 0);
+                db.configs.bancoPendente = false;
+                pedidosCientes = new Set(Array.isArray(modulos.kdsChecklist.cientes) ? modulos.kdsChecklist.cientes : []);
+                normalizarAreasERotas();
+                normalizarSonsConfigurados();
+                salvarBancoLocal();
+                salvarHistoricoLocal();
+                etapasConcluidas.push('KDS e Checklist');
+            }
+
+            if (modulos.compras) {
+                await AloFeiraModule.restoreBackup(modulos.compras);
+                etapasConcluidas.push('Compras');
+            }
+
+            if (status) status.innerText = 'Restauração concluída e confirmada.';
+            await AloUiDialog.notice(`${etapasConcluidas.join(' e ')} restaurado(s) e conferido(s) na nuvem.`, {
+                title: 'Backup restaurado', icon: '✓', confirmText: 'Abrir aplicativo'
+            });
             location.reload();
         } catch(err) {
             if (status) status.innerText = '';
-            await AloUiDialog.notice(err.message || 'Não foi possível ler ou migrar o arquivo.', {
-                title: 'Migração não concluída', icon: '!', tone: 'danger', confirmText: 'Entendi'
+            const parcial = etapasConcluidas.length ? ` ${etapasConcluidas.join(' e ')} já foi restaurado.` : '';
+            await AloUiDialog.notice(`${err.message || 'Não foi possível ler ou restaurar o arquivo.'}${parcial}`, {
+                title: 'Restauração não concluída', icon: '!', tone: 'danger', confirmText: 'Entendi'
             });
         } finally {
             input.value = '';
@@ -1728,6 +1846,12 @@ let db = carregarBanco();
     function fecharPainelUnificado() {
         if(previewAudio) previewAudio.pause();
         fecharModal('modalPainelUnificado');
+        if (sessaoAdministrativaAtiva) {
+            sessaoAdministrativaAtiva = false;
+            const comprasVisivel = document.getElementById('feiraModule')?.style.display !== 'none';
+            if (comprasVisivel) AloTasks.showHome();
+            else AloFeiraModule.logout().catch(() => {});
+        }
     }
 
     function abrirMenuProdutos() {
@@ -1907,16 +2031,46 @@ let db = carregarBanco();
     function abrirFormCategoria(idx) { fecharModal('modalListagem'); if(idx >= 0) { const c = db.categorias[idx]; document.getElementById('catIndexOriginal').value = idx; document.getElementById('catNome').value = c.nome; document.getElementById('catCor').value = c.cor; document.getElementById('catCorTexto').value = c.corTexto || '#000000'; } else { document.getElementById('catIndexOriginal').value = '-1'; document.getElementById('catNome').value = ''; document.getElementById('catCor').value = '#1976D2'; document.getElementById('catCorTexto').value = '#ffffff'; } document.getElementById('modalFormCategoria').style.display = 'flex'; }
     function salvarCategoria() { const idx = parseInt(document.getElementById('catIndexOriginal').value); const nome = document.getElementById('catNome').value.trim(); const cor = document.getElementById('catCor').value; const corTexto = document.getElementById('catCorTexto').value; if(!nome) return alert("Preencha o nome!"); if(idx >= 0) { const nomeAntigo = db.categorias[idx].nome; db.categorias[idx] = { nome, cor, corTexto }; db.produtos.forEach(p => { if(p.categoria === nomeAntigo) p.categoria = nome; }); } else { db.categorias.push({ nome, cor, corTexto }); } marcarBancoAlterado(); iniciar(); abrirGerenciar('categorias'); }
 
-    function confirmarSenhaAdmin() {
+    async function confirmarSenhaAdmin() {
+        const select = document.getElementById('operadorAdmin');
         const input = document.getElementById('senhaAdmin');
-        if (!db.configs.senhaMestra || input.value !== db.configs.senhaMestra) {
-            return senhaIncorreta('senhaAdmin', 'erroSenhaAdmin');
+        const button = document.getElementById('btnConfirmarLoginOperador');
+        if (!select.value) {
+            const feedback = document.getElementById('erroSenhaAdmin');
+            feedback.innerText = 'Selecione o operador.';
+            select.focus();
+            return;
         }
-        input.blur();
-        fecharModal('modalLoginAdmin');
-        input.value = '';
-        limparErroSenha('erroSenhaAdmin');
-        abrirDestinoConfiguracoes();
+        button.disabled = true;
+        try {
+            const ativar = ['painel', 'compras_modulo', 'trocar_compras'].includes(destinoLoginOperador);
+            const resultado = await AloFeiraModule.authenticateOperator(select.value, input.value, { ativar });
+            if (!resultado?.ok) return senhaIncorreta('senhaAdmin', 'erroSenhaAdmin');
+            const acessoOperacional = ['compras_modulo', 'trocar_compras'].includes(destinoLoginOperador);
+            if (!acessoOperacional && !resultado.operador.isAdmin) {
+                document.getElementById('erroSenhaAdmin').innerText = 'Somente administradores podem alterar configurações.';
+                input.value = '';
+                input.focus();
+                return;
+            }
+
+            input.blur();
+            fecharModal('modalLoginAdmin');
+            input.value = '';
+            limparErroSenha('erroSenhaAdmin');
+            if (destinoLoginOperador === 'compras_modulo' || destinoLoginOperador === 'trocar_compras') {
+                sessaoCompras = resultado.operador;
+                AloFeiraModule.refreshHeader();
+                if (destinoLoginOperador === 'compras_modulo') AloTasks.openModule('feira');
+                return;
+            }
+            if (destinoLoginOperador === 'painel') sessaoAdministrativaAtiva = true;
+            abrirDestinoConfiguracoes();
+        } catch (error) {
+            document.getElementById('erroSenhaAdmin').innerText = error.message || 'Não foi possível entrar.';
+        } finally {
+            button.disabled = false;
+        }
     }
 
     function confirmarSenhaAvancada() {
@@ -1931,24 +2085,10 @@ let db = carregarBanco();
         abrirConfiguracoesAvancadas();
     }
 
-    async function confirmarSenhaAcao() {
-        const input = document.getElementById('inputSenhaAcao');
-        if (!db.configs.senhaMestra || input.value !== db.configs.senhaMestra) {
-            return senhaIncorreta('inputSenhaAcao', 'erroSenhaAcao');
-        }
-        input.blur();
-        fecharModal('modalSenhaAcao');
-        input.value = '';
-        limparErroSenha('erroSenhaAcao');
-        await executarAcaoPendenteAutorizada();
-    }
-
-    function cancelarAutorizacaoAcao() {
-        fecharModal('modalSenhaAcao');
-        document.getElementById('inputSenhaAcao').value = '';
-        limparErroSenha('erroSenhaAcao');
-        acaoPendente = null;
-        parametroAcao = null;
+    function encerrarSessaoModulo(modulo) {
+        if (modulo !== 'feira') return;
+        sessaoCompras = null;
+        AloFeiraModule.logout().catch(() => {});
     }
 
     let syncConfiavel = null;
@@ -1961,17 +2101,20 @@ let db = carregarBanco();
         if (!indicador) return;
         const pendingPedidos = Number(estadoSyncPedidosAtual.pendingCount || 0);
         if (pendingPedidos > 0) {
-            indicador.innerText = `📤 ${pendingPedidos}`;
+            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online ? 'sincronizando' : 'offline'}`;
             indicador.title = estadoSyncPedidosAtual.online ? `${pendingPedidos} operação(ões) aguardando confirmação` : `${pendingPedidos} operação(ões) aguardando internet`;
+            indicador.setAttribute('aria-label', indicador.title);
             return;
         }
         if (db.configs.bancoPendente) {
-            indicador.innerText = '☁️';
+            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online ? 'sincronizando' : 'offline'}`;
             indicador.title = estadoSyncPedidosAtual.online ? 'Publicando cardápio e configurações' : 'Alterações aguardando internet';
+            indicador.setAttribute('aria-label', indicador.title);
             return;
         }
-        indicador.innerText = estadoSyncPedidosAtual.online ? '🟢' : '🔴';
+        indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online ? 'sincronizado' : 'offline'}`;
         indicador.title = estadoSyncPedidosAtual.online ? 'Sincronizado' : 'Sem conexão';
+        indicador.setAttribute('aria-label', indicador.title);
     }
 
     async function tentarSincronizarAgora() {
@@ -2350,7 +2493,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.2').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.3').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

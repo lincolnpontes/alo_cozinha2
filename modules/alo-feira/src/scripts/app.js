@@ -4,13 +4,83 @@ history.pushState(null, null, location.href);
 const executandoNoHost = new URLSearchParams(location.search).get('embedded') === '1';
 if (executandoNoHost) document.body.classList.add('embedded-host');
 
+let resolverComprasProntasHost;
+const comprasProntasHost = new Promise(resolve => { resolverComprasProntasHost = resolve; });
+
+function aguardarComprasProntasHost() {
+    return comprasProntasHost;
+}
+
+function operadorSeguroParaHost(operador) {
+    return {
+        id: operador.id,
+        nome: operador.nome,
+        emoji: operador.emoji || '👤',
+        isAdmin: Boolean(operador.isAdmin),
+        possuiPin: Boolean(operador.senhaHash || operador.senha)
+    };
+}
+
+async function listarOperadoresComprasPeloHost() {
+    await comprasProntasHost;
+    return db.colaboradores
+        .filter(operador => operador.ativo !== false)
+        .sort((a, b) => a.nome.localeCompare(b.nome))
+        .map(operadorSeguroParaHost);
+}
+
+async function autenticarOperadorComprasPeloHost(id, pin, options = {}) {
+    await comprasProntasHost;
+    const operador = db.colaboradores.find(item => item.id === id && item.ativo !== false);
+    if (!operador) return { ok: false, reason: 'not_found' };
+
+    const senhaArmazenada = operador.senhaHash || operador.senha || '';
+    if (!(await verificarSenha(String(pin || ''), senhaArmazenada))) return { ok: false, reason: 'invalid_pin' };
+
+    if (operador.senha && !operador.senhaHash) {
+        operador.senhaHash = await gerarHashSenha(String(pin || ''));
+        delete operador.senha;
+        marcarMudancaEstrutural(operador);
+        sincronizarFundo(false, true);
+    }
+
+    if (options.ativar !== false) {
+        pilhaDesfazer = [];
+        atualizarBotaoDesfazer();
+        db.configs.colabAtivoId = operador.id;
+        salvarBanco();
+        iniciarApp();
+    }
+    return { ok: true, operador: operadorSeguroParaHost(operador) };
+}
+
+async function encerrarSessaoComprasPeloHost() {
+    await comprasProntasHost;
+    pilhaDesfazer = [];
+    atualizarBotaoDesfazer();
+    db.configs.colabAtivoId = null;
+    salvarBanco();
+    document.querySelectorAll('.modal-overlay').forEach(modal => { modal.style.display = 'none'; });
+    notificarHostCompras();
+    return true;
+}
+
+async function obterBackupComprasPeloHost() {
+    await comprasProntasHost;
+    const copia = JSON.parse(JSON.stringify(db));
+    delete copia.configs.url;
+    delete copia.configs.colabAtivoId;
+    delete copia.configs.senhaAdmin;
+    delete copia.configs.senhaAdminHash;
+    return copia;
+}
+
 function obterEstadoHostCompras() {
     const operador = db.colaboradores.find(c => c.id === db.configs.colabAtivoId && c.ativo !== false);
     return {
         mode: db.configs.modo === 'compras' ? 'compras' : 'pedido',
         profileName: operador?.nome || 'Perfil',
-        profileEmoji: operador?.emoji || '👤',
-        requireOperator: Boolean(db.configs.exigirColaborador)
+        profileEmoji: operador?.emoji || '👤'
     };
 }
 
@@ -25,16 +95,6 @@ function voltarParaConfiguracoesHost() {
         return;
     }
     document.getElementById('modalPainelUnificado').style.display = 'flex';
-}
-
-function definirExigenciaOperadorHost(enabled) {
-    db.configs.exigirColaborador = Boolean(enabled);
-    const input = document.getElementById('configExigirColab');
-    if (input) input.checked = Boolean(enabled);
-    marcarMudancaConfiguracao();
-    salvarBanco();
-    notificarHostCompras();
-    sincronizarFundo(false, true);
 }
 
 async function excluirHistoricoPeloHost() {
@@ -64,6 +124,14 @@ async function excluirHistoricoPeloHost() {
 window.onload = async () => {
     ativarAtualizacaoAutomatica();
     await sincronizarInicializacao();
+    if (executandoNoHost) {
+        db.configs.colabAtivoId = null;
+        salvarBanco();
+        ocultarSplash(true);
+        resolverComprasProntasHost(true);
+        notificarHostCompras();
+        return;
+    }
     if(db.configs.exigirColaborador) {
         abrirSelecaoColaboradorInicial(false);
     } else {
@@ -72,10 +140,15 @@ window.onload = async () => {
         iniciarApp();
     }
     ocultarSplash();
+    resolverComprasProntasHost(true);
 };
 
-function ocultarSplash() {
+function ocultarSplash(imediato = false) {
     const splash = document.getElementById('splashScreen');
+    if (imediato) {
+        splash.style.display = 'none';
+        return;
+    }
     splash.style.opacity = '0';
     setTimeout(() => { splash.style.display = 'none'; }, 500);
 }

@@ -8,7 +8,9 @@ function abrirFormColaborador(id) {
         document.getElementById('colabIsAdmin').disabled = primeiroPerfil;
         document.getElementById('colabConfigKds').checked = c ? (c.permissoesModulos?.kds?.configuracoes ?? Boolean(c.isAdmin)) : primeiroPerfil;
         document.getElementById('colabConfigChecklist').checked = c ? (c.permissoesModulos?.checklist?.configuracoes ?? Boolean(c.isAdmin)) : primeiroPerfil;
-        document.getElementById('colabApenasReceber').checked = c ? Boolean(c.apenasReceber) : false;
+        const permissoesCompras = getPermissoesComprasColab(c);
+        document.getElementById('colabComprasReceber').checked = permissoesCompras.receber;
+        document.getElementById('colabComprasComprar').checked = permissoesCompras.comprar;
         db.categorias.filter(cat => cat.ativo !== false).forEach(cat => {
             const checkPed = (!c || (c.catsPermitidasPedido !== undefined ? c.catsPermitidasPedido.includes(cat.id) : (c.catsPermitidas ? c.catsPermitidas.includes(cat.id) : true))) ? 'checked' : '';
             const checkComp = (!c || (c.catsPermitidasCompras !== undefined ? c.catsPermitidasCompras.includes(cat.id) : (c.catsPermitidas ? c.catsPermitidas.includes(cat.id) : true))) ? 'checked' : '';
@@ -35,13 +37,16 @@ function abrirFormColaborador(id) {
 
         const catsPed = Array.from(document.querySelectorAll('.chk-cat-pedido:checked')).map(el => el.value);
         const catsComp = Array.from(document.querySelectorAll('.chk-cat-compras:checked')).map(el => el.value);
-        const apenasReceber = document.getElementById('colabApenasReceber').checked;
-        const permissoesModulos = {
-            kds: { configuracoes: document.getElementById('colabConfigKds').checked },
-            checklist: { configuracoes: document.getElementById('colabConfigChecklist').checked }
-        };
         const idx = db.colaboradores.findIndex(x => x.id === id);
         const anterior = idx >= 0 ? db.colaboradores[idx] : {};
+        const podeReceberCompras = document.getElementById('colabComprasReceber').checked;
+        const podeComprarCompras = document.getElementById('colabComprasComprar').checked;
+        const permissoesModulos = {
+            ...(anterior.permissoesModulos || {}),
+            kds: { configuracoes: document.getElementById('colabConfigKds').checked },
+            checklist: { configuracoes: document.getElementById('colabConfigChecklist').checked },
+            compras: { receber: podeReceberCompras, comprar: podeComprarCompras }
+        };
         const novo = Object.assign({}, anterior, {
             id,
             nome,
@@ -49,7 +54,6 @@ function abrirFormColaborador(id) {
             telefone: anterior.telefone || '',
             isAdmin,
             permissoesModulos,
-            apenasReceber,
             catsPermitidasPedido: catsPed,
             catsPermitidasCompras: catsComp,
             catsPermitidas: [],
@@ -59,6 +63,7 @@ function abrirFormColaborador(id) {
         if(pin) novo.senhaHash = await gerarHashSenha(pin);
         else if(anterior.senha && !anterior.senhaHash) novo.senhaHash = await gerarHashSenha(anterior.senha);
         delete novo.senha;
+        delete novo.apenasReceber;
         if(idx >= 0) db.colaboradores[idx] = novo; else db.colaboradores.push(novo);
         marcarMudancaEstrutural(novo);
         atualizarBotaoPerfil();

@@ -179,6 +179,8 @@ function executarLimpezaComprasAntigas() {
 
 function atualizarControlesSelecao() {
     const pedido = db.configs.modo === 'pedido';
+    const permissoesCompras = getPermissoesComprasColab();
+    const permiteAcaoEmMassa = permissoesCompras.comprar || permissoesCompras.receber;
     const btnRelatorio = document.getElementById('btnRelatorioBar');
     const btnComprado = document.getElementById('btnMassaComprado');
     const btnPedidoFornecedor = document.getElementById('btnMassaPedForn');
@@ -187,10 +189,10 @@ function atualizarControlesSelecao() {
     const btnLimpar = document.getElementById('btnLimparComprasBar');
     const btnCancelarSelecao = document.getElementById('btnCancelarSelecaoCompras');
 
-    btnComprado.style.display = 'inline-flex';
-    btnPedidoFornecedor.style.display = 'inline-flex';
-    btnVincular.style.display = 'inline-flex';
-    acoesSelecao.style.display = !pedido && modoSelecaoAtivo ? 'flex' : 'none';
+    btnComprado.style.display = permiteAcaoEmMassa ? 'inline-flex' : 'none';
+    btnPedidoFornecedor.style.display = permissoesCompras.comprar ? 'inline-flex' : 'none';
+    btnVincular.style.display = permissoesCompras.comprar ? 'inline-flex' : 'none';
+    acoesSelecao.style.display = !pedido && modoSelecaoAtivo && permiteAcaoEmMassa ? 'flex' : 'none';
     btnLimpar.style.display = !pedido && !modoSelecaoAtivo ? 'inline-flex' : 'none';
     btnRelatorio.style.display = !pedido ? 'inline-flex' : 'none';
     if(btnCancelarSelecao) btnCancelarSelecao.style.display = !pedido && modoSelecaoAtivo ? 'inline-flex' : 'none';
@@ -228,10 +230,16 @@ function alternarSelecaoDireta(id) {
 function selecionarItemCompraDireto(event, idUnico) {
     if(event) { event.preventDefault(); event.stopPropagation(); }
     if(db.configs.modo !== 'compras') return;
+    const permissoes = getPermissoesComprasColab();
+    if(!permissoes.comprar && !permissoes.receber) return mostrarToast('Seu perfil não possui ações no modo Compras.', 'info');
     alternarSelecaoDireta(idUnico);
 }
 
 function alternarSelecaoGrupo(seletor) {
+    const permissoes = getPermissoesComprasColab();
+    if(db.configs.modo === 'compras' && !permissoes.comprar && !permissoes.receber) {
+        return mostrarToast('Seu perfil não possui ações no modo Compras.', 'info');
+    }
     const ids = Array.from(document.querySelectorAll(seletor)).map(el => el.getAttribute('data-id')).filter(Boolean);
     if(ids.length === 0) return;
     const todosSelecionados = ids.every(id => itensSelecionadosRelatorio.has(id));
@@ -249,6 +257,9 @@ function selecionarGrupoCompras(grupoId, tipo = 'cat') {
 function acaoEmMassa(acao) {
     if(itensSelecionadosRelatorio.size === 0) return alert('Selecione os itens primeiro.');
     const pedidoFornecedor = acao === 'pedido_forn';
+    const permissoes = getPermissoesComprasColab();
+    if(pedidoFornecedor && !permissoes.comprar) return mostrarToast('Seu perfil não possui permissão para comprar.', 'erro');
+    if(!pedidoFornecedor && !permissoes.comprar && !permissoes.receber) return mostrarToast('Seu perfil não possui permissão para concluir esta ação.', 'erro');
     abrirConfirmacaoApp({
         titulo: pedidoFornecedor ? 'Pedido ao fornecedor?' : 'Marcar como comprado?',
         mensagem: `${itensSelecionadosRelatorio.size} item(ns) selecionado(s) serão atualizados.`,
@@ -262,14 +273,14 @@ function executarAcaoEmMassa(acao) {
     const backupEstados = [];
     let alterados = 0;
     let ignorados = 0;
-    const apenasReceber = getPermissaoColab();
+    const permissoes = getPermissoesComprasColab();
     const agora = agoraServidor();
     itensSelecionadosRelatorio.forEach(idUnico => {
         const pa = db.pedidosAtivos.find(x => x.idUnico === idUnico);
         if(!pa) return;
         const acaoItem = acao === 'concluir' ? (pa.status === 'pedido_forn' ? 'entregue' : 'comprado') : 'pedido_forn';
         const backup = JSON.parse(JSON.stringify(pa));
-        const resultado = AloFeiraDomain.aplicarTransicao(pa, acaoItem, agora, apenasReceber);
+        const resultado = AloFeiraDomain.aplicarTransicao(pa, acaoItem, agora, permissoes);
         if(resultado.ok) { backupEstados.push(backup); alterados++; }
         else ignorados++;
     });
@@ -300,7 +311,7 @@ function abrirModalMassaVincular() {
 
 function confirmarMassaVincular() {
     if(db.configs.modo !== 'compras') return;
-    if(getPermissaoColab()) return alert('Seu perfil não permite alterar fornecedores.');
+    if(!getPermissoesComprasColab().comprar) return alert('Seu perfil não permite alterar fornecedores.');
     const fornId = document.getElementById('massaVincularForn').value;
     if(!fornId) return alert('Selecione um fornecedor.');
     itensSelecionadosRelatorio.forEach(idSelecionado => {

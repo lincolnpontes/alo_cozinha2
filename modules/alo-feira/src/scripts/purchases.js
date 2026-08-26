@@ -3,7 +3,16 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
     function atualizarCentroFiltrosCompras() { const centro = document.getElementById('filtrosCentroCompras'); const barra = document.querySelector('.filters'); const acoes = document.getElementById('acoesSelecaoCompras'); const desfazer = document.getElementById('btnDesfazerBar'); const visivel = db.configs.modo === 'compras' && (acoes.style.display !== 'none' || desfazer.style.display !== 'none'); centro.style.display = visivel ? 'flex' : 'none'; barra.classList.toggle('com-centro', visivel); }
     function atualizarBotaoDesfazer() { const btn = document.getElementById('btnDesfazerBar'); if (db.configs.modo === 'compras' && pilhaDesfazer.length > 0 && !modoSelecaoAtivo) { btn.style.display = 'inline-flex'; } else { btn.style.display = 'none'; } atualizarCentroFiltrosCompras(); }
 
-    function getPermissaoColab() { let c = db.colaboradores.find(col => col.id === db.configs.colabAtivoId); return c ? (c.apenasReceber || false) : false; }
+    function getPermissoesComprasColab(colaborador = null) {
+        const atual = arguments.length > 0
+            ? colaborador
+            : db.colaboradores.find(item => item.id === db.configs.colabAtivoId);
+        if(!atual) return { receber: true, comprar: true };
+        const permissoes = atual.permissoesModulos?.compras;
+        if(permissoes) return { receber: permissoes.receber !== false, comprar: permissoes.comprar !== false };
+        if(atual.apenasReceber) return { receber: true, comprar: false };
+        return { receber: true, comprar: true };
+    }
 
     function acaoToqueSimples(el) {
         if(db.configs.modo === 'compras') return abrirAcoesCompra(el.getAttribute('data-id'), el);
@@ -25,7 +34,7 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
         if(pedido && pedido.status === 'rascunho') abrirModalEditarPedido(pedId, pId);
         else mostrarToast('Este item já está no fluxo de compra.', 'info');
     }
-    function acaoDuploToque(el) { if(db.configs.modo === 'pedido') { const pId = el.getAttribute('data-id'); const pedidosDeste = db.pedidosAtivos.filter(pa => pa.produtoId === pId && !pa.excluido && (pa.status === 'rascunho' || pa.status === 'pendente' || pa.status === 'pedido_forn')); const pedidoEditavel = pedidosDeste[pedidosDeste.length-1]; if(pedidoEditavel && pedidoEditavel.status !== 'rascunho') { let colabLogado = db.colaboradores.find(c => c.id === db.configs.colabAtivoId); let isAdmin = temAcessoAdmin(); if(!isAdmin && pedidoEditavel.colaboradorId !== db.configs.colabAtivoId) { return alert("🔒 Acesso Negado: Você só pode visualizar e editar pedidos que foram enviados pelo seu próprio perfil."); } } abrirModalEditarPedido(pedidoEditavel ? pedidoEditavel.idUnico : null, pId); } else { if (getPermissaoColab()) return alert("Seu perfil não permite editar os detalhes das compras."); const paId = el.getAttribute('data-id'); const pa = db.pedidosAtivos.find(x => x.idUnico === paId); if(pa && !pa.excluido) { abrirHistoricoCompra(paId); } } }
+    function acaoDuploToque(el) { if(db.configs.modo === 'pedido') { const pId = el.getAttribute('data-id'); const pedidosDeste = db.pedidosAtivos.filter(pa => pa.produtoId === pId && !pa.excluido && (pa.status === 'rascunho' || pa.status === 'pendente' || pa.status === 'pedido_forn')); const pedidoEditavel = pedidosDeste[pedidosDeste.length-1]; if(pedidoEditavel && pedidoEditavel.status !== 'rascunho') { let colabLogado = db.colaboradores.find(c => c.id === db.configs.colabAtivoId); let isAdmin = temAcessoAdmin(); if(!isAdmin && pedidoEditavel.colaboradorId !== db.configs.colabAtivoId) { return alert("🔒 Acesso Negado: Você só pode visualizar e editar pedidos que foram enviados pelo seu próprio perfil."); } } abrirModalEditarPedido(pedidoEditavel ? pedidoEditavel.idUnico : null, pId); } else { if (!getPermissoesComprasColab().comprar) return alert("Seu perfil não permite editar os detalhes das compras."); const paId = el.getAttribute('data-id'); const pa = db.pedidosAtivos.find(x => x.idUnico === paId); if(pa && !pa.excluido) { abrirHistoricoCompra(paId); } } }
     function abrirConfirmarCancelamento(paId) { const pa = db.pedidosAtivos.find(x => x.idUnico === paId); if(!pa) return; const p = db.produtos.find(prod => prod.id === pa.produtoId); document.getElementById('cancelamentoCompraId').value = paId; document.getElementById('textoConfirmarCancelamento').innerHTML = `<b>${escaparHtml(p ? p.nome : 'Este item')}</b>`; document.getElementById('modalConfirmarCancelamento').style.display = 'flex'; }
     function confirmarCancelamentoCompra() { const paId = document.getElementById('cancelamentoCompraId').value; const pa = db.pedidosAtivos.find(x => x.idUnico === paId); if(!pa) return fecharModal('modalConfirmarCancelamento'); registrarDesfazer(pa); delete pa.transicaoProgresso; delete pa.statusAnterior; pa.status = 'cancelado'; pa.dataStatus = agoraServidor(); delete pa.dataConclusao; delete pa.dataPedidoFornecedor; db.configs.syncPendente = true; salvarBanco(); fecharModal('modalConfirmarCancelamento'); fecharMenuAcaoCompra(); renderizarLista(); sincronizarFundo(false, true); mostrarToast('Item cancelado. Você pode desfazer.', 'sucesso'); }
 
@@ -67,24 +76,24 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
         const p = db.produtos.find(prod => prod.id === pa.produtoId);
         if(!p) return;
         modalAcaoCompraId = paId;
-        const apenasReceber = getPermissaoColab();
+        const permissoes = getPermissoesComprasColab();
         let html = '';
-        if(pa.status === 'pendente' && !apenasReceber) {
+        if(pa.status === 'pendente' && permissoes.comprar) {
             html += botaoAcaoCompra('comprado', '✓', 'Comprado', 'comprado');
             html += botaoAcaoCompra('pedido_forn', iconePedidoFornecedorSvg('icone-send icone-send-menu'), 'Pedido ao fornecedor', 'fornecedor');
         } else if(pa.status === 'pedido_forn') {
-            html += botaoAcaoCompra('entregue', '✓', 'Comprado', 'comprado');
-            if(!apenasReceber) html += botaoAcaoCompra('voltar_pendente', '←', 'Voltar a pendente', 'secundaria');
-        } else if(pa.status === 'comprado' && !apenasReceber) {
+            if(permissoes.receber) html += botaoAcaoCompra('entregue', '✓', 'Recebido', 'comprado');
+            if(permissoes.comprar) html += botaoAcaoCompra('voltar_pendente', '←', 'Voltar a pendente', 'secundaria');
+        } else if(pa.status === 'comprado' && permissoes.comprar) {
             html += botaoAcaoCompra('voltar_pendente', '←', 'Voltar a pendente', 'secundaria');
-        } else if(pa.status === 'entregue' && !apenasReceber) {
+        } else if(pa.status === 'entregue' && permissoes.receber) {
             html += botaoAcaoCompra('voltar_fornecedor', '←', 'Voltar ao fornecedor', 'secundaria');
-        } else if(pa.status === 'cancelado' && !apenasReceber) {
+        } else if(pa.status === 'cancelado' && permissoes.comprar) {
             html += botaoAcaoCompra('restaurar', '↶', 'Restaurar', 'secundaria');
         }
-        if(!apenasReceber) html += botaoAcaoCompra('preco', 'R$', 'Preço e fornecedor', 'preco');
-        if(!apenasReceber) html += botaoAcaoCompra('detalhes', 'i', 'Detalhes', 'detalhes');
-        if(!apenasReceber && (pa.status === 'pendente' || pa.status === 'pedido_forn')) html += botaoAcaoCompra('cancelar', '×', 'Cancelar item', 'cancelar');
+        if(permissoes.comprar) html += botaoAcaoCompra('preco', 'R$', 'Preço e fornecedor', 'preco');
+        if(permissoes.comprar) html += botaoAcaoCompra('detalhes', 'i', 'Detalhes', 'detalhes');
+        if(permissoes.comprar && (pa.status === 'pendente' || pa.status === 'pedido_forn')) html += botaoAcaoCompra('cancelar', '×', 'Cancelar item', 'cancelar');
         if(!html) return mostrarToast('Nenhuma ação disponível.', 'info');
         document.getElementById('acoesDisponiveisCompra').innerHTML = html;
         document.getElementById('modalAcaoCompra').style.display = 'block';
@@ -183,8 +192,8 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
         return true;
     }
 
-    function voltarStatusCompra(pa, destino) {
-        if(getPermissaoColab()) return false;
+    function voltarStatusCompra(pa, destino, permissaoNecessaria) {
+        if(!getPermissoesComprasColab()[permissaoNecessaria]) return false;
         registrarDesfazer(pa);
         delete pa.transicaoProgresso;
         delete pa.statusAnterior;
@@ -209,13 +218,13 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
         let alterou = false;
         if(['pedido_forn', 'comprado', 'entregue'].includes(acao)) {
             const backup = JSON.parse(JSON.stringify(pa));
-            const resultado = AloFeiraDomain.aplicarTransicao(pa, acao, agoraServidor(), getPermissaoColab());
+            const resultado = AloFeiraDomain.aplicarTransicao(pa, acao, agoraServidor(), getPermissoesComprasColab());
             if(resultado.ok) { pilhaDesfazer.push([backup]); atualizarBotaoDesfazer(); alterou = true; }
             else return mostrarToast(resultado.motivo, 'erro');
         } else if(acao === 'voltar_pendente' || acao === 'restaurar') {
-            alterou = voltarStatusCompra(pa, 'pendente');
+            alterou = voltarStatusCompra(pa, 'pendente', 'comprar');
         } else if(acao === 'voltar_fornecedor') {
-            alterou = voltarStatusCompra(pa, 'pedido_forn');
+            alterou = voltarStatusCompra(pa, 'pedido_forn', 'receber');
         }
         if(!alterou) return;
         db.configs.syncPendente = true;

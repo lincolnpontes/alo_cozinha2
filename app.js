@@ -1591,7 +1591,7 @@ let db = carregarBanco();
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 1,
-                version: '2.1.4',
+                version: '2.1.5',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1940,7 +1940,7 @@ let db = carregarBanco();
         lista.innerHTML = areasUnificadasAtuais.map((grupo, index) => {
             const modulos = [];
             if (grupo.kds) modulos.push(`KDS · ${grupo.kds.tipo === 'envio' ? 'envia pedidos' : 'recebe pedidos'}`);
-            if (grupo.checklist?.ativo !== false) modulos.push('Checklist');
+            if (grupo.checklist && grupo.checklist.ativo !== false) modulos.push('Checklist');
             const resumo = modulos.length ? modulos.join(' · ') : 'Sem módulo ativo';
             return `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${getEmojiAreaHtml(grupo.emoji)} ${escaparTextoHtml(grupo.nome)}</strong><br><span style="color:#666">${escaparTextoHtml(resumo)}</span></div><div class="gerenciar-actions"><button onclick="abrirFormArea(${index})" title="Editar">✏️</button><button onclick="excluirArea(${index})" title="Excluir">🗑️</button></div></div>`;
         }).join('');
@@ -2627,7 +2627,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.4').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.5').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

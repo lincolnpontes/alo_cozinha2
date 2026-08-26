@@ -80,17 +80,20 @@
             .sort((a, b) => timestampPreco(a) - timestampPreco(b));
     }
 
-    function aplicarTransicao(pedido, acao, agora = Date.now(), apenasReceber = false) {
+    function aplicarTransicao(pedido, acao, agora = Date.now(), permissoes = { receber: true, comprar: true }) {
         if (!pedido || pedido.excluido || pedido.status === 'cancelado') {
             return { ok: false, motivo: 'Item indisponível para alteração.' };
         }
 
         const anterior = pedido.status;
         let novoStatus = null;
+        const legadoApenasReceber = typeof permissoes === 'boolean' ? permissoes : false;
+        const podeComprar = typeof permissoes === 'boolean' ? !legadoApenasReceber : permissoes.comprar !== false;
+        const podeReceber = typeof permissoes === 'boolean' ? true : permissoes.receber !== false;
 
-        if (acao === 'pedido_forn' && anterior === 'pendente' && !apenasReceber) novoStatus = 'pedido_forn';
-        if (acao === 'comprado' && anterior === 'pendente' && !apenasReceber) novoStatus = 'comprado';
-        if (acao === 'entregue' && anterior === 'pedido_forn') novoStatus = 'entregue';
+        if (acao === 'pedido_forn' && anterior === 'pendente' && podeComprar) novoStatus = 'pedido_forn';
+        if (acao === 'comprado' && anterior === 'pendente' && podeComprar) novoStatus = 'comprado';
+        if (acao === 'entregue' && anterior === 'pedido_forn' && podeReceber) novoStatus = 'entregue';
 
         if (!novoStatus) return { ok: false, motivo: 'Esta mudança não é permitida para o status atual.' };
 

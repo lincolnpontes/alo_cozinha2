@@ -1056,24 +1056,28 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.4</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.5</div>'), true, 'a tela inicial deve mostrar a versão');
     assert.equal(html.includes('Senha de Segurança'), true);
     assert.equal(html.includes('Senha Mestra'), false);
     assert.equal(app.includes("senhaMestra: \"\""), false, 'o aplicativo cru não deve trazer senha definida no código');
     assert.equal(app.includes("ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1'"), true, 'o último operador deve ser lembrado apenas neste aparelho');
     assert.equal(app.includes('function obterAreasUnificadas()'), true, 'a tela central deve mesclar setores sem trocar seus IDs');
+    assert.equal(app.includes("grupo.checklist && grupo.checklist.ativo !== false"), true, 'um setor do KDS sem vínculo real não pode aparecer como Checklist');
     assert.equal(comprasHtml.includes('id="colabConfigKds"'), true);
     assert.equal(comprasHtml.includes('id="colabConfigChecklist"'), true);
+    assert.equal(comprasHtml.includes('id="colabComprasReceber"'), true);
+    assert.equal(comprasHtml.includes('id="colabComprasComprar"'), true);
+    assert.equal(comprasHtml.includes('id="colabApenasReceber"'), false, 'a permissão antiga não deve continuar na interface');
     assert.equal(comprasHtml.includes("abrirGerenciar('restaurante')"), false, 'Compras não deve duplicar os dados do restaurante');
     assert.equal(comprasHtml.includes("abrirGerenciar('colaboradores')"), false, 'Compras não deve duplicar o gerenciador de operadores');
     assert.equal(comprasApp.includes('podeConfigurarKds'), true);
     assert.equal(sync.includes('serverIsBehindRequestedState'), true, 'leituras atrasadas não podem rebaixar um status solicitado');
     assert.equal(css.includes('.module-nav-icon { width: 56px;'), true, 'as imagens dos módulos devem ganhar destaque sem aumentar o cabeçalho');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.4/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.4/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.5/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.5/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.4/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.5/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'alo-feira', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
     assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
@@ -1361,13 +1365,29 @@ async function testCatalogAutoPublish() {
     assert.equal(conflicted.confirmed, false);
 }
 
+function testComprasHasIndependentOperationalPermissions() {
+    const context = vm.createContext({ console, Date, Map, Set });
+    loadScript(context, 'modules/alo-feira/src/scripts/domain.js');
+
+    const somenteReceber = { receber: true, comprar: false };
+    const somenteComprar = { receber: false, comprar: true };
+    const pendente = { idUnico: 'pendente', status: 'pendente', excluido: false };
+    const aguardandoEntrega = { idUnico: 'fornecedor', status: 'pedido_forn', excluido: false };
+
+    assert.equal(context.AloFeiraDomain.aplicarTransicao({ ...pendente }, 'comprado', 10, somenteReceber).ok, false);
+    assert.equal(context.AloFeiraDomain.aplicarTransicao({ ...pendente }, 'pedido_forn', 10, somenteReceber).ok, false);
+    assert.equal(context.AloFeiraDomain.aplicarTransicao({ ...aguardandoEntrega }, 'entregue', 10, somenteReceber).ok, true);
+    assert.equal(context.AloFeiraDomain.aplicarTransicao({ ...pendente }, 'pedido_forn', 10, somenteComprar).ok, true);
+    assert.equal(context.AloFeiraDomain.aplicarTransicao({ ...aguardandoEntrega }, 'entregue', 10, somenteComprar).ok, false);
+}
+
 function testComprasUsesUnifiedHost() {
     const storage = new Map([
         ['kds_banco', '{"produtos":[{"nome":"Feijão"}]}'],
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/alo-feira/index.html?v=2.1.4' },
+        dataset: { src: 'modules/alo-feira/index.html?v=2.1.5' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1434,8 +1454,9 @@ function testComprasUsesUnifiedHost() {
     testV2027TaskExperience();
     testAudioMode();
     await testCatalogAutoPublish();
+    testComprasHasIndependentOperationalPermissions();
     testComprasUsesUnifiedHost();
-    console.log('Testes críticos da v2.1.4 passaram.');
+    console.log('Testes críticos da v2.1.5 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

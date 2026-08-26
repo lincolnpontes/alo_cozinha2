@@ -1,4 +1,5 @@
 let backendFeiraValidadoEm = 0;
+const CAMPOS_CONFIG_LOCAIS_FEIRA = ['url', 'colabAtivoId', 'modo', 'dadosBaixados', 'ultimaMudancaLocal', 'ultimoSyncConfirmado', 'syncPendente', 'relogioServidorOffset', 'relogioServidorSincronizadoEm', 'backendComControleRevisao', 'importacaoInicialPendente'];
 
 function atualizarEstadoSync(estado, mensagem) {
     const indicador = document.getElementById('syncIndicador');
@@ -31,11 +32,45 @@ async function lerRespostaJson(response) {
 function prepararBancoParaNuvem() {
     const copia = JSON.parse(JSON.stringify(db));
     copia.pedidosAtivos = copia.pedidosAtivos.filter(p => p.status !== 'rascunho');
-    const configsLocais = ['url', 'colabAtivoId', 'modo', 'dadosBaixados', 'ultimaMudancaLocal', 'ultimoSyncConfirmado', 'syncPendente', 'relogioServidorOffset', 'relogioServidorSincronizadoEm', 'backendComControleRevisao', 'importacaoInicialPendente'];
-    configsLocais.forEach(campo => delete copia.configs[campo]);
+    CAMPOS_CONFIG_LOCAIS_FEIRA.forEach(campo => delete copia.configs[campo]);
     delete copia.configs.senhaAdmin;
     delete copia.serverNow;
     return copia;
+}
+
+function bancoTemConteudoCompartilhado(banco) {
+    if(!banco || banco.app_id !== 'alofeira') return false;
+    const colecoes = ['produtos', 'categorias', 'fornecedores', 'colaboradores', 'pedidosAtivos'];
+    if(colecoes.some(nome => Array.isArray(banco[nome]) && banco[nome].length > 0)) return true;
+    const restaurante = banco.restaurante || {};
+    return ['nome', 'cnpj', 'rua', 'numero', 'bairro', 'cidade', 'ponto'].some(campo => String(restaurante[campo] || '').trim());
+}
+
+function nuvemFeiraEstaVirgem(banco) {
+    return Number(banco && banco.syncRevision || 0) === 0 && !bancoTemConteudoCompartilhado(banco);
+}
+
+function assinaturaRestauracaoCompras(entrada) {
+    const copia = normalizarBanco(entrada);
+    copia.pedidosAtivos = copia.pedidosAtivos.filter(pedido => pedido.status !== 'rascunho');
+    CAMPOS_CONFIG_LOCAIS_FEIRA.forEach(campo => delete copia.configs[campo]);
+    delete copia.configs.senhaAdmin;
+    delete copia.serverNow;
+    delete copia.syncRevision;
+    ['produtos', 'categorias', 'fornecedores', 'colaboradores'].forEach(nome => {
+        copia[nome] = (copia[nome] || []).slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    });
+    copia.pedidosAtivos = (copia.pedidosAtivos || []).slice().sort((a, b) => String(a.idUnico).localeCompare(String(b.idUnico)));
+
+    const ordenarChaves = valor => {
+        if(Array.isArray(valor)) return valor.map(ordenarChaves);
+        if(!valor || typeof valor !== 'object') return valor;
+        return Object.keys(valor).sort().reduce((resultado, chave) => {
+            resultado[chave] = ordenarChaves(valor[chave]);
+            return resultado;
+        }, {});
+    };
+    return JSON.stringify(ordenarChaves(copia));
 }
 
 function aplicarConfirmacaoServidor(resposta, inicioRequisicao, fimRequisicao) {
@@ -169,6 +204,12 @@ function mesclarBancos(local, remotoBruto) {
 function aplicarNuvemNaInicializacao(local, remotoBruto) {
     const localNormalizado = normalizarBanco(local);
     const remoto = normalizarBanco(remotoBruto);
+    if(nuvemFeiraEstaVirgem(remotoBruto) && bancoTemConteudoCompartilhado(localNormalizado)) {
+        localNormalizado.syncRevision = 0;
+        localNormalizado.configs.dadosBaixados = true;
+        localNormalizado.configs.syncPendente = true;
+        return { banco: localNormalizado, precisaEnviar: true };
+    }
     if(localNormalizado.configs.syncPendente) return mesclarBancos(localNormalizado, remoto);
 
     const banco = normalizarBanco(remoto);
@@ -495,6 +536,68 @@ function importarDados(event) {
     };
     reader.readAsText(file);
     event.target.value = '';
+}
+
+async function restaurarBackupComprasPeloHost(importado) {
+    if(!importado || importado.app_id !== 'alofeira') throw new Error('Este arquivo não é um backup válido da Lista de Compras.');
+    if(!bancoTemConteudoCompartilhado(importado)) throw new Error('O backup da Lista de Compras está vazio.');
+    if(!db.configs.url) throw new Error('A URL da nuvem ainda não foi configurada.');
+
+    const limiteEspera = Date.now() + 10000;
+    while(isSyncingFundo && Date.now() < limiteEspera) {
+        await new Promise(resolve => setTimeout(resolve, 120));
+    }
+    if(isSyncingFundo) throw new Error('A sincronização atual ainda não terminou. Aguarde alguns segundos e tente novamente.');
+
+    const backupLocal = JSON.parse(JSON.stringify(db));
+    const urlAtual = db.configs.url;
+    const modoAtual = db.configs.modo;
+    const operadorAtual = db.configs.colabAtivoId;
+    let gravacaoConfirmada = false;
+    isSyncingFundo = true;
+
+    try {
+        const nuvemAtual = await baixarBancoNuvem(20000);
+        const restaurado = normalizarBanco(importado);
+        restaurado.configs.url = urlAtual;
+        restaurado.configs.modo = modoAtual === 'compras' ? 'compras' : 'pedido';
+        restaurado.configs.colabAtivoId = restaurado.colaboradores.some(item => item.id === operadorAtual && item.ativo !== false) ? operadorAtual : null;
+        restaurado.configs.dadosBaixados = true;
+        restaurado.configs.backendComControleRevisao = Boolean(nuvemAtual.serverNow && nuvemAtual.syncRevision !== undefined);
+        restaurado.configs.syncPendente = true;
+        restaurado.syncRevision = Number(nuvemAtual.syncRevision || 0);
+        db = restaurado;
+        salvarBanco();
+
+        await postarBanco({ forcar: true, permitirRetry: false, nuvemConferida: true });
+        gravacaoConfirmada = true;
+        const nuvemConferida = await baixarBancoNuvem(20000);
+        if(assinaturaRestauracaoCompras(db) !== assinaturaRestauracaoCompras(nuvemConferida)) {
+            throw new Error('A nuvem respondeu, mas a conferência final encontrou dados diferentes.');
+        }
+
+        const resultado = aplicarNuvemNaInicializacao(db, nuvemConferida);
+        db = resultado.banco;
+        db.configs.syncPendente = false;
+        db.configs.ultimoSyncConfirmado = agoraServidor();
+        salvarBanco();
+        return {
+            produtos: db.produtos.length,
+            categorias: db.categorias.length,
+            fornecedores: db.fornecedores.length,
+            operadores: db.colaboradores.length,
+            pedidos: db.pedidosAtivos.filter(pedido => pedido.status !== 'rascunho').length,
+            revision: Number(db.syncRevision || 0)
+        };
+    } catch(error) {
+        if(!gravacaoConfirmada) {
+            db = backupLocal;
+            salvarBanco();
+        }
+        throw error;
+    } finally {
+        isSyncingFundo = false;
+    }
 }
 
 function aplicarBackupImportado(importado) {

@@ -161,6 +161,65 @@
         child.exportarDados();
     }
 
+    function readTextFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = event => resolve(event.target.result);
+            reader.onerror = () => reject(new Error('Não foi possível ler o arquivo selecionado.'));
+            reader.readAsText(file);
+        });
+    }
+
+    function backupSummary(bank) {
+        return {
+            products: Array.isArray(bank.produtos) ? bank.produtos.length : 0,
+            categories: Array.isArray(bank.categorias) ? bank.categorias.length : 0,
+            suppliers: Array.isArray(bank.fornecedores) ? bank.fornecedores.length : 0,
+            operators: Array.isArray(bank.colaboradores) ? bank.colaboradores.length : 0,
+            orders: Array.isArray(bank.pedidosAtivos) ? bank.pedidosAtivos.filter(item => item?.status !== 'rascunho').length : 0
+        };
+    }
+
+    async function restoreData(event) {
+        const input = event?.target;
+        const file = input?.files?.[0];
+        if (!file) return;
+        const button = document.getElementById('btnRestaurarCompras');
+        const status = document.getElementById('statusRestauracaoCompras');
+        const originalText = button?.innerText || '';
+        try {
+            const imported = JSON.parse(await readTextFile(file));
+            if (!imported || imported.app_id !== 'alofeira') throw new Error('Este arquivo não é um backup da Lista de Compras.');
+            const summary = backupSummary(imported);
+            if (!summary.products && !summary.orders) throw new Error('O backup da Lista de Compras está vazio.');
+            const confirmed = await global.AloUiDialog.confirm(
+                `Foram encontrados ${summary.products} produtos, ${summary.categories} categorias, ${summary.suppliers} fornecedores, ${summary.operators} operadores e ${summary.orders} pedidos. Somente os dados de Compras serão substituídos.`,
+                { title: 'Restaurar Lista de Compras', icon: '🛒', confirmText: 'Restaurar na nuvem' }
+            );
+            if (!confirmed) return;
+
+            if (button) { button.disabled = true; button.innerText = 'Restaurando...'; }
+            if (status) status.innerText = 'Enviando e conferindo o backup na nuvem...';
+            const child = await waitForChild();
+            if (typeof child.restaurarBackupComprasPeloHost !== 'function') throw new Error('Atualize o aplicativo antes de restaurar este backup.');
+            const result = await child.restaurarBackupComprasPeloHost(imported);
+            if (status) status.innerText = `Backup confirmado na revisão ${result.revision}.`;
+            await global.AloUiDialog.notice(
+                `${result.produtos} produtos, ${result.fornecedores} fornecedores, ${result.operadores} operadores e ${result.pedidos} pedidos foram confirmados na nuvem.`,
+                { title: 'Compras restauradas', icon: '✓', confirmText: 'Abrir Lista de Compras' }
+            );
+            frameElement()?.contentWindow?.location.reload();
+        } catch (error) {
+            if (status) status.innerText = '';
+            await global.AloUiDialog.notice(error.message || 'Não foi possível restaurar o backup.', {
+                title: 'Restauração não concluída', icon: '!', tone: 'danger', confirmText: 'Entendi'
+            });
+        } finally {
+            if (input) input.value = '';
+            if (button) { button.disabled = false; button.innerText = originalText; }
+        }
+    }
+
     async function clearHistory() {
         const child = await waitForChild();
         if (typeof child.excluirHistoricoPeloHost !== 'function') throw new Error('A Lista de Compras precisa ser atualizada.');
@@ -184,6 +243,6 @@
     global.AloFeiraModule = Object.freeze({
         configure, open, syncServerUrl, toggleModePicker, closeModePicker, setMode,
         updateHeader, refreshHeader, openProfile, openManager, setRequireOperator,
-        exportData, clearHistory, backToSettings
+        exportData, restoreData, clearHistory, backToSettings
     });
 })(window);

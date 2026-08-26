@@ -947,11 +947,14 @@ function testV2027TaskExperience() {
     const gas = fs.readFileSync(path.join(root, 'google-apps-script.gs'), 'utf8');
     const templates = fs.readFileSync(path.join(root, 'task-templates.js'), 'utf8');
     const comprasHtml = fs.readFileSync(path.join(root, 'modules', 'alo-feira', 'index.html'), 'utf8');
+    const comprasSync = fs.readFileSync(path.join(root, 'modules', 'alo-feira', 'src', 'scripts', 'sync.js'), 'utf8');
+    const comprasHost = fs.readFileSync(path.join(root, 'feira-module.js'), 'utf8');
     const panel = html.slice(html.indexOf('id="modalPainelUnificado"'), html.indexOf('id="modalConfigKds"'));
     const kdsSettings = html.slice(html.indexOf('id="modalConfigKds"'), html.indexOf('id="modalConfigTasksMenu"'));
 
     assert.equal(html.includes('KDS - Sistema de Pedidos'), true);
-    assert.equal(html.includes('📥 Migrar backup'), true);
+    assert.equal(html.includes('📥 Restaurar KDS e Checklist'), true);
+    assert.equal(html.includes('📥 Restaurar Compras'), true);
     assert.equal(html.includes("renderizarMetricasDetalhes('tudo')"), true);
     assert.equal(html.includes('Histórico completo'), true);
     assert.equal(app.includes("periodo === 'tudo'"), true);
@@ -1020,12 +1023,12 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.1</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.1/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.1/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.2</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.2/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.2/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.1/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.2/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'alo-feira', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
     assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
@@ -1035,6 +1038,10 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('embedded=1'), true, 'o módulo integrado deve ocultar o segundo cabeçalho');
     assert.equal(comprasHtml.includes('Configurações Avançadas'), false, 'Compras não deve manter um painel avançado próprio');
     assert.equal(comprasHtml.includes('Forçar Atualização do App'), false, 'a atualização deve ficar centralizada no app principal');
+    assert.equal(comprasSync.includes('nuvemFeiraEstaVirgem(remotoBruto) && bancoTemConteudoCompartilhado(localNormalizado)'), true, 'uma nuvem virgem não pode apagar dados locais de Compras');
+    assert.equal(comprasSync.includes('async function restaurarBackupComprasPeloHost'), true, 'o backup de Compras deve ser gravado e conferido pelo módulo');
+    assert.equal(comprasSync.includes('assinaturaRestauracaoCompras(db) !== assinaturaRestauracaoCompras(nuvemConferida)'), true, 'a restauração só pode concluir após conferir todo o banco');
+    assert.equal(comprasHost.includes('Somente os dados de Compras serão substituídos.'), true, 'a confirmação deve deixar o alcance da restauração claro');
     assert.equal(gas.includes("const SHEET_FEIRA_BANCO = 'Alô Feira - Banco'"), true, 'a Lista de Compras deve preservar a aba já usada na mesma implantação');
     assert.equal(gas.includes("e.parameter.app === 'alofeira'"), true, 'a URL única deve rotear as leituras da Lista de Compras');
     assert.equal(gas.includes("action === 'excluir_historico_atividades'"), true, 'o histórico do Checklist deve poder ser apagado separadamente');
@@ -1300,7 +1307,7 @@ function testComprasUsesUnifiedHost() {
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/alo-feira/index.html?v=2.1.1' },
+        dataset: { src: 'modules/alo-feira/index.html?v=2.1.2' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1330,6 +1337,7 @@ function testComprasUsesUnifiedHost() {
     assert.equal(storage.get('kds_banco'), '{"produtos":[{"nome":"Feijão"}]}');
     assert.equal(storage.get('kds_pedidos_local'), '[{"id":"pedido-kds"}]');
     assert.equal(context.AloFeiraModule.importBackup, undefined, 'a importação temporária não deve continuar exposta');
+    assert.equal(typeof context.AloFeiraModule.restoreData, 'function', 'a restauração permanente deve ficar nas configurações centrais');
 }
 
 (async () => {
@@ -1362,7 +1370,7 @@ function testComprasUsesUnifiedHost() {
     testAudioMode();
     await testCatalogAutoPublish();
     testComprasUsesUnifiedHost();
-    console.log('Testes críticos da v2.1.1 passaram.');
+    console.log('Testes críticos da v2.1.2 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

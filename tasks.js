@@ -1226,7 +1226,8 @@
     function backFromManager() {
         if (managerType === 'employees') {
             document.getElementById('modalTasksManager').style.display = 'none';
-            openManager('areas');
+            if (typeof global.abrirGerenciar === 'function') global.abrirGerenciar('areas');
+            else openManager('areas');
             return;
         }
         backToSettingsMenu();

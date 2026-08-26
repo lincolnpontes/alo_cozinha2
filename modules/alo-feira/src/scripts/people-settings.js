@@ -6,6 +6,8 @@ function abrirFormColaborador(id) {
         const primeiroPerfil = db.colaboradores.filter(x => x.ativo !== false).length === 0;
         document.getElementById('colabIsAdmin').checked = c ? Boolean(c.isAdmin) : primeiroPerfil;
         document.getElementById('colabIsAdmin').disabled = primeiroPerfil;
+        document.getElementById('colabConfigKds').checked = c ? (c.permissoesModulos?.kds?.configuracoes ?? Boolean(c.isAdmin)) : primeiroPerfil;
+        document.getElementById('colabConfigChecklist').checked = c ? (c.permissoesModulos?.checklist?.configuracoes ?? Boolean(c.isAdmin)) : primeiroPerfil;
         document.getElementById('colabApenasReceber').checked = c ? Boolean(c.apenasReceber) : false;
         db.categorias.filter(cat => cat.ativo !== false).forEach(cat => {
             const checkPed = (!c || (c.catsPermitidasPedido !== undefined ? c.catsPermitidasPedido.includes(cat.id) : (c.catsPermitidas ? c.catsPermitidas.includes(cat.id) : true))) ? 'checked' : '';
@@ -34,6 +36,10 @@ function abrirFormColaborador(id) {
         const catsPed = Array.from(document.querySelectorAll('.chk-cat-pedido:checked')).map(el => el.value);
         const catsComp = Array.from(document.querySelectorAll('.chk-cat-compras:checked')).map(el => el.value);
         const apenasReceber = document.getElementById('colabApenasReceber').checked;
+        const permissoesModulos = {
+            kds: { configuracoes: document.getElementById('colabConfigKds').checked },
+            checklist: { configuracoes: document.getElementById('colabConfigChecklist').checked }
+        };
         const idx = db.colaboradores.findIndex(x => x.id === id);
         const anterior = idx >= 0 ? db.colaboradores[idx] : {};
         const novo = Object.assign({}, anterior, {
@@ -42,6 +48,7 @@ function abrirFormColaborador(id) {
             emoji,
             telefone: anterior.telefone || '',
             isAdmin,
+            permissoesModulos,
             apenasReceber,
             catsPermitidasPedido: catsPed,
             catsPermitidasCompras: catsComp,

@@ -427,12 +427,19 @@
                     const activeActionAlreadyFinished = operation.payload.novoStatus === 'fazendo' && global.AloLogic.isStatusFinal(remote.status);
                     const serverStillAtExpectedStatus = operation.payload.expectedStatus
                         && remote.status === operation.payload.expectedStatus;
+                    const desiredRank = global.AloLogic.statusRank(operation.payload.novoStatus);
+                    const remoteRank = global.AloLogic.statusRank(remote.status);
+                    const serverIsBehindRequestedState = remoteRank < desiredRank;
                     if (desiredStateReached || activeActionAlreadyFinished) {
                         confirmed.push(operation.operationId);
-                    } else if (changedByAnotherAction && serverStillAtExpectedStatus) {
+                    } else if (changedByAnotherAction && (serverStillAtExpectedStatus || serverIsBehindRequestedState)) {
                         rebased.push({
                             ...operation,
-                            payload: { ...operation.payload, expectedOrderRevision: remoteRevision },
+                            payload: {
+                                ...operation.payload,
+                                expectedStatus: remote.status,
+                                expectedOrderRevision: remoteRevision
+                            },
                             submittedAt: 0,
                             nextAttemptAt: 0,
                             lastError: ''

@@ -101,7 +101,7 @@
 }
 .module-nav-button:active { opacity: .72; }
 .module-nav-back { width: 12px; flex: 0 0 12px; font-size: 25px; font-weight: 500; line-height: 1; opacity: .8; }
-.module-nav-icon { width: 48px; height: 48px; flex: 0 0 48px; object-fit: contain; }
+.module-nav-icon { width: 56px; height: 56px; flex: 0 0 56px; object-fit: contain; }
 .module-nav-button strong { min-width: 0; overflow: hidden; font-size: 19px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 
 .feira-module {
@@ -123,7 +123,7 @@
     color: #fff;
     flex: 0 0 auto;
 }
-.feira-module-header .module-nav-icon { width: 44px; height: 44px; flex-basis: 44px; }
+.feira-module-header .module-nav-icon { width: 52px; height: 52px; flex-basis: 52px; }
 .feira-mode-picker { width: fit-content; max-width: min(180px, 100%); justify-self: start; }
 .feira-mode-picker .header-area-button { width: fit-content; min-width: 108px; max-width: 180px; min-height: 40px; }
 .feira-mode-options { width: min(330px, calc(100vw - 20px)); }
@@ -813,7 +813,7 @@
     .module-choice { min-height: 112px; padding: 18px; }
     .module-choice-icon { width: 56px; height: 56px; flex-basis: 56px; font-size: 38px; }
     .module-choice strong { font-size: 17px; }
-    .module-nav-icon { width: 42px; height: 42px; flex-basis: 42px; }
+    .module-nav-icon { width: 50px; height: 50px; flex-basis: 50px; }
     .module-nav-button strong { font-size: 16px; }
     .module-nav-back { width: 10px; flex-basis: 10px; font-size: 22px; }
     .module-header-center .header-area-picker,
@@ -857,11 +857,11 @@
     .app-sync-indicator,
     .module-settings-button { width: 36px; min-width: 36px; height: 36px; }
     .module-nav-button { gap: 3px; }
-    .module-nav-icon { width: 30px; height: 30px; flex-basis: 30px; }
+    .module-nav-icon { width: 44px; height: 44px; flex-basis: 44px; }
     .module-nav-button strong { max-width: 76px; font-size: 14px; }
     .feira-module-header { gap: 3px; padding-inline: 5px; }
     .feira-module-header .module-nav-button { gap: 2px; }
-    .feira-module-header .module-nav-icon { width: 38px; height: 38px; flex-basis: 38px; }
+    .feira-module-header .module-nav-icon { width: 46px; height: 46px; flex-basis: 46px; }
     .feira-module-header .module-nav-button strong { max-width: none; overflow: visible; }
     .feira-mode-picker .header-area-button { min-width: 82px; padding-inline: 4px; grid-template-columns: 22px minmax(0, 1fr) 12px; }
     .feira-mode-picker .header-area-emoji { width: 22px; font-size: 18px; }
@@ -888,10 +888,10 @@
     .module-choice { gap: 12px; padding: 14px; }
     .module-choice-icon { font-size: 32px; }
     .module-choice strong { font-size: 15px; }
-    .module-nav-icon { width: 38px; height: 38px; flex-basis: 38px; }
+    .module-nav-icon { width: 42px; height: 42px; flex-basis: 42px; }
     .module-nav-button strong { max-width: 68px; font-size: 13px; }
     .module-nav-back { width: 8px; flex-basis: 8px; font-size: 20px; }
-    .feira-module-header .module-nav-icon { width: 36px; height: 36px; flex-basis: 36px; }
+    .feira-module-header .module-nav-icon { width: 44px; height: 44px; flex-basis: 44px; }
     .feira-module-header .module-nav-button strong { max-width: 64px; overflow: hidden; font-size: 12px; }
     .feira-mode-picker .header-area-button { min-width: 72px; padding-inline: 2px; }
     .feira-mode-picker .header-area-button strong { font-size: 12px; }

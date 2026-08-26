@@ -1,4 +1,4 @@
-# Alô Cozinha v2.1.3
+# Alô Cozinha v2.1.4
 
 Aplicativo para operação de restaurante com três módulos: pedidos entre áreas (KDS), checklist por setor e Lista de Compras.
 
@@ -7,8 +7,9 @@ Aplicativo para operação de restaurante com três módulos: pedidos entre áre
 - A v2.0.24 prioriza pedidos novos, reduz a leitura operacional do histórico e sincroniza entre aparelhos a confirmação dos alertas das Panelas.
 - A v2.0.25 confirma visualmente o POST sem esperar uma segunda leitura, mantém o retry durável e sincroniza apenas o expediente atual, sem limite numérico de pedidos.
 - A v2.0.26 posiciona a área de origem no canto superior direito dos pedidos em celulares, preservando as três ações na mesma linha.
+- A v2.1.4 unifica setores do estabelecimento, separa permissões por módulo, memoriza localmente o último operador e protege o KDS contra regressões de status causadas por leituras atrasadas.
 - A v2.1.3 unifica o login por operador, encerra a sessão ao sair de Compras, centraliza restaurante e operadores, padroniza os indicadores de nuvem e cria um único backup para os três módulos.
-- A v2.1.1 integra a Lista de Compras ao produto: cabeçalho único, perfil de operador, configurações centralizadas, senha mestra única e uma só URL de nuvem para os três módulos.
+- A v2.1.1 integra a Lista de Compras ao produto: cabeçalho único, perfil de operador, configurações centralizadas, senha de segurança única e uma só URL de nuvem para os três módulos.
 - A versão estável anterior está preservada na tag `v2.0.27`.
 - A v2.0.23 corrige a perspectiva do ícone do KDS, deixando a tela frontal, simétrica e com laterais paralelas.
 - A v2.0.22 remove a seta do ícone do KDS, corrige a bolinha de sincronização do Checklist e iguala a altura e a proporção dos cabeçalhos no celular.
@@ -57,7 +58,7 @@ Aplicativo para operação de restaurante com três módulos: pedidos entre áre
 - Atividades concluídas podem ser desfeitas; lembretes abrem diretamente a atividade sem navegar quando a ação é feita no próprio aviso.
 - A navegação dos módulos ganhou a assinatura Alô Cozinha e Gerenciar Áreas passou para Configurações KDS.
 - A v2.0.1 adicionou confirmação explícita e suporte à tecla Enter em todos os acessos por senha.
-- Senhas incorretas mostram uma mensagem no próprio modal, e salvar a senha mestra não abre mais um alerta bloqueante.
+- Senhas incorretas mostram uma mensagem no próprio modal, e salvar a senha de segurança não abre mais um alerta bloqueante.
 - Nova tela inicial para escolher entre `KDS - Sistema de Pedidos` e `Checklist`.
 - O KDS anterior foi preservado dentro do módulo de pedidos.
 - Atividades diárias, semanais ou únicas, com horário, prioridade, setor, responsável, instrução curta e alarme opcional.

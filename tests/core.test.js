@@ -63,6 +63,7 @@ function createSyncHarness() {
         createId: prefix => `${prefix}_${Math.random().toString(16).slice(2)}`,
         isToday: value => new Date(value).toDateString() === new Date().toDateString(),
         isStatusFinal: status => ['enviado', 'buscar', 'cancelado', 'concluido'].includes(status),
+        statusRank: status => ({ pendente: 1, fazendo: 2, enviado: 3, buscar: 3, cancelado: 4, concluido: 5 })[status] || 0,
         normalizeOrder: order => ({
             id: String(order.id), produto: order.produto || '', status: order.status || 'pendente',
             timestamp: order.timestamp || new Date().toISOString(), finalizadoEm: order.finalizadoEm || '',
@@ -484,6 +485,30 @@ async function testNewerRemoteActionWinsOverStaleTablet() {
     assert.equal(harness.operations.size, 0, 'uma ação atrasada não deve permanecer reenviando');
     assert.equal(harness.manager.orders[0].status, 'enviado', 'o estado mais novo do servidor deve prevalecer');
     assert.equal(harness.remoteOrders.get(order.id).status, 'enviado');
+}
+
+async function testSendOrPickupSurvivesRemotePreparingRollback() {
+    const harness = createSyncHarness();
+    harness.manager.queueImmediateFlush = () => {};
+    const order = { id: 'final-rollback', produto: 'Caldo', status: 'fazendo', revisao: 12, timestamp: new Date().toISOString() };
+    harness.manager.orders = [order];
+    harness.localOrders.set(order.id, order);
+    harness.remoteOrders.set(order.id, order);
+
+    await harness.manager.enqueueStatus(order.id, 'buscar');
+    harness.remoteOrders.set(order.id, { ...order, status: 'pendente', revisao: 18, operacaoId: 'leitura_atrasada' });
+    await harness.manager.pull(true);
+
+    assert.equal(harness.manager.orders[0].status, 'buscar', 'uma leitura atrasada não pode devolver Vir buscar para Em preparo ou Pendente');
+    assert.equal(harness.operations.size, 1, 'a intenção final precisa continuar na fila');
+    const operation = [...harness.operations.values()][0];
+    assert.equal(operation.payload.expectedStatus, 'pendente', 'a operação deve se adaptar ao estado atual do servidor');
+    assert.equal(operation.payload.expectedOrderRevision, 18);
+
+    await harness.manager.flushPendingOperations();
+    await harness.manager.pull(true);
+    assert.equal(harness.remoteOrders.get(order.id).status, 'buscar');
+    assert.equal(harness.operations.size, 0);
 }
 
 async function testOldOrphanQueueIsCleaned() {
@@ -953,6 +978,7 @@ function testV2027TaskExperience() {
     const comprasHost = fs.readFileSync(path.join(root, 'feira-module.js'), 'utf8');
     const panel = html.slice(html.indexOf('id="modalPainelUnificado"'), html.indexOf('id="modalConfigKds"'));
     const kdsSettings = html.slice(html.indexOf('id="modalConfigKds"'), html.indexOf('id="modalConfigTasksMenu"'));
+    const taskSettings = html.slice(html.indexOf('id="modalConfigTasksMenu"'), html.indexOf('id="modalTaskHygieneLibrary"'));
 
     assert.equal(html.includes('KDS - Sistema de Pedidos'), true);
     assert.equal(html.includes('📤 Exportar backup completo'), true);
@@ -986,8 +1012,11 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('Pedidos por Área'), false);
     assert.equal(html.includes('Rotinas e tarefas'), false);
     assert.equal((html.match(/class="module-nav-button"/g) || []).length, 3, 'cada módulo deve ter retorno compacto no próprio título');
-    assert.equal(panel.includes("abrirGerenciar('areas')"), false);
-    assert.equal(kdsSettings.includes("abrirGerenciar('areas')"), true);
+    assert.equal(panel.includes("abrirGerenciar('areas')"), true, 'setores devem ser administrados no painel central');
+    assert.equal(panel.includes("openManager('restaurante', 'central')"), true, 'dados do restaurante devem ficar no painel central');
+    assert.equal(panel.includes("openManager('colaboradores', 'central')"), true, 'operadores devem ficar no painel central');
+    assert.equal(kdsSettings.includes("abrirGerenciar('areas')"), false, 'o KDS não deve manter um segundo gerenciador de áreas');
+    assert.equal(taskSettings.includes('manageTaskAreas'), false, 'o Checklist não deve manter um segundo gerenciador de setores');
     assert.equal(html.includes('data-task-tab="total"'), true);
     assert.equal(html.includes('data-task-tab="pendentes"'), true);
     assert.equal(html.includes('data-task-tab="em_execucao"'), true);
@@ -1027,12 +1056,24 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.3</div>'), true, 'a tela inicial deve mostrar a versão');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.3/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.3/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.4</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal(html.includes('Senha de Segurança'), true);
+    assert.equal(html.includes('Senha Mestra'), false);
+    assert.equal(app.includes("senhaMestra: \"\""), false, 'o aplicativo cru não deve trazer senha definida no código');
+    assert.equal(app.includes("ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1'"), true, 'o último operador deve ser lembrado apenas neste aparelho');
+    assert.equal(app.includes('function obterAreasUnificadas()'), true, 'a tela central deve mesclar setores sem trocar seus IDs');
+    assert.equal(comprasHtml.includes('id="colabConfigKds"'), true);
+    assert.equal(comprasHtml.includes('id="colabConfigChecklist"'), true);
+    assert.equal(comprasHtml.includes("abrirGerenciar('restaurante')"), false, 'Compras não deve duplicar os dados do restaurante');
+    assert.equal(comprasHtml.includes("abrirGerenciar('colaboradores')"), false, 'Compras não deve duplicar o gerenciador de operadores');
+    assert.equal(comprasApp.includes('podeConfigurarKds'), true);
+    assert.equal(sync.includes('serverIsBehindRequestedState'), true, 'leituras atrasadas não podem rebaixar um status solicitado');
+    assert.equal(css.includes('.module-nav-icon { width: 56px;'), true, 'as imagens dos módulos devem ganhar destaque sem aumentar o cabeçalho');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.4/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.4/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.3/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.4/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'alo-feira', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
     assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
@@ -1326,7 +1367,7 @@ function testComprasUsesUnifiedHost() {
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/alo-feira/index.html?v=2.1.3' },
+        dataset: { src: 'modules/alo-feira/index.html?v=2.1.4' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1378,6 +1419,7 @@ function testComprasUsesUnifiedHost() {
     await testOldServerFallsBackToIndividualOrders();
     await testSameStatusFromAnotherDeviceClearsQueue();
     await testNewerRemoteActionWinsOverStaleTablet();
+    await testSendOrPickupSurvivesRemotePreparingRollback();
     await testOldOrphanQueueIsCleaned();
     testAppsScriptRejectsStaleStatus();
     testAppsScriptAcknowledgesAlertOnce();
@@ -1393,7 +1435,7 @@ function testComprasUsesUnifiedHost() {
     testAudioMode();
     await testCatalogAutoPublish();
     testComprasUsesUnifiedHost();
-    console.log('Testes críticos da v2.1.3 passaram.');
+    console.log('Testes críticos da v2.1.4 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

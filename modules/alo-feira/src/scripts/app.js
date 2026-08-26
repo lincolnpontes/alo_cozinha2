@@ -17,6 +17,8 @@ function operadorSeguroParaHost(operador) {
         nome: operador.nome,
         emoji: operador.emoji || '👤',
         isAdmin: Boolean(operador.isAdmin),
+        podeConfigurarKds: operador.permissoesModulos?.kds?.configuracoes ?? Boolean(operador.isAdmin),
+        podeConfigurarChecklist: operador.permissoesModulos?.checklist?.configuracoes ?? Boolean(operador.isAdmin),
         possuiPin: Boolean(operador.senhaHash || operador.senha)
     };
 }

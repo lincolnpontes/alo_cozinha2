@@ -373,6 +373,21 @@ let db = carregarBanco();
         }
     }
 
+    function migrarSenhaSeguranca(configs) {
+        if (!configs || typeof configs !== 'object') return false;
+        let alterado = false;
+        if (!Object.prototype.hasOwnProperty.call(configs, 'senhaSeguranca')
+            && Object.prototype.hasOwnProperty.call(configs, 'senhaMestra')) {
+            configs.senhaSeguranca = configs.senhaMestra || '';
+            alterado = true;
+        }
+        if (Object.prototype.hasOwnProperty.call(configs, 'senhaMestra')) {
+            delete configs.senhaMestra;
+            alterado = true;
+        }
+        return alterado;
+    }
+
     function carregarBanco() {
         let defaultDB = {
             produtos: [], categorias: [], obsPedidos: ["Sem sal", "Pouco óleo"],
@@ -380,7 +395,7 @@ let db = carregarBanco();
             setoresTarefas: [{ id: 'setor_cozinha', nome: 'Cozinha', emoji: '🧑‍🍳', ativo: true }],
             funcionarios: [], tarefas: [],
             configsTarefas: { som: 'beep', volume: '80', repeticaoMinutos: '5' },
-            configs: { modo: "panelas", url: "", senhaMestra: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, telaAtiva: "sim", inatividade: "0", reenvio: "permitido" }
+            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, telaAtiva: "sim", inatividade: "0", reenvio: "permitido" }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
         if(local) {
@@ -388,7 +403,7 @@ let db = carregarBanco();
             if(typeof local.configs.dadosBaixados === 'undefined') local.configs.dadosBaixados = false;
             if(typeof local.configs.bancoPendente === 'undefined') local.configs.bancoPendente = false;
             if(typeof local.configs.revisaoBanco === 'undefined') local.configs.revisaoBanco = 0;
-            if(typeof local.configs.senhaMestra === 'undefined') local.configs.senhaMestra = '';
+            if (migrarSenhaSeguranca(local.configs)) local.configs.bancoPendente = true;
             if(!local.configs.telaAtiva) local.configs.telaAtiva = "sim";
             if(!local.configs.inatividade) local.configs.inatividade = "0";
             if(!local.configs.reenvio) local.configs.reenvio = "permitido";
@@ -1206,6 +1221,7 @@ let db = carregarBanco();
     let destinoLoginOperador = 'painel';
     let sessaoCompras = null;
     let sessaoAdministrativaAtiva = false;
+    const ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1';
 
     function abrirPainelControle() {
         document.getElementById('configUrlApp').value = db.configs.url || '';
@@ -1263,7 +1279,7 @@ let db = carregarBanco();
         const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'compras_modulo', 'trocar_compras'];
         destinoLoginOperador = destinosValidos.includes(destino) ? destino : 'painel';
         if (['painel', 'kds', 'tasks', 'compras'].includes(destinoLoginOperador)) destinoConfiguracoes = destinoLoginOperador;
-        if (destinoLoginOperador === 'compras' && sessaoCompras) {
+        if (destinoLoginOperador === 'compras' && sessaoCompras?.isAdmin) {
             abrirDestinoConfiguracoes();
             return;
         }
@@ -1307,7 +1323,17 @@ let db = carregarBanco();
             select.disabled = false;
             input.disabled = false;
             button.disabled = false;
-            setTimeout(() => select.focus(), 80);
+            const ultimoOperadorId = localStorage.getItem(ULTIMO_OPERADOR_LOGIN_KEY) || '';
+            const ultimoOperadorDisponivel = operadores.some(operador => operador.id === ultimoOperadorId);
+            if (ultimoOperadorDisponivel) select.value = ultimoOperadorId;
+            setTimeout(() => {
+                if (ultimoOperadorDisponivel) {
+                    input.focus();
+                    input.select();
+                } else {
+                    select.focus();
+                }
+            }, 120);
         } catch (error) {
             fecharModal('modalLoginAdmin');
             await AloUiDialog.notice(error.message || 'Não foi possível carregar os operadores.', {
@@ -1317,7 +1343,7 @@ let db = carregarBanco();
     }
 
     function abrirConfiguracoesAvancadas() {
-        document.getElementById('configSenhaMestra').value = db.configs.senhaMestra || '';
+        document.getElementById('configSenhaSeguranca').value = db.configs.senhaSeguranca || '';
         document.getElementById('configSenhaFeedback').innerText = '';
         document.getElementById('configUrlApp').value = db.configs.url || '';
         abrirModalNoTopo('modalConfigAvancadas');
@@ -1325,7 +1351,7 @@ let db = carregarBanco();
 
     function solicitarAcessoAvancado() {
         fecharModal('modalPainelUnificado');
-        if (!db.configs.senhaMestra) {
+        if (!db.configs.senhaSeguranca) {
             abrirConfiguracoesAvancadas();
             return;
         }
@@ -1565,7 +1591,7 @@ let db = carregarBanco();
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 1,
-                version: '2.1.3',
+                version: '2.1.4',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1869,22 +1895,70 @@ let db = carregarBanco();
     function voltarDaListagem() {
         fecharModal('modalListagem');
         if(['categorias', 'produtos', 'obsPedidos', 'obsCancelamentos'].includes(tipoGerenciamentoAtual)) abrirModalNoTopo('modalMenuProdutos');
-        else if(tipoGerenciamentoAtual === 'areas') abrirModalNoTopo('modalConfigKds');
         else abrirModalNoTopo('modalPainelUnificado');
     }
 
-    function salvarSenhaMestra() {
-        const novaSenha = document.getElementById('configSenhaMestra').value.trim();
+    let areasUnificadasAtuais = [];
+
+    function escaparTextoHtml(valor) {
+        return String(valor ?? '').replace(/[&<>'"]/g, caractere => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        })[caractere]);
+    }
+
+    function chaveNomeArea(nome) {
+        const texto = String(nome || '').trim().toLocaleLowerCase('pt-BR');
+        try { return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (error) { return texto; }
+    }
+
+    function obterAreasUnificadas() {
+        const grupos = new Map();
+        const garantirGrupo = (nome, emoji) => {
+            const chave = chaveNomeArea(nome);
+            if (!grupos.has(chave)) grupos.set(chave, { chave, nome, emoji: emoji || '📍', kds: null, checklist: null });
+            return grupos.get(chave);
+        };
+        (db.areas || []).forEach(area => {
+            const grupo = garantirGrupo(area.nome, area.emoji);
+            grupo.kds = area;
+            grupo.nome = area.nome;
+            grupo.emoji = area.emoji || grupo.emoji;
+        });
+        (db.setoresTarefas || []).forEach(setor => {
+            const grupo = garantirGrupo(setor.nome, setor.emoji);
+            grupo.checklist = setor;
+            if (!grupo.kds) {
+                grupo.nome = setor.nome;
+                grupo.emoji = setor.emoji || grupo.emoji;
+            }
+        });
+        return Array.from(grupos.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    }
+
+    function renderizarAreasUnificadas(lista) {
+        areasUnificadasAtuais = obterAreasUnificadas();
+        lista.innerHTML = areasUnificadasAtuais.map((grupo, index) => {
+            const modulos = [];
+            if (grupo.kds) modulos.push(`KDS · ${grupo.kds.tipo === 'envio' ? 'envia pedidos' : 'recebe pedidos'}`);
+            if (grupo.checklist?.ativo !== false) modulos.push('Checklist');
+            const resumo = modulos.length ? modulos.join(' · ') : 'Sem módulo ativo';
+            return `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${getEmojiAreaHtml(grupo.emoji)} ${escaparTextoHtml(grupo.nome)}</strong><br><span style="color:#666">${escaparTextoHtml(resumo)}</span></div><div class="gerenciar-actions"><button onclick="abrirFormArea(${index})" title="Editar">✏️</button><button onclick="excluirArea(${index})" title="Excluir">🗑️</button></div></div>`;
+        }).join('');
+        if (!lista.innerHTML) lista.innerHTML = '<div style="padding:18px 4px; color:#66747d; text-align:center;">Nenhum setor cadastrado.</div>';
+    }
+
+    function salvarSenhaSeguranca() {
+        const novaSenha = document.getElementById('configSenhaSeguranca').value.trim();
         const feedback = document.getElementById('configSenhaFeedback');
-        if (novaSenha === (db.configs.senhaMestra || '')) {
+        if (novaSenha === (db.configs.senhaSeguranca || '')) {
             feedback.style.color = '#607d8b';
-            feedback.innerText = 'A senha mestra não foi alterada.';
+            feedback.innerText = 'A senha de segurança não foi alterada.';
             return;
         }
-        db.configs.senhaMestra = novaSenha;
+        db.configs.senhaSeguranca = novaSenha;
         marcarBancoAlterado();
         feedback.style.color = '#2e7d32';
-        feedback.innerText = novaSenha ? 'Senha mestra salva neste aparelho.' : 'Senha removida. O aplicativo está sem senha.';
+        feedback.innerText = novaSenha ? 'Senha de segurança salva no banco de dados.' : 'Senha removida. O aplicativo está sem senha de segurança.';
     }
 
     function moverItem(tipo, index, direcao) { const lista = tipo === 'produtos' ? db.produtos : (tipo === 'categorias' ? db.categorias : (tipo === 'obsPedidos' ? db.obsPedidos : db.obsCancelamentos)); if(direcao === 'cima' && index > 0) { const temp = lista[index]; lista[index] = lista[index - 1]; lista[index - 1] = temp; } else if (direcao === 'baixo' && index < lista.length - 1) { const temp = lista[index]; lista[index] = lista[index + 1]; lista[index + 1] = temp; } marcarBancoAlterado(); iniciar(); abrirGerenciar(tipo); }
@@ -1893,7 +1967,15 @@ let db = carregarBanco();
         tipoGerenciamentoAtual = tipo;
         fecharModal('modalPainelUnificado'); fecharModal('modalConfigKds'); fecharModal('modalMenuProdutos'); fecharModal('modalFormProduto'); fecharModal('modalFormCategoria'); fecharModal('modalFormArea');
         const lista = document.getElementById('conteudoListagem'); const btnNovo = document.getElementById('btnNovoListagem'); const titulo = document.getElementById('tituloListagem'); lista.innerHTML = '';
-        if(tipo === 'areas') { titulo.innerText = "Gerenciar Áreas"; btnNovo.onclick = () => abrirFormArea(-1); db.areas.forEach((area, idx) => { const funcao = area.tipo === 'envio' ? 'Envia pedidos' : 'Recebe pedidos'; lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${getEmojiAreaHtml(area.emoji)} ${area.nome}</strong><br><span style="color:#666">${funcao}</span></div><div class="gerenciar-actions"><button onclick="abrirFormArea(${idx})" title="Editar">✏️</button><button onclick="excluirArea(${idx})" title="Excluir">🗑️</button></div></div>`; }); } else if(tipo === 'produtos') { titulo.innerText = "Gerenciar Produtos"; btnNovo.onclick = () => abrirFormProduto(-1); db.produtos.forEach((p, idx) => { const origens = getAreasOrigemProduto(p).map(getAreaNome).join(', '); lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${p.nome}</strong><br><span style="color:#666">${p.categoria} · ${origens} → ${getAreaNome(p.areaDestino || 'cozinha')}</span></div><div class="gerenciar-actions"><button onclick="moverItem('produtos', ${idx}, 'cima')">🔼</button><button onclick="moverItem('produtos', ${idx}, 'baixo')">🔽</button><button onclick="abrirFormProduto(${idx})">✏️</button><button onclick="excluirItem('produtos', ${idx})">🗑️</button></div></div>`; }); } else if (tipo === 'categorias') { titulo.innerText = "Gerenciar Categorias"; btnNovo.onclick = () => abrirFormCategoria(-1); db.categorias.forEach((c, idx) => { lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><span class="color-preview" style="background:${c.cor}; color:${c.corTexto}">${c.nome}</span></div><div class="gerenciar-actions"><button onclick="moverItem('categorias', ${idx}, 'cima')">🔼</button><button onclick="moverItem('categorias', ${idx}, 'baixo')">🔽</button><button onclick="abrirFormCategoria(${idx})">✏️</button><button onclick="excluirItem('categorias', '${c.nome}')">🗑️</button></div></div>`; }); } else if (tipo === 'obsPedidos') { titulo.innerText = "Observação dos Produtos"; btnNovo.onclick = () => novaObservacao('obsPedidos'); db.obsPedidos.forEach((obs, idx) => { lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${obs}</strong></div><div class="gerenciar-actions"><button onclick="moverItem('obsPedidos', ${idx}, 'cima')">🔼</button><button onclick="moverItem('obsPedidos', ${idx}, 'baixo')">🔽</button><button onclick="excluirItem('obsPedidos', '${obs}')">🗑️</button></div></div>`; }); } else if (tipo === 'obsCancelamentos') { titulo.innerText = "Motivos Cancelamento"; btnNovo.onclick = () => novaObservacao('obsCancelamentos'); db.obsCancelamentos.forEach((obs, idx) => { lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${obs}</strong></div><div class="gerenciar-actions"><button onclick="moverItem('obsCancelamentos', ${idx}, 'cima')">🔼</button><button onclick="moverItem('obsCancelamentos', ${idx}, 'baixo')">🔽</button><button onclick="excluirItem('obsCancelamentos', '${obs}')">🗑️</button></div></div>`; }); }
+        document.getElementById('btnFuncionariosListagem').style.display = tipo === 'areas' ? 'block' : 'none';
+        if (tipo === 'areas') {
+            titulo.innerText = 'Setores do Estabelecimento';
+            btnNovo.onclick = () => abrirFormArea(-1);
+            renderizarAreasUnificadas(lista);
+            document.getElementById('modalListagem').style.display = 'flex';
+            return;
+        }
+        if(tipo === 'produtos') { titulo.innerText = "Gerenciar Produtos"; btnNovo.onclick = () => abrirFormProduto(-1); db.produtos.forEach((p, idx) => { const origens = getAreasOrigemProduto(p).map(getAreaNome).join(', '); lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${p.nome}</strong><br><span style="color:#666">${p.categoria} · ${origens} → ${getAreaNome(p.areaDestino || 'cozinha')}</span></div><div class="gerenciar-actions"><button onclick="moverItem('produtos', ${idx}, 'cima')">🔼</button><button onclick="moverItem('produtos', ${idx}, 'baixo')">🔽</button><button onclick="abrirFormProduto(${idx})">✏️</button><button onclick="excluirItem('produtos', ${idx})">🗑️</button></div></div>`; }); } else if (tipo === 'categorias') { titulo.innerText = "Gerenciar Categorias"; btnNovo.onclick = () => abrirFormCategoria(-1); db.categorias.forEach((c, idx) => { lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><span class="color-preview" style="background:${c.cor}; color:${c.corTexto}">${c.nome}</span></div><div class="gerenciar-actions"><button onclick="moverItem('categorias', ${idx}, 'cima')">🔼</button><button onclick="moverItem('categorias', ${idx}, 'baixo')">🔽</button><button onclick="abrirFormCategoria(${idx})">✏️</button><button onclick="excluirItem('categorias', '${c.nome}')">🗑️</button></div></div>`; }); } else if (tipo === 'obsPedidos') { titulo.innerText = "Observação dos Produtos"; btnNovo.onclick = () => novaObservacao('obsPedidos'); db.obsPedidos.forEach((obs, idx) => { lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${obs}</strong></div><div class="gerenciar-actions"><button onclick="moverItem('obsPedidos', ${idx}, 'cima')">🔼</button><button onclick="moverItem('obsPedidos', ${idx}, 'baixo')">🔽</button><button onclick="excluirItem('obsPedidos', '${obs}')">🗑️</button></div></div>`; }); } else if (tipo === 'obsCancelamentos') { titulo.innerText = "Motivos Cancelamento"; btnNovo.onclick = () => novaObservacao('obsCancelamentos'); db.obsCancelamentos.forEach((obs, idx) => { lista.innerHTML += `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${obs}</strong></div><div class="gerenciar-actions"><button onclick="moverItem('obsCancelamentos', ${idx}, 'cima')">🔼</button><button onclick="moverItem('obsCancelamentos', ${idx}, 'baixo')">🔽</button><button onclick="excluirItem('obsCancelamentos', '${obs}')">🗑️</button></div></div>`; }); }
         document.getElementById('modalListagem').style.display = 'flex';
     }
 
@@ -1975,57 +2057,102 @@ let db = carregarBanco();
 
     function abrirFormArea(idx) {
         fecharModal('modalListagem');
+        const grupo = idx >= 0 ? areasUnificadasAtuais[idx] : null;
+        const kds = grupo?.kds || null;
+        const checklist = grupo?.checklist || null;
         document.getElementById('areaIndexOriginal').value = idx;
-        if (idx >= 0) {
-            const area = db.areas[idx];
-            document.getElementById('areaNome').value = area.nome;
-            document.getElementById('areaEmoji').value = area.emoji || '';
-            document.getElementById('areaTipo').value = area.tipo;
-        } else {
-            document.getElementById('areaNome').value = '';
-            document.getElementById('areaEmoji').value = '🥘';
-            document.getElementById('areaTipo').value = 'envio';
-        }
+        document.getElementById('areaKdsIdOriginal').value = kds?.id || '';
+        document.getElementById('areaChecklistIdOriginal').value = checklist?.id || '';
+        document.getElementById('areaNome').value = grupo?.nome || '';
+        document.getElementById('areaEmoji').value = grupo?.emoji || '🥘';
+        document.getElementById('areaTipo').value = kds?.tipo || 'envio';
+        const moduloKds = document.getElementById('areaModuloKds');
+        moduloKds.checked = Boolean(kds);
+        moduloKds.disabled = Boolean(kds && (kds.id === 'panelas' || kds.id === 'cozinha'));
+        document.getElementById('areaModuloChecklist').checked = Boolean(checklist && checklist.ativo !== false);
+        alternarCamposAreaModulo();
         document.getElementById('modalFormArea').style.display = 'flex';
+        setTimeout(() => document.getElementById('areaNome').focus(), 80);
     }
 
     function selecionarEmojiArea(emoji) {
         document.getElementById('areaEmoji').value = emoji;
     }
 
+    function alternarCamposAreaModulo() {
+        const ativo = document.getElementById('areaModuloKds').checked;
+        document.getElementById('areaTipoGrupo').style.display = ativo ? 'block' : 'none';
+    }
+
     function salvarArea() {
-        const idx = parseInt(document.getElementById('areaIndexOriginal').value, 10);
         const nome = document.getElementById('areaNome').value.trim();
         const emoji = document.getElementById('areaEmoji').value.trim();
         const tipo = document.getElementById('areaTipo').value;
-        if (!nome) return alert('Preencha o nome da área.');
-        if (!emoji) return alert('Escolha ou digite um emoji para a área.');
-        if (db.areas.some((area, areaIdx) => areaIdx !== idx && area.nome.toLowerCase() === nome.toLowerCase())) return alert('Já existe uma área com esse nome.');
+        const usarKds = document.getElementById('areaModuloKds').checked;
+        const usarChecklist = document.getElementById('areaModuloChecklist').checked;
+        const kdsId = document.getElementById('areaKdsIdOriginal').value;
+        const checklistId = document.getElementById('areaChecklistIdOriginal').value;
+        if (!nome) return alert('Preencha o nome do setor.');
+        if (!emoji) return alert('Escolha ou digite um emoji para o setor.');
+        if (!usarKds && !usarChecklist) return alert('Ative o setor no KDS, no Checklist ou nos dois.');
+        const duplicado = obterAreasUnificadas().some(grupo => grupo.chave === chaveNomeArea(nome)
+            && grupo.kds?.id !== kdsId && grupo.checklist?.id !== checklistId);
+        if (duplicado) return alert('Já existe um setor com esse nome. Edite o cadastro existente para ativar outro módulo.');
 
-        if (idx >= 0) {
-            const atual = db.areas[idx];
-            if ((atual.id === 'panelas' || atual.id === 'cozinha') && atual.tipo !== tipo) return alert('A função das áreas padrão não pode ser alterada.');
-            const emUso = db.produtos.some(produto => getAreasOrigemProduto(produto).includes(atual.id) || produto.areaDestino === atual.id);
-            if (emUso && atual.tipo !== tipo) return alert('Esta área está ligada a produtos. Altere primeiro a rota desses produtos.');
-            db.areas[idx] = { ...atual, nome, tipo, emoji };
-        } else {
-            db.areas.push({ id: `area_${Date.now()}`, nome, tipo, emoji });
+        const indiceKds = db.areas.findIndex(area => area.id === kdsId);
+        const areaKdsAtual = indiceKds >= 0 ? db.areas[indiceKds] : null;
+        if (usarKds) {
+            if (areaKdsAtual) {
+                if ((areaKdsAtual.id === 'panelas' || areaKdsAtual.id === 'cozinha') && areaKdsAtual.tipo !== tipo) return alert('A função das áreas padrão não pode ser alterada.');
+                const emUso = db.produtos.some(produto => getAreasOrigemProduto(produto).includes(areaKdsAtual.id) || produto.areaDestino === areaKdsAtual.id);
+                if (emUso && areaKdsAtual.tipo !== tipo) return alert('Este setor está ligado a produtos. Altere primeiro a rota desses produtos.');
+                db.areas[indiceKds] = { ...areaKdsAtual, nome, tipo, emoji };
+            } else {
+                db.areas.push({ id: `area_${Date.now()}`, nome, tipo, emoji });
+            }
+        } else if (areaKdsAtual) {
+            if (areaKdsAtual.id === 'panelas' || areaKdsAtual.id === 'cozinha') return alert('Panelas e Cozinha precisam permanecer ativas no KDS.');
+            const emUso = db.produtos.some(produto => getAreasOrigemProduto(produto).includes(areaKdsAtual.id) || produto.areaDestino === areaKdsAtual.id);
+            if (emUso) return alert('Este setor ainda está ligado a produtos do KDS. Altere primeiro a rota desses produtos.');
+            db.areas.splice(indiceKds, 1);
+            if (db.configs.areaAtual === areaKdsAtual.id) db.configs.areaAtual = 'panelas';
         }
-        normalizarAreasERotas(); marcarBancoAlterado(); iniciar(); abrirGerenciar('areas');
+
+        const indiceChecklist = db.setoresTarefas.findIndex(setor => setor.id === checklistId);
+        const setorChecklistAtual = indiceChecklist >= 0 ? db.setoresTarefas[indiceChecklist] : null;
+        if (usarChecklist) {
+            const valor = { ...(setorChecklistAtual || {}), id: setorChecklistAtual?.id || `setor_${Date.now()}`, nome, emoji, ativo: true };
+            if (indiceChecklist >= 0) db.setoresTarefas[indiceChecklist] = valor;
+            else db.setoresTarefas.push(valor);
+        } else if (setorChecklistAtual) {
+            db.setoresTarefas[indiceChecklist] = { ...setorChecklistAtual, nome, emoji, ativo: false };
+        }
+
+        normalizarAreasERotas();
+        marcarBancoAlterado();
+        iniciar();
+        window.AloTasks?.refreshDefinitions();
+        abrirGerenciar('areas');
     }
 
     async function excluirArea(idx) {
-        const area = db.areas[idx];
-        if (!area) return;
-        if (area.id === 'panelas' || area.id === 'cozinha') return alert('As áreas padrão Panelas e Cozinha não podem ser excluídas.');
-        if (db.produtos.some(produto => getAreasOrigemProduto(produto).includes(area.id) || produto.areaDestino === area.id)) return alert('Esta área está ligada a produtos. Altere primeiro a rota desses produtos.');
-        const confirmed = await AloUiDialog.confirm(`Excluir a área “${area.nome}”?`, {
-            title: 'Excluir área', icon: '🗑️', tone: 'danger', confirmText: 'Excluir área'
+        const grupo = areasUnificadasAtuais[idx];
+        if (!grupo) return;
+        if (grupo.kds && (grupo.kds.id === 'panelas' || grupo.kds.id === 'cozinha')) return alert('Panelas e Cozinha não podem ser excluídas. Você pode desativar apenas o Checklist ao editar.');
+        if (grupo.kds && db.produtos.some(produto => getAreasOrigemProduto(produto).includes(grupo.kds.id) || produto.areaDestino === grupo.kds.id)) return alert('Este setor está ligado a produtos do KDS. Altere primeiro a rota desses produtos.');
+        if (grupo.checklist && db.tarefas.some(tarefa => tarefa.setorId === grupo.checklist.id)) return alert('Este setor está ligado a tarefas. Desative-o no Checklist ou altere primeiro essas tarefas.');
+        if (grupo.checklist && db.funcionarios.some(funcionario => funcionario.setorId === grupo.checklist.id)) return alert('Este setor está ligado a funcionários. Altere primeiro o setor desses funcionários.');
+        const confirmed = await AloUiDialog.confirm(`Excluir o setor “${grupo.nome}” dos módulos?`, {
+            title: 'Excluir setor', icon: '🗑️', tone: 'danger', confirmText: 'Excluir setor'
         });
         if (!confirmed) return;
-        db.areas.splice(idx, 1);
-        if (db.configs.areaAtual === area.id) db.configs.areaAtual = 'panelas';
-        normalizarAreasERotas(); marcarBancoAlterado(); iniciar(); abrirGerenciar('areas');
+        if (grupo.kds) db.areas = db.areas.filter(area => area.id !== grupo.kds.id);
+        if (grupo.checklist) db.setoresTarefas = db.setoresTarefas.filter(setor => setor.id !== grupo.checklist.id);
+        normalizarAreasERotas();
+        marcarBancoAlterado();
+        iniciar();
+        window.AloTasks?.refreshDefinitions();
+        abrirGerenciar('areas');
     }
 
     function abrirFormCategoria(idx) { fecharModal('modalListagem'); if(idx >= 0) { const c = db.categorias[idx]; document.getElementById('catIndexOriginal').value = idx; document.getElementById('catNome').value = c.nome; document.getElementById('catCor').value = c.cor; document.getElementById('catCorTexto').value = c.corTexto || '#000000'; } else { document.getElementById('catIndexOriginal').value = '-1'; document.getElementById('catNome').value = ''; document.getElementById('catCor').value = '#1976D2'; document.getElementById('catCorTexto').value = '#ffffff'; } document.getElementById('modalFormCategoria').style.display = 'flex'; }
@@ -2046,9 +2173,15 @@ let db = carregarBanco();
             const ativar = ['painel', 'compras_modulo', 'trocar_compras'].includes(destinoLoginOperador);
             const resultado = await AloFeiraModule.authenticateOperator(select.value, input.value, { ativar });
             if (!resultado?.ok) return senhaIncorreta('senhaAdmin', 'erroSenhaAdmin');
+            localStorage.setItem(ULTIMO_OPERADOR_LOGIN_KEY, resultado.operador.id);
             const acessoOperacional = ['compras_modulo', 'trocar_compras'].includes(destinoLoginOperador);
-            if (!acessoOperacional && !resultado.operador.isAdmin) {
-                document.getElementById('erroSenhaAdmin').innerText = 'Somente administradores podem alterar configurações.';
+            const podeConfigurar = acessoOperacional
+                || (destinoLoginOperador === 'kds' && resultado.operador.podeConfigurarKds)
+                || (destinoLoginOperador === 'tasks' && resultado.operador.podeConfigurarChecklist)
+                || (['painel', 'compras'].includes(destinoLoginOperador) && resultado.operador.isAdmin);
+            if (!podeConfigurar) {
+                const modulo = destinoLoginOperador === 'kds' ? 'KDS' : (destinoLoginOperador === 'tasks' ? 'Checklist' : 'Alô Cozinha');
+                document.getElementById('erroSenhaAdmin').innerText = `Este operador não tem acesso às configurações do ${modulo}.`;
                 input.value = '';
                 input.focus();
                 return;
@@ -2075,7 +2208,7 @@ let db = carregarBanco();
 
     function confirmarSenhaAvancada() {
         const input = document.getElementById('senhaAvancada');
-        if (!db.configs.senhaMestra || input.value !== db.configs.senhaMestra) {
+        if (!db.configs.senhaSeguranca || input.value !== db.configs.senhaSeguranca) {
             return senhaIncorreta('senhaAvancada', 'erroSenhaAvancada');
         }
         input.blur();
@@ -2358,7 +2491,7 @@ let db = carregarBanco();
                 repeticaoMinutos: taskSettings.repeticaoMinutos
             },
             configs: {
-                senhaMestra: settings.senhaMestra || '',
+                senhaSeguranca: settings.senhaSeguranca || '',
                 senhaModo: settings.senhaModo || '',
                 somCozinha: settings.somCozinha || 'sem_som',
                 somPanelas: settings.somPanelas || 'sem_som',
@@ -2412,6 +2545,7 @@ let db = carregarBanco();
             bancoPendente: false,
             revisaoBanco: Number(nuvemDB._revision || 0)
         };
+        if (migrarSenhaSeguranca(db.configs)) db.configs.bancoPendente = true;
         normalizarAreasERotas();
         normalizarSonsConfigurados();
         salvarBancoLocal();
@@ -2493,7 +2627,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.3').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.4').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

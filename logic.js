@@ -26,6 +26,10 @@
         return FINAL_STATUSES.has(status);
     }
 
+    function statusRank(status) {
+        return ({ pendente: 1, fazendo: 2, enviado: 3, buscar: 3, cancelado: 4, concluido: 5 })[status] || 0;
+    }
+
     function normalizeOrder(order) {
         return {
             id: String(order.id),
@@ -53,6 +57,7 @@
         isToday,
         isPedidoAtivoHoje,
         isStatusFinal,
+        statusRank,
         normalizeOrder
     });
 })(window);

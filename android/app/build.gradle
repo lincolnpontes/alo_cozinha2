@@ -1,0 +1,80 @@
+plugins {
+    id "com.android.application"
+}
+
+def configuredKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+def localKeystoreFile = configuredKeystorePath ? file(configuredKeystorePath) : file("../alo-l42-debug.keystore")
+def localKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: "android"
+def localKeyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "alo-l42"
+def localKeyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: "android"
+def webRoot = rootProject.projectDir.parentFile
+def generatedWebAssets = layout.buildDirectory.dir("generated/webAssets")
+
+tasks.register("syncWebAssets", Sync) {
+    from(webRoot) {
+        include "index.html", "styles.css", "manifest.json", "icon.png", "service-worker.js"
+        include "assets/**", "core/**", "modules/**"
+        exclude "**/*.md", "modules/l42/backend/**"
+    }
+    into(generatedWebAssets)
+}
+
+android {
+    namespace "com.aloetiqueta.l42"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.aloetiqueta.l42"
+        minSdk 23
+        targetSdk 36
+        versionCode 37
+        versionName "2.1.7"
+    }
+
+    signingConfigs {
+        if (localKeystoreFile.exists()) {
+            localRelease {
+                storeFile localKeystoreFile
+                storePassword localKeystorePassword
+                keyAlias localKeyAlias
+                keyPassword localKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (localKeystoreFile.exists()) {
+                signingConfig signingConfigs.localRelease
+            }
+        }
+        release {
+            if (localKeystoreFile.exists()) {
+                signingConfig signingConfigs.localRelease
+            }
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    sourceSets {
+        main.assets.srcDirs = [generatedWebAssets.get().asFile]
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(tasks.named("syncWebAssets"))
+}
+
+dependencies {
+    implementation "androidx.activity:activity:1.12.3"
+    implementation "androidx.camera:camera-core:1.6.1"
+    implementation "androidx.camera:camera-camera2:1.6.1"
+    implementation "androidx.camera:camera-lifecycle:1.6.1"
+    implementation "androidx.camera:camera-view:1.6.1"
+    implementation "com.google.mlkit:barcode-scanning:17.3.0"
+}

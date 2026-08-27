@@ -1586,12 +1586,15 @@ let db = carregarBanco();
                 pedidos = Array.isArray(historicoKds?.pedidos) ? historicoKds.pedidos : [];
                 atividades = Array.isArray(historicoChecklist?.atividades) ? historicoChecklist.atividades : [];
             }
-            const compras = await AloFeiraModule.getBackup();
+            const [compras, l42] = await Promise.all([
+                AloFeiraModule.getBackup(),
+                AloL42Module.getBackup()
+            ]);
             const dataToExport = {
                 app: 'alo_cozinha',
                 format: 'backup_completo',
-                schemaVersion: 1,
-                version: '2.1.6',
+                schemaVersion: 2,
+                version: '2.1.7',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1600,7 +1603,8 @@ let db = carregarBanco();
                     filaChecklistPendente: runtimeChecklist.filaPendente,
                     cientes: Array.from(pedidosCientes)
                 },
-                compras
+                compras,
+                l42
             };
             const dataStr = JSON.stringify(dataToExport, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
@@ -1611,7 +1615,7 @@ let db = carregarBanco();
                 const file = new File([blob], nomeArquivo, {type: 'application/json'});
                 navigator.share({
                     title: 'Backup Alô Cozinha',
-                    text: 'Backup completo do KDS, Checklist e Lista de Compras.',
+                    text: 'Backup completo do KDS, Checklist, Lista de Compras e Alô L42.',
                     files: [file]
                 }).catch(err => { baixarComoArquivo(blob, nomeArquivo); });
             } else {
@@ -1692,10 +1696,11 @@ let db = carregarBanco();
 
     function separarModulosDoBackup(importedData) {
         if (importedData?.format === 'backup_completo' && importedData?.app === 'alo_cozinha') {
-            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, completo: true };
+            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, completo: true };
         }
-        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, completo: false };
-        return { kdsChecklist: importedData, compras: null, completo: false };
+        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, completo: false };
+        if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, completo: false };
+        return { kdsChecklist: importedData, compras: null, l42: null, completo: false };
     }
 
     async function importarDadosFisicos(event) {
@@ -1712,7 +1717,7 @@ let db = carregarBanco();
             }
             const importedData = JSON.parse(await lerArquivoTexto(file));
             const modulos = separarModulosDoBackup(importedData);
-            if (!modulos.kdsChecklist && !modulos.compras) throw new Error('O arquivo não contém dados reconhecidos.');
+            if (!modulos.kdsChecklist && !modulos.compras && !modulos.l42) throw new Error('O arquivo não contém dados reconhecidos.');
             const summary = modulos.kdsChecklist ? resumoBackup(modulos.kdsChecklist) : { produtos: 0, categorias: 0, areas: 0, pedidos: 0 };
             const atividades = Array.isArray(modulos.kdsChecklist?.atividades) ? modulos.kdsChecklist.atividades : [];
             const comprasSummary = modulos.compras ? {
@@ -1723,6 +1728,8 @@ let db = carregarBanco();
             const detalhes = [];
             if (modulos.kdsChecklist) detalhes.push(`KDS e Checklist: ${summary.produtos} produtos, ${summary.pedidos} pedidos e ${atividades.length} registros de atividades`);
             if (comprasSummary) detalhes.push(`Compras: ${comprasSummary.produtos} produtos, ${comprasSummary.operadores} operadores e ${comprasSummary.pedidos} pedidos`);
+            const l42Dados = modulos.l42?.formato === 'alo-etiqueta-backup-completo' ? modulos.l42.dados : modulos.l42;
+            if (l42Dados) detalhes.push(`L42: ${Array.isArray(l42Dados.produtos) ? l42Dados.produtos.length : 0} produtos e ${Array.isArray(l42Dados.historico) ? l42Dados.historico.length : 0} registros`);
             const confirmed = await AloUiDialog.confirm(
                 `${detalhes.join('. ')}. A URL atual será preservada e registros repetidos não serão duplicados.`,
                 { title: modulos.completo ? 'Restaurar backup completo' : 'Restaurar backup', icon: '📥', confirmText: 'Restaurar na nuvem' }
@@ -1764,6 +1771,11 @@ let db = carregarBanco();
             if (modulos.compras) {
                 await AloFeiraModule.restoreBackup(modulos.compras);
                 etapasConcluidas.push('Compras');
+            }
+
+            if (modulos.l42) {
+                await AloL42Module.restoreBackup(modulos.l42);
+                etapasConcluidas.push('L42');
             }
 
             if (status) status.innerText = 'Restauração concluída e confirmada.';
@@ -2627,7 +2639,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.6').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.7').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

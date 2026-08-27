@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.6';
+    const VERSION = '2.1.7';
     const SHARED_SCHEMA_VERSION = 1;
 
     const contracts = Object.freeze({
@@ -27,6 +27,13 @@
             localStorage: Object.freeze(['alofeira_v1']),
             cloudNamespace: 'compras',
             futureTablePrefix: 'compras_'
+        }),
+        l42: Object.freeze({
+            owner: 'l42',
+            localStorage: Object.freeze(['etiquetadora_db', 'etiquetadora_operadorAtual', 'alo_supabase_session_v1']),
+            cloudNamespace: 'l42',
+            persistence: 'localStorage e Supabase do Alô L42',
+            futureTablePrefix: 'l42_'
         })
     });
 

@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-O Alô Cozinha é um único produto com uma única instalação, uma única tela inicial e uma única configuração de nuvem. KDS, Checklist e Compras são módulos independentes dentro desse produto. Novos módulos, como o L42, devem entrar pelo mesmo contrato, sem acessar o código interno dos módulos existentes.
+O Alô Cozinha é um único produto com uma única instalação e uma única tela inicial. KDS, Checklist, Compras e L42 são módulos independentes dentro desse produto e não acessam o código interno uns dos outros.
 
 ## Estrutura
 
@@ -18,6 +18,9 @@ modules/
   kds/                 pedidos, fila, áudio, armazenamento e sincronização KDS
   checklist/           atividades, POP, alarmes, relatórios e QR Code
   compras/             pedidos de compra, compras, operadores e fornecedores
+  l42/                 etiquetas, estoque, câmera, impressão e adaptador do host
+
+android/               shell Android, CameraX, ML Kit e ponte da impressora
 
 index.html             composição da interface principal
 service-worker.js      shell offline do produto
@@ -34,8 +37,9 @@ Cada módulo possui um `module.js` com identidade, tela, namespace, exigência d
 | Pedidos e alertas KDS | KDS | IndexedDB, fila local e Apps Script | `kds_*` |
 | Atividades, POP e agenda | Checklist | localStorage, fila local e Apps Script | `checklist_*` |
 | Catálogo, pedidos de compra e fornecedores | Compras | `alofeira_v1` e Apps Script | `compras_*` |
+| Etiquetas, estoque e impressão | L42 | `etiquetadora_*` e Supabase do L42 | `l42_*` |
 
-As chaves existentes são um contrato de compatibilidade. A v2.1.6 não renomeia nem copia `kds_v1_db`, `alo_tasks_*` ou `alofeira_v1`; assim, atualizar o aplicativo não perde dados e não exige migração local.
+As chaves existentes são um contrato de compatibilidade. A v2.1.7 não renomeia nem copia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local.
 
 ## Regras entre módulos
 
@@ -46,7 +50,7 @@ As chaves existentes são um contrato de compatibilidade. A v2.1.6 não renomeia
 5. Uma falha em um módulo não deve impedir a abertura dos demais.
 6. Cada ação sincronizável precisa de ID de operação, fila durável e confirmação do servidor.
 
-Compras permanece em `iframe` por isolamento de CSS, estado e falhas. O host expõe apenas funções necessárias, como autenticação, backup, restauração, sincronização e abertura de telas administrativas.
+Compras e L42 permanecem em `iframe` por isolamento de CSS, estado e falhas. O host do L42 também encaminha os retornos da câmera e da autenticação Android para o quadro correto.
 
 ## Backend atual
 
@@ -69,9 +73,11 @@ A futura migração deve trocar adaptadores, não telas nem regras de negócio. 
 
 O Supabase deve ser introduzido módulo a módulo por uma camada de repositório. Durante a transição, cada domínio terá uma única fonte de verdade declarada; não haverá gravação dupla silenciosa em Apps Script e Supabase.
 
-## Entrada do L42
+## Alô L42 e Android
 
-O L42 deve ser adicionado como `modules/l42/`, com seu próprio `module.js`, CSS, armazenamento e repositório de dados. Ele poderá consumir identidade do restaurante e operadores pelo Core, mas não deve reutilizar diretamente bancos ou funções internas de KDS, Checklist ou Compras.
+O L42 mantém sua fonte de verdade existente no Supabase e as chaves locais do aplicativo anterior. A v2.1.7 não faz gravação dupla nem migração automática para o Apps Script. O APK preserva o pacote `com.aloetiqueta.l42`, o deep link `aloetiqueta://auth/callback` e o mesmo certificado do APK anterior para permitir atualização sem limpar o sandbox Android.
+
+O Gradle empacota o shell web diretamente da raiz no momento do build; não existe uma segunda cópia manual dos arquivos web dentro de `android/app/src/main/assets`. As pontes `AloNative` e `AloPrinter` permanecem restritas ao WebView local do APK.
 
 ## Verificação obrigatória
 

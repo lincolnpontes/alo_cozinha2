@@ -1056,7 +1056,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.6</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.7</div>'), true, 'a tela inicial deve mostrar a versão');
     assert.equal(html.includes('Senha de Segurança'), true);
     assert.equal(html.includes('Senha Mestra'), false);
     assert.equal(app.includes("senhaMestra: \"\""), false, 'o aplicativo cru não deve trazer senha definida no código');
@@ -1073,11 +1073,11 @@ function testV2027TaskExperience() {
     assert.equal(comprasApp.includes('podeConfigurarKds'), true);
     assert.equal(sync.includes('serverIsBehindRequestedState'), true, 'leituras atrasadas não podem rebaixar um status solicitado');
     assert.equal(css.includes('.module-nav-icon { width: 56px;'), true, 'as imagens dos módulos devem ganhar destaque sem aumentar o cabeçalho');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.6/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.6/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.7/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.7/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.6/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.7/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'compras', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
     assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
@@ -1387,7 +1387,7 @@ function testComprasUsesUnifiedHost() {
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/compras/index.html?v=2.1.6' },
+        dataset: { src: 'modules/compras/index.html?v=2.1.7' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1424,12 +1424,13 @@ function testComprasUsesUnifiedHost() {
     assert.equal(typeof context.AloFeiraModule.restoreBackup, 'function', 'Compras deve participar da restauração única');
 }
 
-function testV216ModuleArchitecture() {
+function testV217ModuleArchitecture() {
     const views = new Map([
         ['moduleHome', { style: {} }],
         ['kdsModule', { style: {} }],
         ['tasksModule', { style: {} }],
-        ['feiraModule', { style: {} }]
+        ['feiraModule', { style: {} }],
+        ['l42Module', { style: {} }]
     ]);
     const closedSessions = [];
     const context = vm.createContext({
@@ -1447,8 +1448,9 @@ function testV216ModuleArchitecture() {
     loadScript(context, 'modules/kds/module.js');
     loadScript(context, 'modules/checklist/module.js');
     loadScript(context, 'modules/compras/module.js');
+    loadScript(context, 'modules/l42/module.js');
 
-    assert.deepEqual(Array.from(context.AloModuleHost.list(), module => module.id), ['kds', 'checklist', 'compras']);
+    assert.deepEqual(Array.from(context.AloModuleHost.list(), module => module.id), ['kds', 'checklist', 'compras', 'l42']);
     context.AloModuleHost.open('tasks');
     assert.equal(views.get('tasksModule').style.display, 'flex', 'o alias antigo deve abrir o Checklist pelo host');
     assert.equal(views.get('kdsModule').style.display, 'none');
@@ -1456,29 +1458,44 @@ function testV216ModuleArchitecture() {
     assert.equal(views.get('feiraModule').style.display, 'flex', 'o alias antigo deve abrir Compras pelo host');
     context.AloModuleHost.showHome();
     assert.equal(views.get('moduleHome').style.display, 'flex');
-    assert.deepEqual(closedSessions, ['compras'], 'o host deve encerrar a sessão do módulo protegido ao sair');
+    context.AloModuleHost.open('l42');
+    assert.equal(views.get('l42Module').style.display, 'flex', 'o L42 deve abrir como módulo independente');
+    context.AloModuleHost.showHome();
+    assert.deepEqual(closedSessions, ['compras', 'l42'], 'o host deve encerrar a sessão do módulo protegido ao sair');
 
     const contracts = context.AloDataContracts.describe();
-    assert.equal(contracts.appVersion, '2.1.6');
+    assert.equal(contracts.appVersion, '2.1.7');
     assert.equal(context.AloDataContracts.get('kds').localStorage.includes('kds_v1_db'), true);
     assert.equal(context.AloDataContracts.get('checklist').localStorage.includes('alo_tasks_outbox_v2'), true);
     assert.equal(context.AloDataContracts.get('compras').localStorage.includes('alofeira_v1'), true);
+    assert.equal(context.AloDataContracts.get('l42').localStorage.includes('etiquetadora_db'), true);
 
     [
         'core/api.js', 'core/catalog-sync.js', 'core/ui-dialog.js',
         'modules/kds/app.js', 'modules/kds/sync.js',
         'modules/checklist/app.js', 'modules/checklist/styles.css',
-        'modules/compras/index.html', 'modules/compras/host.js'
+        'modules/compras/index.html', 'modules/compras/host.js',
+        'modules/l42/index.html', 'modules/l42/host.js', 'modules/l42/module.js',
+        'android/app/src/main/java/com/aloetiqueta/l42/MainActivity.java'
     ].forEach(file => assert.equal(fs.existsSync(path.join(root, file)), true, `${file} deve existir`));
     ['app.js', 'tasks.js', 'sync.js', 'api.js', 'feira-module.js', 'modules/alo-feira/index.html']
         .forEach(file => assert.equal(fs.existsSync(path.join(root, file)), false, `${file} não deve continuar duplicado na raiz`));
 
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const shellCache = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
-    assert.equal(html.includes('core/module-host.js?v=2.1.6'), true);
-    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.6'), true);
-    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.6'), true);
+    assert.equal(html.includes('core/module-host.js?v=2.1.7'), true);
+    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.7'), true);
+    assert.equal(html.includes('modules/l42/index.html?embedded=1&amp;v=2.1.7'), true);
+    assert.equal(html.includes('modules/l42/icon.png?v=2.1.7'), true);
+    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.7'), true);
     assert.equal(shellCache.includes('./modules/compras/index.html'), true);
+    assert.equal(shellCache.includes('./modules/l42/index.html'), true);
+    assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'icon.png')), true);
+    const l42Html = fs.readFileSync(path.join(root, 'modules', 'l42', 'index.html'), 'utf8');
+    const l42Host = fs.readFileSync(path.join(root, 'modules', 'l42', 'host.js'), 'utf8');
+    assert.equal(l42Html.includes("parent.postMessage({source:'alo-l42',type:'ready'}"), true, 'o iframe deve avisar quando está pronto');
+    assert.equal(l42Host.includes("global.receberQrsNativos"), true, 'o retorno da câmera nativa deve alcançar o iframe');
+    assert.equal(l42Host.includes("global.receberLinkAutenticacaoSupabase"), true, 'o deep link Supabase deve alcançar o iframe');
     assert.equal(html.indexOf('core/module-host.js') < html.indexOf('modules/kds/module.js'), true, 'o núcleo deve carregar antes dos módulos');
 }
 
@@ -1514,8 +1531,8 @@ function testV216ModuleArchitecture() {
     await testCatalogAutoPublish();
     testComprasHasIndependentOperationalPermissions();
     testComprasUsesUnifiedHost();
-    testV216ModuleArchitecture();
-    console.log('Testes críticos da v2.1.6 passaram.');
+    testV217ModuleArchitecture();
+    console.log('Testes críticos da v2.1.7 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

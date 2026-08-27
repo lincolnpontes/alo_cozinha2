@@ -475,7 +475,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.22";
+const APP_VERSION="2.1.8";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -695,10 +695,13 @@ function normalizarOperador(o,indice=0){
     if(typeof o.senhaHash!=="string")o.senhaHash="";
     if(typeof o.senhaSalt!=="string")o.senhaSalt="";
     if(typeof o.senhaAlgoritmo!=="string")o.senhaAlgoritmo=o.senhaHash?"pbkdf2-sha256-v1":"";
+    if(typeof o.senhaCentralHash!=="string")o.senhaCentralHash="";
+    if(typeof o.coreId!=="string")o.coreId="";
+    if(typeof o.ativo!=="boolean")o.ativo=!0;
     return o;
 }
 
-function operadorTemPin(o){return !!(o&&(o.senhaHash||o.senha))}
+function operadorTemPin(o){return !!(o&&(o.senhaCentralHash||o.senhaHash||o.senha))}
 function bytesParaBase64(bytes){
     let s="";
     bytes.forEach(b=>s+=String.fromCharCode(b));
@@ -731,6 +734,7 @@ async function definirPinOperador(o,pin){
 }
 async function validarPinOperador(o,pin){
     if(!o)return !1;
+    if(o.senhaCentralHash&&await validarHashCentralL42(pin,o.senhaCentralHash))return !0;
     if(o.senhaHash&&o.senhaSalt){
         try{
             const esperado=base64ParaBytes(o.senhaHash);
@@ -742,6 +746,21 @@ async function validarPinOperador(o,pin){
         }catch(e){return !1}
     }
     return String(o.senha||"")===String(pin||"");
+}
+
+async function validarHashCentralL42(pin,armazenado){
+    const partes=String(armazenado||"").split('$');
+    if(partes.length!==4||partes[0]!=="pbkdf2")return !1;
+    try{
+        const esperado=base64ParaBytes(partes[3]);
+        const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(String(pin||"")),"PBKDF2",!1,["deriveBits"]);
+        const bits=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:base64ParaBytes(partes[2]),iterations:Number(partes[1])},material,256);
+        const obtido=new Uint8Array(bits);
+        if(esperado.length!==obtido.length)return !1;
+        let diferenca=0;
+        for(let i=0;i<esperado.length;i++)diferenca|=esperado[i]^obtido[i];
+        return diferenca===0;
+    }catch(e){return !1}
 }
 async function migrarPinsOperadoresSeguros(){
     let mudou=!1;
@@ -1072,11 +1091,19 @@ function atualizarRelogioServidor(response,bruto){
     return ts;
 }
 
+let integracaoCompartilhadaTimer=null;
 function marcarAlteracaoEstrutura(){
     garantirMetadadosSync();
     const agora=agoraServidorMs();
     db.configs.ultimaModificacaoEstrutura=agora;
     db.configs.ultimaModificacaoLocal=agora;
+    if(window.ALO_L42_EMBEDDED&&window.parent&&window.parent!==window&&window.parent.AloSharedData){
+        if(integracaoCompartilhadaTimer)clearTimeout(integracaoCompartilhadaTimer);
+        integracaoCompartilhadaTimer=setTimeout(()=>{
+            integracaoCompartilhadaTimer=null;
+            window.parent.AloSharedData.updateFromModule('l42',obterDadosCompartilhadosL42PeloHost()).catch(()=>{});
+        },300);
+    }
 }
 
 function marcarAlteracaoHistorico(){
@@ -1650,9 +1677,9 @@ async function resolverConflitoSupabase(escolha){
 function prepararTelaLogin(){
     const s=document.getElementById('loginOperador');
     s.innerHTML='<option value="">Selecione...</option>';
-    db.operadores.forEach(o=>{s.innerHTML+=`<option value="${o.nome}">${o.nome}</option>`});
+    db.operadores.filter(o=>o.ativo!==!1).forEach(o=>{s.innerHTML+=`<option value="${o.nome}">${o.nome}</option>`});
     const u=localStorage.getItem('etiquetadora_operadorAtual');
-    if(u&&db.operadores.find(o=>o.nome===u))s.value=u;
+    if(u&&db.operadores.find(o=>o.nome===u&&o.ativo!==!1))s.value=u;
     checarSenhaLoginInicial();
 }
 
@@ -2903,6 +2930,7 @@ function abrirConfigGeraisModal(){
 
 function salvarConfigGerais(){
     db.configs.estabelecimento=document.getElementById('cfgEstabelecimento').value.trim()||"Restaurante";
+    db.configs.estabelecimentoAtualizadoEm=agoraServidorMs();
     db.configs.modo=document.getElementById('cfgModo').value;
     const hostEl=document.getElementById('cfgPrinterHost');
     const portEl=document.getElementById('cfgPrinterPort');
@@ -3985,15 +4013,16 @@ async function importarProdutosXlsx(e){
 function renderizarOperadores(){
     const s=document.getElementById('seletorOperador');
     s.innerHTML='';
-    db.operadores.forEach(o=>{s.innerHTML+=`<option value="${o.nome}">${o.nome}</option>`});
+    const ativos=db.operadores.filter(o=>o.ativo!==!1);
+    ativos.forEach(o=>{s.innerHTML+=`<option value="${o.nome}">${o.nome}</option>`});
     s.innerHTML+='<option value="sair">👋 Encerrar Turno</option>';
     const u=localStorage.getItem('etiquetadora_operadorAtual');
-    if(u&&db.operadores.find(o=>o.nome===u)){
+    if(u&&ativos.find(o=>o.nome===u)){
         s.value=u;
         operadorAnteriorSelect=u;
-    }else if(db.operadores.length>0){
-        s.value=db.operadores[0].nome;
-        operadorAnteriorSelect=db.operadores[0].nome;
+    }else if(ativos.length>0){
+        s.value=ativos[0].nome;
+        operadorAnteriorSelect=ativos[0].nome;
     }
 }
 
@@ -4147,6 +4176,10 @@ function duplicarProduto(i){
 }
 
 function abrirGerenciar(t){
+    if(window.ALO_L42_EMBEDDED&&t==='operadores'&&window.parent&&window.parent!==window&&window.parent.AloSharedData){
+        window.parent.AloSharedData.openManager();
+        return;
+    }
     const permissao=t==='operadores'?'operadores':(t==='categorias'?'categorias':'produtos');
     if(!temPermissao(permissao))return mostrarToast("Seu perfil não tem acesso a esta tela.");
     fecharModal('modalPainelUnificado');
@@ -6887,6 +6920,92 @@ async function onScanSuccess(t){
 
 function onScanFailure(){}
 
+function obterDadosCompartilhadosL42PeloHost(){
+    return{
+        restaurant:{nome:db.configs&&db.configs.estabelecimento||"",atualizadoEm:Number(db.configs&&db.configs.estabelecimentoAtualizadoEm||0)},
+        people:JSON.parse(JSON.stringify((db.operadores||[]).map((operador,indice)=>Object.assign({},operador,{isAdmin:indice===0||textoComparacao(operador.nome)==='admin'})))),
+        products:JSON.parse(JSON.stringify(db.produtos||[])),
+        categories:JSON.parse(JSON.stringify(db.categorias||[])),
+        historyCount:(db.historico||[]).length
+    };
+}
+
+function hashCentralDaPessoaL42(pessoa){
+    const alternativas=pessoa&&pessoa.credentials&&Array.isArray(pessoa.credentials.alternatives)?pessoa.credentials.alternatives:[];
+    const central=alternativas.find(item=>item&&item.scheme==="pbkdf2-sha256");
+    return central&&central.hash||"";
+}
+
+async function aplicarPessoasCompartilhadasL42PeloHost(pessoas){
+    const recebidas=Array.isArray(pessoas)?pessoas:[];
+    const antes=JSON.stringify(db.operadores||[]);
+    recebidas.filter(pessoa=>pessoa&&pessoa.podeEntrar===!0).forEach(pessoa=>{
+        const nomeVinculado=String(pessoa.links&&pessoa.links.l42Nome||"");
+        let operador=db.operadores.find(item=>item.coreId===pessoa.id)
+            ||db.operadores.find(item=>nomeVinculado&&textoComparacao(item.nome)===textoComparacao(nomeVinculado))
+            ||db.operadores.find(item=>textoComparacao(item.nome)===textoComparacao(pessoa.nome));
+        if(!operador){
+            operador={nome:pessoa.nome,senha:"",senhaHash:"",senhaSalt:"",senhaAlgoritmo:"",tema:""};
+            db.operadores.push(operador);
+        }
+        operador.coreId=pessoa.id;
+        operador.nome=pessoa.nome;
+        operador.ativo=pessoa.ativo!==!1;
+        operador.permissoes=Object.assign(permissoesPadraoOperador(!!pessoa.isAdmin),pessoa.permissions&&pessoa.permissions.l42||{});
+        const hashCentral=hashCentralDaPessoaL42(pessoa);
+        if(hashCentral)operador.senhaCentralHash=hashCentral;
+        operador.atualizadoEm=Math.max(Number(operador.atualizadoEm||0),Number(pessoa.atualizadoEm||0));
+        normalizarOperador(operador,db.operadores.indexOf(operador));
+    });
+    const idsCentrais=new Set(recebidas.filter(pessoa=>pessoa&&pessoa.podeEntrar===!0).map(pessoa=>pessoa.id));
+    db.operadores.forEach(operador=>{if(operador.coreId&&!idsCentrais.has(operador.coreId))operador.ativo=!1});
+    if(JSON.stringify(db.operadores||[])===antes)return!1;
+    marcarAlteracaoEstrutura();
+    salvarBancoLocal();
+    renderizarOperadores();
+    prepararTelaLogin();
+    sincronizarComNuvemSilencioso();
+    return!0;
+}
+
+async function aplicarRestauranteCompartilhadoL42PeloHost(restaurante){
+    if(!restaurante||!restaurante.nome)return!1;
+    const recebido=Number(restaurante.atualizadoEm||0),atual=Number(db.configs.estabelecimentoAtualizadoEm||0);
+    if(db.configs.estabelecimento&&recebido<atual)return!1;
+    if(db.configs.estabelecimento===restaurante.nome&&recebido===atual)return!1;
+    db.configs.estabelecimento=String(restaurante.nome);
+    db.configs.estabelecimentoAtualizadoEm=recebido;
+    marcarAlteracaoEstrutura();
+    salvarBancoLocal();
+    sincronizarComNuvemSilencioso();
+    return!0;
+}
+
+async function ativarPessoaCompartilhadaL42PeloHost(pessoa){
+    const operador=db.operadores.find(item=>item.coreId===pessoa.id&&item.ativo!==!1);
+    if(!operador)throw new Error("Este acesso não está habilitado para o L42.");
+    localStorage.setItem('etiquetadora_operadorAtual',operador.nome);
+    operadorAnteriorSelect=operador.nome;
+    renderizarOperadores();
+    prepararTelaLogin();
+    const seletor=document.getElementById('seletorOperador');
+    if(seletor)seletor.value=operador.nome;
+    aplicarTemaCores();
+    atualizarEngrenagem();
+    const login=document.getElementById('login-screen');
+    if(login){login.style.opacity='0';login.style.display='none'}
+    return{coreId:pessoa.id,nome:operador.nome};
+}
+
+async function encerrarSessaoL42PeloHost(){
+    localStorage.removeItem('etiquetadora_operadorAtual');
+    operadorAnteriorSelect=null;
+    prepararTelaLogin();
+    const login=document.getElementById('login-screen');
+    if(login){login.style.display='flex';requestAnimationFrame(()=>{login.style.opacity='1'})}
+    return!0;
+}
+
 function obterBackupL42PeloHost(){
     return{
         formato:"alo-etiqueta-backup-completo",
@@ -6939,7 +7058,7 @@ html.alo-l42-embedded .header>div{min-width:0}
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="L42, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.7" alt=""><strong>L42</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="L42, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.8" alt=""><strong>L42</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -6964,7 +7083,10 @@ html.alo-l42-embedded .header>div{min-width:0}
         if(operatorBack&&operatorBack.style.display!==operatorDisplay)operatorBack.style.display=operatorDisplay;
     };
     addOverlayBack();
-    new MutationObserver(addOverlayBack).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    const overlayObserverRoot=document.body||document.documentElement;
+    if(overlayObserverRoot instanceof Node){
+        new MutationObserver(addOverlayBack).observe(overlayObserverRoot,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    }
     parent.postMessage({source:'alo-l42',type:'ready'},'*');
 })();
 </script>

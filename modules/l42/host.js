@@ -91,10 +91,43 @@
         return child.restaurarBackupL42PeloHost(bank);
     }
 
+    async function getSharedSnapshot() {
+        const child = await waitForChild();
+        if (typeof child.obterDadosCompartilhadosL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de integrar os dados.');
+        return child.obterDadosCompartilhadosL42PeloHost();
+    }
+
+    async function applySharedPeople(people) {
+        const child = await waitForChild();
+        if (typeof child.aplicarPessoasCompartilhadasL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de integrar os usuários.');
+        return child.aplicarPessoasCompartilhadasL42PeloHost(people);
+    }
+
+    async function applySharedRestaurant(restaurant) {
+        const child = await waitForChild();
+        if (typeof child.aplicarRestauranteCompartilhadoL42PeloHost !== 'function') return false;
+        return child.aplicarRestauranteCompartilhadoL42PeloHost(restaurant);
+    }
+
+    async function activateSharedPerson(person) {
+        const child = await waitForChild();
+        if (typeof child.ativarPessoaCompartilhadaL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de entrar.');
+        return child.ativarPessoaCompartilhadaL42PeloHost(person);
+    }
+
+    async function logout() {
+        const child = childWindow();
+        if (typeof child?.encerrarSessaoL42PeloHost === 'function') return child.encerrarSessaoL42PeloHost();
+    }
+
     global.receberQrsNativos = (...args) => deliverNativeCallback('receberQrsNativos', args);
     global.cameraNativaFechada = (...args) => deliverNativeCallback('cameraNativaFechada', args);
     global.receberLinkAutenticacaoSupabase = (...args) => deliverNativeCallback('receberLinkAutenticacaoSupabase', args);
 
-    global.AloL42Module = Object.freeze({ configure, open, getBackup, restoreBackup });
+    global.AloL42Module = Object.freeze({
+        configure, open, getBackup, restoreBackup,
+        getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson, logout,
+        getFullData: getBackup
+    });
     configure();
 })(window);

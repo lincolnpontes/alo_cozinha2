@@ -1014,7 +1014,7 @@ function testV2027TaskExperience() {
     assert.equal((html.match(/class="module-nav-button"/g) || []).length, 3, 'cada módulo deve ter retorno compacto no próprio título');
     assert.equal(panel.includes("abrirGerenciar('areas')"), true, 'setores devem ser administrados no painel central');
     assert.equal(panel.includes("openManager('restaurante', 'central')"), true, 'dados do restaurante devem ficar no painel central');
-    assert.equal(panel.includes("openManager('colaboradores', 'central')"), true, 'operadores devem ficar no painel central');
+    assert.equal(panel.includes('AloSharedData.openManager()'), true, 'funcionários e acessos devem ficar no núcleo compartilhado');
     assert.equal(kdsSettings.includes("abrirGerenciar('areas')"), false, 'o KDS não deve manter um segundo gerenciador de áreas');
     assert.equal(taskSettings.includes('manageTaskAreas'), false, 'o Checklist não deve manter um segundo gerenciador de setores');
     assert.equal(html.includes('data-task-tab="total"'), true);
@@ -1056,7 +1056,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.7</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.8</div>'), true, 'a tela inicial deve mostrar a versão');
     assert.equal(html.includes('Senha de Segurança'), true);
     assert.equal(html.includes('Senha Mestra'), false);
     assert.equal(app.includes("senhaMestra: \"\""), false, 'o aplicativo cru não deve trazer senha definida no código');
@@ -1073,17 +1073,17 @@ function testV2027TaskExperience() {
     assert.equal(comprasApp.includes('podeConfigurarKds'), true);
     assert.equal(sync.includes('serverIsBehindRequestedState'), true, 'leituras atrasadas não podem rebaixar um status solicitado');
     assert.equal(css.includes('.module-nav-icon { width: 56px;'), true, 'as imagens dos módulos devem ganhar destaque sem aumentar o cabeçalho');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.7/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.7/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.8/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.8/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.7/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.8/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'compras', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
     assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
     assert.equal(html.includes('id="feiraImportInput"'), false, 'a importação temporária deve ser removida após a migração');
     assert.equal(html.includes('id="modalConfigCompras"'), true, 'as configurações de Compras devem ficar no painel principal');
-    assert.equal(html.includes('Gerenciar Operadores'), true, 'o cadastro de pessoas deve usar o nome Operadores');
+    assert.equal(html.includes('Funcionários e Acessos'), true, 'o cadastro central deve separar vínculo de trabalho e login');
     assert.equal(html.includes('embedded=1'), true, 'o módulo integrado deve ocultar o segundo cabeçalho');
     assert.equal(comprasHtml.includes('Configurações Avançadas'), false, 'Compras não deve manter um painel avançado próprio');
     assert.equal(comprasHtml.includes('Forçar Atualização do App'), false, 'a atualização deve ficar centralizada no app principal');
@@ -1121,14 +1121,15 @@ function testV2027TaskExperience() {
     assert.equal(html.includes("abrirLoginAdmin('kds')"), true, 'o KDS deve abrir somente suas configuracoes');
     assert.equal(html.includes("abrirLoginAdmin('tasks')"), true, 'Atividades deve abrir somente suas configuracoes');
     assert.equal(html.includes('onclick="abrirModuloCompras()"'), true, 'Compras deve pedir login antes de abrir');
-    assert.equal(app.includes("AloFeiraModule.prepareLogin()"), true, 'o login do host deve usar os operadores de Compras');
-    assert.equal(app.includes("modulo !== 'feira' && modulo !== 'compras'"), true, 'a sessão de Compras deve terminar ao sair do módulo');
+    assert.equal(app.includes("AloSharedData.listLoginPeople()"), true, 'o login deve usar somente os acessos do núcleo compartilhado');
+    assert.equal(app.includes("AloSharedData.logoutModule('compras')"), true, 'a sessão de Compras deve terminar ao sair do módulo');
+    assert.equal(app.includes("AloSharedData.logoutModule('l42')"), true, 'a sessão do L42 deve terminar ao sair do módulo');
     assert.equal(app.includes("|| (db.configs.senhaMestra"), false, 'a senha mestra não deve servir de atalho operacional');
     const comprasSettings = html.slice(html.indexOf('id="modalConfigCompras"'), html.indexOf('id="modalConfigKds"'));
     assert.equal(comprasSettings.includes('Dados do Restaurante'), false, 'dados do restaurante devem ficar no painel central');
     assert.equal(comprasSettings.includes('Gerenciar Operadores'), false, 'operadores devem ficar no painel central');
     assert.equal(panel.includes("openManager('restaurante', 'central')"), true, 'o painel central deve administrar o restaurante');
-    assert.equal(panel.includes("openManager('colaboradores', 'central')"), true, 'o painel central deve administrar operadores');
+    assert.equal(panel.includes('AloSharedData.openManager()'), true, 'o painel central deve administrar funcionários e acessos');
     assert.equal(html.includes('module-choice-settings'), true, 'a tela inicial deve oferecer o painel completo');
     assert.equal(tasks.includes('function formatRichEditor(editorId, command)'), true, 'o procedimento deve usar editor formatado');
     assert.equal(tasks.includes('function cycleRichEditorAlignment(editorId, button)'), true, 'o editor deve ter um unico controle ciclico de alinhamento');
@@ -1359,6 +1360,17 @@ async function testCatalogAutoPublish() {
     assert.equal(alreadyCurrent.sent, false);
     assert.equal(postCount, 1);
 
+    const withSharedCore = { ...data, coreCompartilhado: { people: [{ id: 'p1' }], revision: 1 } };
+    const compatibleOldBackend = await context.AloCatalogSync.publish({ api, url: 'https://server.test', data: withSharedCore, wait: async () => {} });
+    assert.equal(compatibleOldBackend.confirmed, true, 'backend antigo não deve prender a publicação do cardápio');
+    assert.equal(compatibleOldBackend.sent, false);
+    assert.equal(remote.coreCompartilhado, undefined);
+
+    remote._capabilities = { dadosCompartilhados: true };
+    const publishedSharedCore = await context.AloCatalogSync.publish({ api, url: 'https://server.test', data: withSharedCore, wait: async () => {} });
+    assert.equal(publishedSharedCore.confirmed, true);
+    assert.equal(remote.coreCompartilhado.people[0].id, 'p1', 'backend atualizado deve receber a identidade central');
+
     conflict = true;
     const changedData = { ...data, produtos: [{ nome: 'Arroz' }] };
     const conflicted = await context.AloCatalogSync.publish({ api, url: 'https://server.test', data: changedData, wait: async () => {} });
@@ -1387,7 +1399,7 @@ function testComprasUsesUnifiedHost() {
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/compras/index.html?v=2.1.7' },
+        dataset: { src: 'modules/compras/index.html?v=2.1.8' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1464,14 +1476,14 @@ function testV217ModuleArchitecture() {
     assert.deepEqual(closedSessions, ['compras', 'l42'], 'o host deve encerrar a sessão do módulo protegido ao sair');
 
     const contracts = context.AloDataContracts.describe();
-    assert.equal(contracts.appVersion, '2.1.7');
+    assert.equal(contracts.appVersion, '2.1.8');
     assert.equal(context.AloDataContracts.get('kds').localStorage.includes('kds_v1_db'), true);
     assert.equal(context.AloDataContracts.get('checklist').localStorage.includes('alo_tasks_outbox_v2'), true);
     assert.equal(context.AloDataContracts.get('compras').localStorage.includes('alofeira_v1'), true);
     assert.equal(context.AloDataContracts.get('l42').localStorage.includes('etiquetadora_db'), true);
 
     [
-        'core/api.js', 'core/catalog-sync.js', 'core/ui-dialog.js',
+        'core/api.js', 'core/catalog-sync.js', 'core/ui-dialog.js', 'core/shared-data.js',
         'modules/kds/app.js', 'modules/kds/sync.js',
         'modules/checklist/app.js', 'modules/checklist/styles.css',
         'modules/compras/index.html', 'modules/compras/host.js',
@@ -1483,11 +1495,13 @@ function testV217ModuleArchitecture() {
 
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const shellCache = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
-    assert.equal(html.includes('core/module-host.js?v=2.1.7'), true);
-    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.7'), true);
-    assert.equal(html.includes('modules/l42/index.html?embedded=1&amp;v=2.1.7'), true);
-    assert.equal(html.includes('modules/l42/icon.png?v=2.1.7'), true);
-    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.7'), true);
+    assert.equal(html.includes('core/module-host.js?v=2.1.8'), true);
+    assert.equal(html.includes('core/shared-data.js?v=2.1.8'), true);
+    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.8'), true);
+    assert.equal(html.includes('modules/l42/index.html?embedded=1&amp;v=2.1.8'), true);
+    assert.equal(html.includes('modules/l42/icon.png?v=2.1.8'), true);
+    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.8'), true);
+    assert.equal(shellCache.includes('./core/shared-data.js?v=2.1.8'), true);
     assert.equal(shellCache.includes('./modules/compras/index.html'), true);
     assert.equal(shellCache.includes('./modules/l42/index.html'), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'icon.png')), true);
@@ -1497,6 +1511,58 @@ function testV217ModuleArchitecture() {
     assert.equal(l42Host.includes("global.receberQrsNativos"), true, 'o retorno da câmera nativa deve alcançar o iframe');
     assert.equal(l42Host.includes("global.receberLinkAutenticacaoSupabase"), true, 'o deep link Supabase deve alcançar o iframe');
     assert.equal(html.indexOf('core/module-host.js') < html.indexOf('modules/kds/module.js'), true, 'o núcleo deve carregar antes dos módulos');
+}
+
+function testV218UnifiedPeopleAndDataHub() {
+    const shared = fs.readFileSync(path.join(root, 'core', 'shared-data.js'), 'utf8');
+    const checklist = fs.readFileSync(path.join(root, 'modules', 'checklist', 'app.js'), 'utf8');
+    const compras = fs.readFileSync(path.join(root, 'modules', 'compras', 'src', 'scripts', 'app.js'), 'utf8');
+    const l42 = fs.readFileSync(path.join(root, 'modules', 'l42', 'index.html'), 'utf8');
+    const gas = fs.readFileSync(path.join(root, 'google-apps-script.gs'), 'utf8');
+
+    assert.equal(shared.includes("podeEntrar: source.podeEntrar === true"), true, 'login deve ser uma capacidade explícita');
+    assert.equal(shared.includes('person.permissions.checklist.funcionario'), true, 'funcionário deve ser independente do login');
+    assert.equal(shared.includes('state.people.filter(person => person.ativo !== false && person.podeEntrar === true)'), true, 'somente acessos habilitados podem aparecer no login');
+    assert.equal(shared.includes("person.credentials = { alternatives: [] }"), false, 'desligar o login não deve destruir o PIN criptografado');
+    assert.equal(shared.includes('async function getUnifiedData()'), true, 'o núcleo deve expor os dados dos módulos por um único hub');
+    assert.equal(checklist.includes('global.AloSharedData.openManager()'), true, 'o Checklist deve usar o cadastro central de pessoas');
+    assert.equal(compras.includes('const acessos = recebidas.filter'), true, 'funcionários sem login não devem virar operadores de Compras');
+    assert.equal(l42.includes("window.parent.AloSharedData.openManager()"), true, 'o L42 deve abrir o cadastro central de pessoas');
+    assert.equal(gas.includes('coreCompartilhado: valorEnviadoOuAtual'), true, 'a identidade compartilhada deve ser persistida no backend atual');
+}
+
+async function testEmployeeCanExistWithoutLogin() {
+    const storage = new Map();
+    const database = {
+        funcionarios: [{ id: 'func_maria', nome: 'Maria', setorId: 'cozinha', ativo: true }],
+        produtos: [],
+        categorias: []
+    };
+    const context = vm.createContext({
+        console,
+        Date,
+        Map,
+        Set,
+        Promise,
+        JSON,
+        CustomEvent: class CustomEvent { constructor(type, options) { this.type = type; this.detail = options?.detail; } },
+        localStorage: {
+            getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+            setItem(key, value) { storage.set(key, value); }
+        },
+        document: { dispatchEvent() {} }
+    });
+    context.window = context;
+    loadScript(context, 'core/shared-data.js');
+    context.AloSharedData.configure({ getDatabase: () => database, markDatabaseChanged() {} });
+    await context.AloSharedData.refreshSources({ includeFrames: false, push: false });
+
+    const shared = context.AloSharedData.getBackup();
+    assert.equal(shared.people.length, 1);
+    assert.equal(shared.people[0].nome, 'Maria');
+    assert.equal(shared.people[0].permissions.checklist.funcionario, true, 'Maria deve continuar disponível como funcionária');
+    assert.equal(shared.people[0].podeEntrar, false, 'ser funcionária não deve habilitar login automaticamente');
+    assert.equal((await context.AloSharedData.listLoginPeople()).length, 0, 'funcionário sem acesso não pode aparecer no login');
 }
 
 (async () => {
@@ -1532,7 +1598,9 @@ function testV217ModuleArchitecture() {
     testComprasHasIndependentOperationalPermissions();
     testComprasUsesUnifiedHost();
     testV217ModuleArchitecture();
-    console.log('Testes críticos da v2.1.7 passaram.');
+    testV218UnifiedPeopleAndDataHub();
+    await testEmployeeCanExistWithoutLogin();
+    console.log('Testes críticos da v2.1.8 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

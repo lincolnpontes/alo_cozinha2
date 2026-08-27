@@ -393,9 +393,9 @@ let db = carregarBanco();
             produtos: [], categorias: [], obsPedidos: ["Sem sal", "Pouco óleo"],
             obsCancelamentos: ["Falta de insumo", "Queimou"],
             setoresTarefas: [{ id: 'setor_cozinha', nome: 'Cozinha', emoji: '🧑‍🍳', ativo: true }],
-            funcionarios: [], tarefas: [],
+            funcionarios: [], tarefas: [], coreCompartilhado: null,
             configsTarefas: { som: 'beep', volume: '80', repeticaoMinutos: '5' },
-            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, telaAtiva: "sim", inatividade: "0", reenvio: "permitido" }
+            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido" }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
         if(local) {
@@ -403,6 +403,7 @@ let db = carregarBanco();
             if(typeof local.configs.dadosBaixados === 'undefined') local.configs.dadosBaixados = false;
             if(typeof local.configs.bancoPendente === 'undefined') local.configs.bancoPendente = false;
             if(typeof local.configs.revisaoBanco === 'undefined') local.configs.revisaoBanco = 0;
+            if(typeof local.configs.suporteDadosCompartilhados === 'undefined') local.configs.suporteDadosCompartilhados = false;
             if (migrarSenhaSeguranca(local.configs)) local.configs.bancoPendente = true;
             if(!local.configs.telaAtiva) local.configs.telaAtiva = "sim";
             if(!local.configs.inatividade) local.configs.inatividade = "0";
@@ -412,6 +413,7 @@ let db = carregarBanco();
             if(!Array.isArray(local.setoresTarefas) || !local.setoresTarefas.length) local.setoresTarefas = defaultDB.setoresTarefas;
             if(!Array.isArray(local.funcionarios)) local.funcionarios = [];
             if(!Array.isArray(local.tarefas)) local.tarefas = [];
+            if(!local.coreCompartilhado || typeof local.coreCompartilhado !== 'object') local.coreCompartilhado = null;
             local.configsTarefas = { ...defaultDB.configsTarefas, ...(local.configsTarefas || {}) };
             return local;
         }
@@ -1220,6 +1222,7 @@ let db = carregarBanco();
     let destinoConfiguracoes = 'painel';
     let destinoLoginOperador = 'painel';
     let sessaoCompras = null;
+    let sessaoL42 = null;
     let sessaoAdministrativaAtiva = false;
     const ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1';
 
@@ -1275,8 +1278,12 @@ let db = carregarBanco();
         await abrirLoginAdmin('compras_modulo');
     }
 
+    async function abrirModuloL42() {
+        await abrirLoginAdmin('l42_modulo');
+    }
+
     async function abrirLoginAdmin(destino = 'painel') {
-        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'compras_modulo', 'trocar_compras'];
+        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'];
         destinoLoginOperador = destinosValidos.includes(destino) ? destino : 'painel';
         if (['painel', 'kds', 'tasks', 'compras'].includes(destinoLoginOperador)) destinoConfiguracoes = destinoLoginOperador;
         if (destinoLoginOperador === 'compras' && sessaoCompras?.isAdmin) {
@@ -1290,7 +1297,9 @@ let db = carregarBanco();
         const button = document.getElementById('btnConfirmarLoginOperador');
         document.getElementById('tituloLoginOperador').innerText = destinoLoginOperador === 'compras_modulo'
             ? 'Entrar na Lista de Compras'
-            : (destinoLoginOperador === 'trocar_compras' ? 'Trocar operador' : 'Acesso às configurações');
+            : (destinoLoginOperador === 'l42_modulo'
+                ? 'Entrar no L42'
+                : (destinoLoginOperador.startsWith('trocar_') ? 'Trocar pessoa' : 'Acesso às configurações'));
         select.innerHTML = '<option value="">Carregando operadores...</option>';
         select.disabled = true;
         input.value = '';
@@ -1300,7 +1309,7 @@ let db = carregarBanco();
         modal.style.display = 'flex';
 
         try {
-            const operadores = await AloFeiraModule.prepareLogin();
+            const operadores = await AloSharedData.listLoginPeople();
             if (!operadores.length) {
                 fecharModal('modalLoginAdmin');
                 if (destinoLoginOperador === 'painel') {
@@ -1309,11 +1318,11 @@ let db = carregarBanco();
                     return;
                 }
                 await AloUiDialog.notice('Cadastre o primeiro operador nas Configurações do Alô Cozinha.', {
-                    title: 'Nenhum operador cadastrado', icon: '👤', confirmText: 'Entendi'
+                    title: 'Nenhum acesso cadastrado', icon: '👤', confirmText: 'Entendi'
                 });
                 return;
             }
-            select.innerHTML = '<option value="">Selecione o operador</option>';
+            select.innerHTML = '<option value="">Selecione a pessoa</option>';
             operadores.forEach(operador => {
                 const option = document.createElement('option');
                 option.value = operador.id;
@@ -1593,8 +1602,8 @@ let db = carregarBanco();
             const dataToExport = {
                 app: 'alo_cozinha',
                 format: 'backup_completo',
-                schemaVersion: 2,
-                version: '2.1.7',
+                schemaVersion: 3,
+                version: '2.1.8',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1604,7 +1613,8 @@ let db = carregarBanco();
                     cientes: Array.from(pedidosCientes)
                 },
                 compras,
-                l42
+                l42,
+                compartilhado: AloSharedData.getBackup()
             };
             const dataStr = JSON.stringify(dataToExport, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
@@ -1658,6 +1668,9 @@ let db = carregarBanco();
             setoresTarefas: hasArray('setoresTarefas') ? source.setoresTarefas : current.setoresTarefas,
             funcionarios: hasArray('funcionarios') ? source.funcionarios : current.funcionarios,
             tarefas: hasArray('tarefas') ? source.tarefas : current.tarefas,
+            coreCompartilhado: source.coreCompartilhado && typeof source.coreCompartilhado === 'object'
+                ? source.coreCompartilhado
+                : current.coreCompartilhado,
             configsTarefas: Object.prototype.hasOwnProperty.call(source, 'configsTarefas')
                 ? { ...current.configsTarefas, ...(source.configsTarefas || {}) }
                 : current.configsTarefas,
@@ -1696,11 +1709,11 @@ let db = carregarBanco();
 
     function separarModulosDoBackup(importedData) {
         if (importedData?.format === 'backup_completo' && importedData?.app === 'alo_cozinha') {
-            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, completo: true };
+            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, compartilhado: importedData.compartilhado || null, completo: true };
         }
-        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, completo: false };
-        if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, completo: false };
-        return { kdsChecklist: importedData, compras: null, l42: null, completo: false };
+        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, compartilhado: null, completo: false };
+        if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, compartilhado: null, completo: false };
+        return { kdsChecklist: importedData, compras: null, l42: null, compartilhado: null, completo: false };
     }
 
     async function importarDadosFisicos(event) {
@@ -1776,6 +1789,13 @@ let db = carregarBanco();
             if (modulos.l42) {
                 await AloL42Module.restoreBackup(modulos.l42);
                 etapasConcluidas.push('L42');
+            }
+
+            if (modulos.compartilhado) {
+                await AloSharedData.restoreBackup(modulos.compartilhado);
+                etapasConcluidas.push('Funcionários e acessos');
+            } else {
+                await AloSharedData.refreshSources({ includeFrames: true, push: true });
             }
 
             if (status) status.innerText = 'Restauração concluída e confirmada.';
@@ -2176,24 +2196,23 @@ let db = carregarBanco();
         const button = document.getElementById('btnConfirmarLoginOperador');
         if (!select.value) {
             const feedback = document.getElementById('erroSenhaAdmin');
-            feedback.innerText = 'Selecione o operador.';
+            feedback.innerText = 'Selecione a pessoa.';
             select.focus();
             return;
         }
         button.disabled = true;
         try {
-            const ativar = ['painel', 'compras_modulo', 'trocar_compras'].includes(destinoLoginOperador);
-            const resultado = await AloFeiraModule.authenticateOperator(select.value, input.value, { ativar });
+            const resultado = await AloSharedData.authenticate(select.value, input.value);
             if (!resultado?.ok) return senhaIncorreta('senhaAdmin', 'erroSenhaAdmin');
             localStorage.setItem(ULTIMO_OPERADOR_LOGIN_KEY, resultado.operador.id);
-            const acessoOperacional = ['compras_modulo', 'trocar_compras'].includes(destinoLoginOperador);
+            const acessoOperacional = ['compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'].includes(destinoLoginOperador);
             const podeConfigurar = acessoOperacional
                 || (destinoLoginOperador === 'kds' && resultado.operador.podeConfigurarKds)
                 || (destinoLoginOperador === 'tasks' && resultado.operador.podeConfigurarChecklist)
                 || (['painel', 'compras'].includes(destinoLoginOperador) && resultado.operador.isAdmin);
             if (!podeConfigurar) {
                 const modulo = destinoLoginOperador === 'kds' ? 'KDS' : (destinoLoginOperador === 'tasks' ? 'Checklist' : 'Alô Cozinha');
-                document.getElementById('erroSenhaAdmin').innerText = `Este operador não tem acesso às configurações do ${modulo}.`;
+                document.getElementById('erroSenhaAdmin').innerText = `Esta pessoa não tem acesso às configurações do ${modulo}.`;
                 input.value = '';
                 input.focus();
                 return;
@@ -2204,9 +2223,16 @@ let db = carregarBanco();
             input.value = '';
             limparErroSenha('erroSenhaAdmin');
             if (destinoLoginOperador === 'compras_modulo' || destinoLoginOperador === 'trocar_compras') {
+                await AloSharedData.activateForModule('compras', resultado.operador.id);
                 sessaoCompras = resultado.operador;
                 AloFeiraModule.refreshHeader();
                 if (destinoLoginOperador === 'compras_modulo') AloTasks.openModule('feira');
+                return;
+            }
+            if (destinoLoginOperador === 'l42_modulo' || destinoLoginOperador === 'trocar_l42') {
+                await AloSharedData.activateForModule('l42', resultado.operador.id);
+                sessaoL42 = resultado.operador;
+                if (destinoLoginOperador === 'l42_modulo') AloTasks.openModule('l42');
                 return;
             }
             if (destinoLoginOperador === 'painel') sessaoAdministrativaAtiva = true;
@@ -2231,9 +2257,15 @@ let db = carregarBanco();
     }
 
     function encerrarSessaoModulo(modulo) {
-        if (modulo !== 'feira' && modulo !== 'compras') return;
-        sessaoCompras = null;
-        AloFeiraModule.logout().catch(() => {});
+        if (modulo === 'feira' || modulo === 'compras') {
+            sessaoCompras = null;
+            AloSharedData.logoutModule('compras').catch(() => {});
+            return;
+        }
+        if (modulo === 'l42') {
+            sessaoL42 = null;
+            AloSharedData.logoutModule('l42').catch(() => {});
+        }
     }
 
     let syncConfiavel = null;
@@ -2411,6 +2443,30 @@ let db = carregarBanco();
                 openModalTop: abrirModalNoTopo
             });
         }
+        if (window.AloSharedData) {
+            AloSharedData.registerAdapter('compras', {
+                getSnapshot: () => AloFeiraModule.getSharedSnapshot(),
+                applyPeople: people => AloFeiraModule.applySharedPeople(people),
+                applyRestaurant: restaurant => AloFeiraModule.applySharedRestaurant(restaurant),
+                activatePerson: person => AloFeiraModule.activateSharedPerson(person),
+                logout: () => AloFeiraModule.logout(),
+                getFullData: () => AloFeiraModule.getBackup()
+            });
+            AloSharedData.registerAdapter('l42', {
+                getSnapshot: () => AloL42Module.getSharedSnapshot(),
+                applyPeople: people => AloL42Module.applySharedPeople(people),
+                applyRestaurant: restaurant => AloL42Module.applySharedRestaurant(restaurant),
+                activatePerson: person => AloL42Module.activateSharedPerson(person),
+                logout: () => AloL42Module.logout(),
+                getFullData: () => AloL42Module.getBackup()
+            });
+            AloSharedData.configure({
+                getDatabase: () => db,
+                markDatabaseChanged: marcarBancoAlterado,
+                openModalTop: abrirModalNoTopo
+            });
+            AloSharedData.refreshSources().catch(error => console.warn('Integração dos dados:', error));
+        }
         syncConfiavel = new AloSync({
             getUrl: () => db.configs.url,
             onOrders: aplicarPedidosSincronizados,
@@ -2497,6 +2553,7 @@ let db = carregarBanco();
             setoresTarefas: banco.setoresTarefas,
             funcionarios: banco.funcionarios,
             tarefas: banco.tarefas,
+            coreCompartilhado: window.AloSharedData ? AloSharedData.getCloudData() : (banco.coreCompartilhado || null),
             configsTarefas: {
                 som: taskSettings.som,
                 volume: taskSettings.volume,
@@ -2538,7 +2595,8 @@ let db = carregarBanco();
         const configuracaoLocal = {
             url: db.configs.url,
             modo: db.configs.modo,
-            areaAtual: db.configs.areaAtual
+            areaAtual: db.configs.areaAtual,
+            suporteDadosCompartilhados: Boolean(nuvemDB._capabilities?.dadosCompartilhados)
         };
         db.produtos = Array.isArray(nuvemDB.produtos) ? nuvemDB.produtos : db.produtos;
         db.categorias = Array.isArray(nuvemDB.categorias) ? nuvemDB.categorias : db.categorias;
@@ -2548,6 +2606,13 @@ let db = carregarBanco();
         db.setoresTarefas = Array.isArray(nuvemDB.setoresTarefas) && nuvemDB.setoresTarefas.length ? nuvemDB.setoresTarefas : db.setoresTarefas;
         db.funcionarios = Array.isArray(nuvemDB.funcionarios) ? nuvemDB.funcionarios : db.funcionarios;
         db.tarefas = Array.isArray(nuvemDB.tarefas) ? nuvemDB.tarefas : db.tarefas;
+        if (nuvemDB.coreCompartilhado && typeof nuvemDB.coreCompartilhado === 'object') {
+            db.coreCompartilhado = nuvemDB.coreCompartilhado;
+            window.AloSharedData?.applyCloudState(nuvemDB.coreCompartilhado);
+        }
+        const devePublicarNucleo = configuracaoLocal.suporteDadosCompartilhados
+            && !nuvemDB.coreCompartilhado
+            && Boolean(window.AloSharedData?.describe().people);
         db.configsTarefas = { ...db.configsTarefas, ...(nuvemDB.configsTarefas || {}) };
         db.configs = {
             ...db.configs,
@@ -2557,6 +2622,7 @@ let db = carregarBanco();
             bancoPendente: false,
             revisaoBanco: Number(nuvemDB._revision || 0)
         };
+        if (devePublicarNucleo) db.configs.bancoPendente = true;
         if (migrarSenhaSeguranca(db.configs)) db.configs.bancoPendente = true;
         normalizarAreasERotas();
         normalizarSonsConfigurados();
@@ -2582,6 +2648,7 @@ let db = carregarBanco();
         db.configs.dadosBaixados = true;
         db.configs.bancoPendente = !nenhumaEdicaoNova;
         db.configs.revisaoBanco = resultado.revision;
+        db.configs.suporteDadosCompartilhados = Boolean(resultado.sharedSupported);
         salvarBancoLocal();
     }
 
@@ -2639,7 +2706,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.7').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.8').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

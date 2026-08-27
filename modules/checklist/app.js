@@ -134,7 +134,8 @@
             id: employee.id,
             nome: employee.nome || '',
             setorId: employee.setorId || '',
-            ativo: employee.ativo !== false
+            ativo: employee.ativo !== false,
+            coreId: employee.coreId || ''
         }));
         if (!Array.isArray(data.tarefas)) data.tarefas = [];
         data.tarefas = data.tarefas.map(task => {
@@ -1271,7 +1272,10 @@
         deps.openModalTop('modalTasksManager');
     }
     function manageTaskAreas() { openManager('areas'); }
-    function manageEmployees() { openManager('employees'); }
+    function manageEmployees() {
+        if (global.AloSharedData) global.AloSharedData.openManager();
+        else openManager('employees');
+    }
     function manageTemplates() { openManager('templates'); }
     function editManagedItem(index) { openForm(managerType, index); }
     function areaOptions(selected) {
@@ -1755,6 +1759,49 @@
             filaPendente: JSON.parse(JSON.stringify(outbox))
         };
     }
+
+    function sharedComparable(value) {
+        return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    }
+
+    function getSharedSnapshot() {
+        return {
+            people: JSON.parse(JSON.stringify(db().funcionarios || [])),
+            products: [],
+            categories: []
+        };
+    }
+
+    function applySharedPeople(people) {
+        const source = Array.isArray(people) ? people : [];
+        const employees = db().funcionarios || (db().funcionarios = []);
+        const before = JSON.stringify(employees);
+        const acceptedIds = new Set();
+
+        source.filter(person => person?.ativo !== false && person?.permissions?.checklist?.funcionario === true).forEach(person => {
+            const linkedId = String(person.links?.checklistId || '');
+            let employee = employees.find(item => item.coreId === person.id)
+                || employees.find(item => linkedId && item.id === linkedId)
+                || employees.find(item => sharedComparable(item.nome) === sharedComparable(person.nome));
+            if (!employee) {
+                employee = { id: linkedId || createId('func'), nome: person.nome, setorId: '', ativo: true };
+                employees.push(employee);
+            }
+            employee.coreId = person.id;
+            employee.nome = person.nome;
+            employee.ativo = true;
+            employee.setorId = String(person.permissions.checklist.setorId || employee.setorId || '');
+            acceptedIds.add(person.id);
+        });
+
+        employees.forEach(employee => {
+            if (employee.coreId && !acceptedIds.has(employee.coreId)) employee.ativo = false;
+        });
+        if (before === JSON.stringify(employees)) return false;
+        deps.markDatabaseChanged();
+        refreshDefinitions();
+        return true;
+    }
     function init(options) {
         if (initialized) return;
         deps = options;
@@ -1814,6 +1861,7 @@
         openHygieneLibrary, closeHygieneLibrary, setHygieneGroup, useHygieneTemplate,
         openTaskQr, closeTaskQr, printTaskQr,
         openBasicSettings, saveBasicSettings, openReports, renderReports, changeReportArea,
-        openTaskHistory, closeTaskHistory, printTaskHistory, closeReports
+        openTaskHistory, closeTaskHistory, printTaskHistory, closeReports,
+        getSharedSnapshot, applySharedPeople
     });
 })(window);

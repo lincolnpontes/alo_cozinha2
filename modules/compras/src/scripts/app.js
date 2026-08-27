@@ -77,6 +77,98 @@ async function obterBackupComprasPeloHost() {
     return copia;
 }
 
+async function obterDadosCompartilhadosComprasPeloHost() {
+    await comprasProntasHost;
+    return {
+        restaurant: JSON.parse(JSON.stringify(db.restaurante || {})),
+        people: JSON.parse(JSON.stringify(db.colaboradores || [])),
+        products: JSON.parse(JSON.stringify(db.produtos || [])),
+        categories: JSON.parse(JSON.stringify(db.categorias || [])),
+        historyCount: (db.pedidosAtivos || []).filter(item => item && item.status !== 'rascunho').length
+    };
+}
+
+function hashCentralCompras(pessoa) {
+    const alternativas = pessoa?.credentials?.alternatives || [];
+    return alternativas.find(item => item.scheme === 'pbkdf2-sha256')?.hash || '';
+}
+
+async function aplicarPessoasCompartilhadasComprasPeloHost(pessoas) {
+    await comprasProntasHost;
+    const recebidas = Array.isArray(pessoas) ? pessoas : [];
+    const acessos = recebidas.filter(pessoa => pessoa?.podeEntrar === true);
+    const antes = JSON.stringify(db.colaboradores || []);
+    acessos.forEach(pessoa => {
+        const idVinculado = String(pessoa?.links?.comprasId || '');
+        let operador = db.colaboradores.find(item => item.coreId === pessoa.id)
+            || db.colaboradores.find(item => idVinculado && item.id === idVinculado)
+            || db.colaboradores.find(item => removerAcentos(item.nome || '').toLowerCase().trim() === removerAcentos(pessoa.nome || '').toLowerCase().trim());
+        if (!operador) {
+            operador = { id: idVinculado || `core_${pessoa.id}`, telefone: '', catsPermitidas: [] };
+            db.colaboradores.push(operador);
+        }
+        const permissions = pessoa.permissions || {};
+        const compras = permissions.compras || {};
+        operador.coreId = pessoa.id;
+        operador.nome = pessoa.nome;
+        operador.emoji = pessoa.emoji || '👤';
+        operador.ativo = pessoa.ativo !== false && pessoa.podeEntrar === true;
+        operador.isAdmin = Boolean(pessoa.isAdmin);
+        operador.permissoesModulos = {
+            ...(operador.permissoesModulos || {}),
+            kds: { configuracoes: Boolean(permissions.kds?.configuracoes) },
+            checklist: { configuracoes: Boolean(permissions.checklist?.configuracoes) },
+            compras: { receber: compras.receber !== false, comprar: compras.comprar !== false },
+            l42: JSON.parse(JSON.stringify(permissions.l42 || {}))
+        };
+        operador.catsPermitidasPedido = Array.isArray(compras.categoriasPedido) ? [...compras.categoriasPedido] : (operador.catsPermitidasPedido || []);
+        operador.catsPermitidasCompras = Array.isArray(compras.categoriasCompras) ? [...compras.categoriasCompras] : (operador.catsPermitidasCompras || []);
+        const centralHash = hashCentralCompras(pessoa);
+        if (centralHash) {
+            operador.senhaHash = centralHash;
+            delete operador.senha;
+        }
+        operador.atualizadoEm = Math.max(Number(operador.atualizadoEm || 0), Number(pessoa.atualizadoEm || 0));
+    });
+    const centralIds = new Set(acessos.map(pessoa => pessoa.id));
+    db.colaboradores.forEach(operador => {
+        if (operador.coreId && !centralIds.has(operador.coreId)) operador.ativo = false;
+    });
+    if (JSON.stringify(db.colaboradores || []) === antes) return false;
+    marcarMudancaEstrutural();
+    salvarBanco();
+    sincronizarFundo(false, true);
+    return true;
+}
+
+async function aplicarRestauranteCompartilhadoComprasPeloHost(restaurante) {
+    await comprasProntasHost;
+    if (!restaurante?.nome) return false;
+    const incomingTimestamp = Number(restaurante.atualizadoEm || 0);
+    const currentTimestamp = Number(db.restaurante?.atualizadoEm || 0);
+    if (db.restaurante?.nome && incomingTimestamp < currentTimestamp) return false;
+    const next = { ...(db.restaurante || {}), ...JSON.parse(JSON.stringify(restaurante)) };
+    if (JSON.stringify(next) === JSON.stringify(db.restaurante || {})) return false;
+    db.restaurante = next;
+    marcarMudancaEstrutural();
+    salvarBanco();
+    sincronizarFundo(false, true);
+    return true;
+}
+
+async function ativarPessoaCompartilhadaComprasPeloHost(pessoa) {
+    await comprasProntasHost;
+    const operador = db.colaboradores.find(item => item.coreId === pessoa.id && item.ativo !== false);
+    if (!operador) throw new Error('Este acesso não está habilitado para Compras.');
+    pilhaDesfazer = [];
+    atualizarBotaoDesfazer();
+    db.configs.colabAtivoId = operador.id;
+    salvarBanco();
+    iniciarApp();
+    notificarHostCompras();
+    return operadorSeguroParaHost(operador);
+}
+
 function obterEstadoHostCompras() {
     const operador = db.colaboradores.find(c => c.id === db.configs.colabAtivoId && c.ativo !== false);
     return {
@@ -93,6 +185,7 @@ function notificarHostCompras() {
 
 function voltarParaConfiguracoesHost() {
     if (executandoNoHost && window.parent !== window) {
+        obterDadosCompartilhadosComprasPeloHost().then(snapshot => window.parent.AloSharedData?.updateFromModule('compras', snapshot)).catch(() => {});
         window.parent.AloFeiraModule?.backToSettings();
         return;
     }

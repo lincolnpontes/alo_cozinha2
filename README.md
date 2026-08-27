@@ -1,10 +1,11 @@
-# Alô Cozinha v2.1.7
+# Alô Cozinha v2.1.8
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e etiquetas/estoque (Alô L42).
 
 ## Novidades da v2
 
-- A v2.1.7 integra o Alô L42 v2.22 como quarto módulo isolado, preserva seu banco local, conta Supabase, câmera nativa e impressão TCP, e passa a gerar um APK único assinado com o certificado do L42 anterior.
+- A v2.1.8 cria a identidade central do produto: funcionário e login são capacidades independentes, Compras e L42 usam a mesma sessão, o restaurante é compartilhado e o Core expõe um hub único de dados e backup.
+- A v2.1.7 integrou o Alô L42 como quarto módulo, preservando banco local, conta Supabase, câmera nativa e impressão TCP em um APK único assinado com o certificado do L42 anterior.
 - A v2.1.6 reorganizou o produto em `core/` e módulos independentes para KDS, Checklist e Compras, preservando todas as chaves de dados e preparando a entrada de novos módulos.
 - A v2.0.24 prioriza pedidos novos, reduz a leitura operacional do histórico e sincroniza entre aparelhos a confirmação dos alertas das Panelas.
 - A v2.0.25 confirma visualmente o POST sem esperar uma segunda leitura, mantém o retry durável e sincroniza apenas o expediente atual, sem limite numérico de pedidos.
@@ -79,14 +80,15 @@ Aplicativo para operação de restaurante com quatro módulos: pedidos entre ár
 - `core/`: navegação, contratos de dados, API, diálogos e serviços compartilhados.
 - `modules/kds/`: pedidos, armazenamento, áudio e sincronização do KDS.
 - `modules/checklist/`: atividades, POP, alarmes, relatórios e QR Code.
-- `modules/compras/`: Lista de Compras isolada e sua ponte com o produto.
+- `modules/compras/`: Lista de Compras e seu adaptador para identidade, restaurante, sessão e backup compartilhados.
 - `modules/l42/`: etiquetas, estoque, câmera, impressão e fonte do backend Supabase existente.
 - `android/`: aplicativo Android unificado, com CameraX, ML Kit e a ponte da etiquetadora.
 - `index.html`: composição da interface principal e das configurações.
 - `styles.css`: shell visual e estilos históricos do KDS.
 - `service-worker.js`: cache para abertura offline.
 - `google-apps-script.gs`: backend unificado ligado à planilha.
-- `docs/ARCHITECTURE.md`: propriedade dos dados, limites dos módulos e preparação para Supabase/L42.
+- `docs/ARCHITECTURE.md`: propriedade dos dados, limites dos módulos e arquitetura integrada.
+- `docs/SUPABASE-MIGRATION.md`: plano para levar os quatro módulos a um único banco físico.
 
 ## Atualizar sem perder dados
 
@@ -96,7 +98,7 @@ A v2 preserva pedidos, produtos, categorias, observações, áreas, configuraç�
 2. Em `Implantar > Gerenciar implantações`, edite a implantação atual e selecione `Nova versão`.
 3. Implante mantendo o acesso como já estava configurado. A URL permanece a mesma.
 4. Publique os arquivos web desta branch e abra o app conectado uma vez em cada aparelho.
-5. Cadastre setores, funcionários e tarefas em `Configurações Tarefas`.
+5. Confira `Funcionários e Acessos`; funcionários sem login permanecem disponíveis no Checklist e não aparecem na autenticação.
 
 ## Teste recomendado
 

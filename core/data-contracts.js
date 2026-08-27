@@ -1,12 +1,13 @@
 (function (global) {
-    const VERSION = '2.1.7';
-    const SHARED_SCHEMA_VERSION = 1;
+    const VERSION = '2.1.8';
+    const SHARED_SCHEMA_VERSION = 2;
 
     const contracts = Object.freeze({
         shared: Object.freeze({
             owner: 'core',
-            fields: Object.freeze(['restaurante', 'operadores', 'setores', 'senhaSeguranca', 'urlNuvem']),
-            persistence: 'adaptadores dos módulos atuais',
+            fields: Object.freeze(['restaurant', 'people', 'catalog', 'sourceStats', 'migration']),
+            localStorage: Object.freeze(['alo_core_shared_v2']),
+            persistence: 'núcleo local, cópia compacta no Apps Script e adaptadores dos módulos',
             futureTablePrefix: 'core_'
         }),
         kds: Object.freeze({

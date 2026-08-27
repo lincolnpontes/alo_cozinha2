@@ -182,6 +182,30 @@
         return child.obterBackupComprasPeloHost();
     }
 
+    async function getSharedSnapshot() {
+        const child = await waitForChild();
+        if (typeof child.obterDadosCompartilhadosComprasPeloHost !== 'function') throw new Error('Atualize Compras para integrar os dados do estabelecimento.');
+        return child.obterDadosCompartilhadosComprasPeloHost();
+    }
+
+    async function applySharedPeople(people) {
+        const child = await waitForChild();
+        if (typeof child.aplicarPessoasCompartilhadasComprasPeloHost !== 'function') throw new Error('Compras ainda não aceita pessoas compartilhadas.');
+        return child.aplicarPessoasCompartilhadasComprasPeloHost(people);
+    }
+
+    async function applySharedRestaurant(restaurant) {
+        const child = await waitForChild();
+        if (typeof child.aplicarRestauranteCompartilhadoComprasPeloHost !== 'function') return false;
+        return child.aplicarRestauranteCompartilhadoComprasPeloHost(restaurant);
+    }
+
+    async function activateSharedPerson(person) {
+        const child = await waitForChild();
+        if (typeof child.ativarPessoaCompartilhadaComprasPeloHost !== 'function') throw new Error('Compras ainda não aceita a sessão compartilhada.');
+        return child.ativarPessoaCompartilhadaComprasPeloHost(person);
+    }
+
     async function restoreBackup(bank) {
         const child = await waitForChild();
         if (typeof child.restaurarBackupComprasPeloHost !== 'function') throw new Error('Atualize o módulo Compras antes de restaurar.');
@@ -221,6 +245,7 @@
     global.AloFeiraModule = Object.freeze({
         configure, open, syncServerUrl, toggleModePicker, closeModePicker, setMode,
         updateHeader, refreshHeader, openProfile, openManager, prepareLogin, authenticateOperator,
-        logout, getBackup, restoreBackup, syncNow, clearHistory, backToSettings
+        logout, getBackup, restoreBackup, getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson,
+        syncNow, clearHistory, backToSettings
     });
 })(window);

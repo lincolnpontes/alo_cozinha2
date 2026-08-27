@@ -471,7 +471,7 @@ function bancosComRevisao_() {
   const bancoStr = getProperties_().getProperty(PROP_BANCO);
   const banco = bancoStr ? JSON.parse(bancoStr) : {};
   banco._revision = Number(getProperties_().getProperty(PROP_BANCO_REVISION) || '0');
-  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true };
+  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true, dadosCompartilhados: true };
   return banco;
 }
 
@@ -498,6 +498,7 @@ function salvarBanco_(dados, expectedRevision) {
     setoresTarefas: valorEnviadoOuAtual('setoresTarefas', []),
     funcionarios: valorEnviadoOuAtual('funcionarios', []),
     tarefas: valorEnviadoOuAtual('tarefas', []),
+    coreCompartilhado: valorEnviadoOuAtual('coreCompartilhado', null),
     configsTarefas: valorEnviadoOuAtual('configsTarefas', {}),
     configs: valorEnviadoOuAtual('configs', {})
   };

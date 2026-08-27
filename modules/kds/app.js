@@ -1591,7 +1591,7 @@ let db = carregarBanco();
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 1,
-                version: '2.1.5',
+                version: '2.1.6',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2219,7 +2219,7 @@ let db = carregarBanco();
     }
 
     function encerrarSessaoModulo(modulo) {
-        if (modulo !== 'feira') return;
+        if (modulo !== 'feira' && modulo !== 'compras') return;
         sessaoCompras = null;
         AloFeiraModule.logout().catch(() => {});
     }
@@ -2627,7 +2627,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.5').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.6').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

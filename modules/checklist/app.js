@@ -1177,25 +1177,32 @@
     function showHome() {
         const previousModule = activeModule;
         activeModule = 'home';
-        document.getElementById('moduleHome').style.display = 'flex';
-        document.getElementById('kdsModule').style.display = 'none';
-        document.getElementById('tasksModule').style.display = 'none';
-        document.getElementById('feiraModule').style.display = 'none';
-        global.encerrarSessaoModulo?.(previousModule);
+        if (global.AloModuleHost) global.AloModuleHost.showHome();
+        else {
+            document.getElementById('moduleHome').style.display = 'flex';
+            document.getElementById('kdsModule').style.display = 'none';
+            document.getElementById('tasksModule').style.display = 'none';
+            document.getElementById('feiraModule').style.display = 'none';
+            global.encerrarSessaoModulo?.(previousModule);
+        }
     }
     function openModule(module) {
-        activeModule = module;
-        document.getElementById('moduleHome').style.display = 'none';
-        document.getElementById('kdsModule').style.display = module === 'kds' ? 'flex' : 'none';
-        document.getElementById('tasksModule').style.display = module === 'tasks' ? 'flex' : 'none';
-        document.getElementById('feiraModule').style.display = module === 'feira' ? 'flex' : 'none';
-        if (module === 'tasks') {
+        const canonicalModule = module === 'tasks' ? 'checklist' : (module === 'feira' ? 'compras' : module);
+        activeModule = canonicalModule === 'checklist' ? 'tasks' : (canonicalModule === 'compras' ? 'feira' : canonicalModule);
+        if (global.AloModuleHost) global.AloModuleHost.open(canonicalModule);
+        else {
+            document.getElementById('moduleHome').style.display = 'none';
+            document.getElementById('kdsModule').style.display = canonicalModule === 'kds' ? 'flex' : 'none';
+            document.getElementById('tasksModule').style.display = canonicalModule === 'checklist' ? 'flex' : 'none';
+            document.getElementById('feiraModule').style.display = canonicalModule === 'compras' ? 'flex' : 'none';
+        }
+        if (canonicalModule === 'checklist') {
             generateToday();
             render();
             syncNow(true);
             checkAlarms();
         }
-        if (module === 'feira') global.AloFeiraModule?.open();
+        if (canonicalModule === 'compras') global.AloFeiraModule?.open();
     }
     function setTab(tab) { selectedTab = tab; render(); }
     function setArea(area) {

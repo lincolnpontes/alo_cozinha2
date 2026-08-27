@@ -166,7 +166,7 @@ function createSyncHarness() {
         AloApi: api
     });
     context.window = context;
-    loadScript(context, 'sync.js');
+    loadScript(context, 'modules/kds/sync.js');
 
     const manager = new context.AloSync({ getUrl: () => 'https://server.test', onOrders() {}, onState() {} });
     manager.schedule = () => {};
@@ -663,7 +663,7 @@ async function testBackupMigrationWaitsForSlowServer() {
             }
         };
     };
-    loadScript(context, 'api.js');
+    loadScript(context, 'core/api.js');
     const result = await context.AloApi.migrateBackup(
         'https://script.google.com/macros/s/teste/exec',
         { migrationId: 'backup_teste', expectedRevision: 2, dados: {}, pedidos: [] },
@@ -946,7 +946,7 @@ function testOldClientPreservesV2TaskCatalog() {
 
 function testPasswordDialogsHaveExplicitConfirmation() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const app = fs.readFileSync(path.join(root, 'modules', 'kds', 'app.js'), 'utf8');
     [
         'confirmarSenhaModo()',
         'confirmarSenhaAdmin()',
@@ -964,18 +964,18 @@ function testPasswordDialogsHaveExplicitConfirmation() {
 
 function testV2027TaskExperience() {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-    const tasks = fs.readFileSync(path.join(root, 'tasks.js'), 'utf8');
-    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-    const sync = fs.readFileSync(path.join(root, 'sync.js'), 'utf8');
-    const css = fs.readFileSync(path.join(root, 'tasks.css'), 'utf8');
+    const tasks = fs.readFileSync(path.join(root, 'modules', 'checklist', 'app.js'), 'utf8');
+    const app = fs.readFileSync(path.join(root, 'modules', 'kds', 'app.js'), 'utf8');
+    const sync = fs.readFileSync(path.join(root, 'modules', 'kds', 'sync.js'), 'utf8');
+    const css = fs.readFileSync(path.join(root, 'modules', 'checklist', 'styles.css'), 'utf8');
     const kdsCss = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-    const ui = fs.readFileSync(path.join(root, 'ui.js'), 'utf8');
+    const ui = fs.readFileSync(path.join(root, 'core', 'ui-dialog.js'), 'utf8');
     const gas = fs.readFileSync(path.join(root, 'google-apps-script.gs'), 'utf8');
-    const templates = fs.readFileSync(path.join(root, 'task-templates.js'), 'utf8');
-    const comprasHtml = fs.readFileSync(path.join(root, 'modules', 'alo-feira', 'index.html'), 'utf8');
-    const comprasSync = fs.readFileSync(path.join(root, 'modules', 'alo-feira', 'src', 'scripts', 'sync.js'), 'utf8');
-    const comprasApp = fs.readFileSync(path.join(root, 'modules', 'alo-feira', 'src', 'scripts', 'app.js'), 'utf8');
-    const comprasHost = fs.readFileSync(path.join(root, 'feira-module.js'), 'utf8');
+    const templates = fs.readFileSync(path.join(root, 'modules', 'checklist', 'templates.js'), 'utf8');
+    const comprasHtml = fs.readFileSync(path.join(root, 'modules', 'compras', 'index.html'), 'utf8');
+    const comprasSync = fs.readFileSync(path.join(root, 'modules', 'compras', 'src', 'scripts', 'sync.js'), 'utf8');
+    const comprasApp = fs.readFileSync(path.join(root, 'modules', 'compras', 'src', 'scripts', 'app.js'), 'utf8');
+    const comprasHost = fs.readFileSync(path.join(root, 'modules', 'compras', 'host.js'), 'utf8');
     const panel = html.slice(html.indexOf('id="modalPainelUnificado"'), html.indexOf('id="modalConfigKds"'));
     const kdsSettings = html.slice(html.indexOf('id="modalConfigKds"'), html.indexOf('id="modalConfigTasksMenu"'));
     const taskSettings = html.slice(html.indexOf('id="modalConfigTasksMenu"'), html.indexOf('id="modalTaskHygieneLibrary"'));
@@ -988,7 +988,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes("renderizarMetricasDetalhes('tudo')"), true);
     assert.equal(html.includes('Histórico completo'), true);
     assert.equal(app.includes("periodo === 'tudo'"), true);
-    assert.equal(fs.readFileSync(path.join(root, 'api.js'), 'utf8').includes('attempt < 120'), true);
+    assert.equal(fs.readFileSync(path.join(root, 'core', 'api.js'), 'utf8').includes('attempt < 120'), true);
     assert.equal(app.includes("url: current.configs.url"), true, 'a migração deve preservar a URL nova');
     assert.equal(app.includes("AloApi.migrateBackup"), true, 'o backup deve ser confirmado pelo novo servidor');
     assert.equal(gas.includes("action === 'importar_backup'"), true);
@@ -1056,7 +1056,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.5</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.6</div>'), true, 'a tela inicial deve mostrar a versão');
     assert.equal(html.includes('Senha de Segurança'), true);
     assert.equal(html.includes('Senha Mestra'), false);
     assert.equal(app.includes("senhaMestra: \"\""), false, 'o aplicativo cru não deve trazer senha definida no código');
@@ -1073,13 +1073,13 @@ function testV2027TaskExperience() {
     assert.equal(comprasApp.includes('podeConfigurarKds'), true);
     assert.equal(sync.includes('serverIsBehindRequestedState'), true, 'leituras atrasadas não podem rebaixar um status solicitado');
     assert.equal(css.includes('.module-nav-icon { width: 56px;'), true, 'as imagens dos módulos devem ganhar destaque sem aumentar o cabeçalho');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.5/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.5/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.6/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.6/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.5/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.6/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
-    assert.equal(fs.existsSync(path.join(root, 'modules', 'alo-feira', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
+    assert.equal(fs.existsSync(path.join(root, 'modules', 'compras', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
     assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
     assert.equal(html.includes('id="feiraImportInput"'), false, 'a importação temporária deve ser removida após a migração');
     assert.equal(html.includes('id="modalConfigCompras"'), true, 'as configurações de Compras devem ficar no painel principal');
@@ -1122,7 +1122,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes("abrirLoginAdmin('tasks')"), true, 'Atividades deve abrir somente suas configuracoes');
     assert.equal(html.includes('onclick="abrirModuloCompras()"'), true, 'Compras deve pedir login antes de abrir');
     assert.equal(app.includes("AloFeiraModule.prepareLogin()"), true, 'o login do host deve usar os operadores de Compras');
-    assert.equal(app.includes("if (modulo !== 'feira') return"), true, 'a sessão de Compras deve terminar ao sair do módulo');
+    assert.equal(app.includes("modulo !== 'feira' && modulo !== 'compras'"), true, 'a sessão de Compras deve terminar ao sair do módulo');
     assert.equal(app.includes("|| (db.configs.senhaMestra"), false, 'a senha mestra não deve servir de atalho operacional');
     const comprasSettings = html.slice(html.indexOf('id="modalConfigCompras"'), html.indexOf('id="modalConfigKds"'));
     assert.equal(comprasSettings.includes('Dados do Restaurante'), false, 'dados do restaurante devem ficar no painel central');
@@ -1251,7 +1251,7 @@ function testAudioMode() {
         AloLogic: { isToday: () => true }
     });
     context.window = context;
-    loadScript(context, 'audio.js');
+    loadScript(context, 'modules/kds/audio.js');
     context.AloAudio.manage({
         mode: 'cozinha',
         configs: { somCozinha: 'alarme', volumeCozinha: 100 },
@@ -1329,7 +1329,7 @@ async function testCatalogAutoPublish() {
     let conflict = false;
     const context = vm.createContext({ console, setTimeout, clearTimeout });
     context.window = context;
-    loadScript(context, 'catalog-sync.js');
+    loadScript(context, 'core/catalog-sync.js');
 
     const api = {
         async getBank() { return JSON.parse(JSON.stringify(remote)); },
@@ -1367,7 +1367,7 @@ async function testCatalogAutoPublish() {
 
 function testComprasHasIndependentOperationalPermissions() {
     const context = vm.createContext({ console, Date, Map, Set });
-    loadScript(context, 'modules/alo-feira/src/scripts/domain.js');
+    loadScript(context, 'modules/compras/src/scripts/domain.js');
 
     const somenteReceber = { receber: true, comprar: false };
     const somenteComprar = { receber: false, comprar: true };
@@ -1387,7 +1387,7 @@ function testComprasUsesUnifiedHost() {
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/alo-feira/index.html?v=2.1.5' },
+        dataset: { src: 'modules/compras/index.html?v=2.1.6' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1408,7 +1408,7 @@ function testComprasUsesUnifiedHost() {
         }
     });
     context.window = context;
-    loadScript(context, 'feira-module.js');
+    loadScript(context, 'modules/compras/host.js');
     context.AloFeiraModule.configure({ getServerUrl: () => 'https://script.google.com/macros/s/unificado/exec' });
 
     const feira = JSON.parse(storage.get('alofeira_v1'));
@@ -1422,6 +1422,64 @@ function testComprasUsesUnifiedHost() {
     assert.equal(typeof context.AloFeiraModule.logout, 'function', 'o host deve encerrar a sessão ao sair de Compras');
     assert.equal(typeof context.AloFeiraModule.getBackup, 'function', 'Compras deve participar do backup completo');
     assert.equal(typeof context.AloFeiraModule.restoreBackup, 'function', 'Compras deve participar da restauração única');
+}
+
+function testV216ModuleArchitecture() {
+    const views = new Map([
+        ['moduleHome', { style: {} }],
+        ['kdsModule', { style: {} }],
+        ['tasksModule', { style: {} }],
+        ['feiraModule', { style: {} }]
+    ]);
+    const closedSessions = [];
+    const context = vm.createContext({
+        console,
+        CustomEvent: class CustomEvent { constructor(type, options) { this.type = type; this.detail = options.detail; } },
+        document: {
+            getElementById(id) { return views.get(id) || null; },
+            dispatchEvent() {}
+        },
+        encerrarSessaoModulo(module) { closedSessions.push(module); }
+    });
+    context.window = context;
+    loadScript(context, 'core/module-host.js');
+    loadScript(context, 'core/data-contracts.js');
+    loadScript(context, 'modules/kds/module.js');
+    loadScript(context, 'modules/checklist/module.js');
+    loadScript(context, 'modules/compras/module.js');
+
+    assert.deepEqual(Array.from(context.AloModuleHost.list(), module => module.id), ['kds', 'checklist', 'compras']);
+    context.AloModuleHost.open('tasks');
+    assert.equal(views.get('tasksModule').style.display, 'flex', 'o alias antigo deve abrir o Checklist pelo host');
+    assert.equal(views.get('kdsModule').style.display, 'none');
+    context.AloModuleHost.open('feira');
+    assert.equal(views.get('feiraModule').style.display, 'flex', 'o alias antigo deve abrir Compras pelo host');
+    context.AloModuleHost.showHome();
+    assert.equal(views.get('moduleHome').style.display, 'flex');
+    assert.deepEqual(closedSessions, ['compras'], 'o host deve encerrar a sessão do módulo protegido ao sair');
+
+    const contracts = context.AloDataContracts.describe();
+    assert.equal(contracts.appVersion, '2.1.6');
+    assert.equal(context.AloDataContracts.get('kds').localStorage.includes('kds_v1_db'), true);
+    assert.equal(context.AloDataContracts.get('checklist').localStorage.includes('alo_tasks_outbox_v2'), true);
+    assert.equal(context.AloDataContracts.get('compras').localStorage.includes('alofeira_v1'), true);
+
+    [
+        'core/api.js', 'core/catalog-sync.js', 'core/ui-dialog.js',
+        'modules/kds/app.js', 'modules/kds/sync.js',
+        'modules/checklist/app.js', 'modules/checklist/styles.css',
+        'modules/compras/index.html', 'modules/compras/host.js'
+    ].forEach(file => assert.equal(fs.existsSync(path.join(root, file)), true, `${file} deve existir`));
+    ['app.js', 'tasks.js', 'sync.js', 'api.js', 'feira-module.js', 'modules/alo-feira/index.html']
+        .forEach(file => assert.equal(fs.existsSync(path.join(root, file)), false, `${file} não deve continuar duplicado na raiz`));
+
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const shellCache = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
+    assert.equal(html.includes('core/module-host.js?v=2.1.6'), true);
+    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.6'), true);
+    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.6'), true);
+    assert.equal(shellCache.includes('./modules/compras/index.html'), true);
+    assert.equal(html.indexOf('core/module-host.js') < html.indexOf('modules/kds/module.js'), true, 'o núcleo deve carregar antes dos módulos');
 }
 
 (async () => {
@@ -1456,7 +1514,8 @@ function testComprasUsesUnifiedHost() {
     await testCatalogAutoPublish();
     testComprasHasIndependentOperationalPermissions();
     testComprasUsesUnifiedHost();
-    console.log('Testes críticos da v2.1.5 passaram.');
+    testV216ModuleArchitecture();
+    console.log('Testes críticos da v2.1.6 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

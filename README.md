@@ -1,9 +1,10 @@
-# Alô Cozinha v2.1.5
+# Alô Cozinha v2.1.6
 
 Aplicativo para operação de restaurante com três módulos: pedidos entre áreas (KDS), checklist por setor e Lista de Compras.
 
 ## Novidades da v2
 
+- A v2.1.6 reorganiza o produto em `core/` e módulos independentes para KDS, Checklist e Compras, preserva todas as chaves de dados e cria contratos prontos para receber o L42 e uma futura camada Supabase.
 - A v2.0.24 prioriza pedidos novos, reduz a leitura operacional do histórico e sincroniza entre aparelhos a confirmação dos alertas das Panelas.
 - A v2.0.25 confirma visualmente o POST sem esperar uma segunda leitura, mantém o retry durável e sincroniza apenas o expediente atual, sem limite numérico de pedidos.
 - A v2.0.26 posiciona a área de origem no canto superior direito dos pedidos em celulares, preservando as três ações na mesma linha.
@@ -74,19 +75,15 @@ Aplicativo para operação de restaurante com três módulos: pedidos entre áre
 
 ## Arquivos
 
-- `index.html`: estrutura dos dois módulos e das configurações.
-- `styles.css`: aparência do KDS.
-- `tasks.css`: aparência responsiva do módulo de tarefas.
-- `tasks.js`: tarefas, funcionários, alarmes, relatórios e fila de sincronização.
-- `logic.js`: regras puras de pedidos e status.
-- `storage.js`: armazenamento persistente dos pedidos.
-- `api.js`: comunicação com o Google Apps Script.
-- `audio.js`: alertas do KDS.
-- `sync.js`: fila confiável dos pedidos.
-- `catalog-sync.js`: publicação automática dos cadastros e configurações.
-- `app.js`: interface e integração geral.
+- `core/`: navegação, contratos de dados, API, diálogos e serviços compartilhados.
+- `modules/kds/`: pedidos, armazenamento, áudio e sincronização do KDS.
+- `modules/checklist/`: atividades, POP, alarmes, relatórios e QR Code.
+- `modules/compras/`: Lista de Compras isolada e sua ponte com o produto.
+- `index.html`: composição da interface principal e das configurações.
+- `styles.css`: shell visual e estilos históricos do KDS.
 - `service-worker.js`: cache para abertura offline.
-- `google-apps-script.gs`: servidor ligado à planilha.
+- `google-apps-script.gs`: backend unificado ligado à planilha.
+- `docs/ARCHITECTURE.md`: propriedade dos dados, limites dos módulos e preparação para Supabase/L42.
 
 ## Atualizar sem perder dados
 

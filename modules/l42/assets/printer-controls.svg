@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">Controles da etiquetadora</title>
+  <g fill="none" stroke="#20242a" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="10" width="38" height="28" rx="6" stroke-width="3"/>
+    <circle cx="14" cy="24" r="4" stroke-width="2.5"/>
+    <circle cx="24" cy="24" r="4" stroke-width="2.5"/>
+    <circle cx="34" cy="24" r="4" fill="#20242a" stroke-width="2.5"/>
+    <path stroke-width="2.5" d="M18 43h12M24 38v5M21 6h6"/>
+  </g>
+</svg>

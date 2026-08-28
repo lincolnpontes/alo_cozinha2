@@ -22,7 +22,7 @@
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: none;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
     background: var(--tasks-bg);
@@ -134,7 +134,7 @@
 .feira-header-actions { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
 .feira-profile-button {
     min-width: 72px;
-    max-width: 142px;
+    max-width: min(160px, 32vw);
     height: 40px;
     display: flex;
     align-items: center;
@@ -874,7 +874,7 @@
     .feira-mode-picker .header-area-emoji { width: 22px; font-size: 18px; }
     .feira-mode-picker .header-area-button strong { font-size: 13px; }
     .feira-header-actions { gap: 3px; }
-    .feira-profile-button { min-width: 50px; max-width: 74px; height: 36px; padding-inline: 4px; gap: 3px; }
+    .feira-profile-button { min-width: 60px; max-width: clamp(76px, calc(100vw - 266px), 138px); height: 36px; padding-inline: 5px; gap: 4px; }
     .feira-profile-button span { font-size: 20px; }
     .feira-profile-button strong { font-size: 13px; }
     .app-sync-indicator::after { width: 12px; height: 12px; border-width: 1px; }

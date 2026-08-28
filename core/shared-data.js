@@ -1,11 +1,20 @@
 (function (global) {
-    const VERSION = '2.1.9';
+    const VERSION = '2.1.10';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
         'imprimir', 'estoque', 'darBaixa', 'movimentacao', 'relatorios',
         'produtos', 'categorias', 'estilo', 'configuracoes', 'operadores', 'avancado'
     ];
+    const PERSON_EMOJIS = Object.freeze([
+        '👤', '🧑', '👩', '👨', '🧑🏻', '🧑🏼', '🧑🏽', '🧑🏾', '🧑🏿',
+        '👩🏻', '👩🏼', '👩🏽', '👩🏾', '👩🏿', '👨🏻', '👨🏼', '👨🏽', '👨🏾', '👨🏿',
+        '🧑‍🍳', '👩‍🍳', '👨‍🍳', '👩🏻‍🍳', '👩🏼‍🍳', '👩🏽‍🍳', '👩🏾‍🍳', '👩🏿‍🍳',
+        '👨🏻‍🍳', '👨🏼‍🍳', '👨🏽‍🍳', '👨🏾‍🍳', '👨🏿‍🍳',
+        '🧑‍💼', '👩‍💼', '👨‍💼', '👩🏻‍💼', '👩🏽‍💼', '👩🏿‍💼', '👨🏻‍💼', '👨🏽‍💼', '👨🏿‍💼',
+        '🧑‍💻', '👩‍💻', '👨‍💻', '🧑‍🔧', '👩‍🔧', '👨‍🔧', '🧑‍🌾', '👩‍🌾', '👨‍🌾',
+        '🧑‍⚕️', '👩‍⚕️', '👨‍⚕️', '🧑‍🏫', '👩‍🏫', '👨‍🏫'
+    ]);
     const adapters = new Map();
     const listeners = new Set();
     let deps = { getDatabase: null, markDatabaseChanged: null, openModalTop: null };
@@ -557,6 +566,7 @@
         if (!person) throw new Error('Pessoa não encontrada.');
         if (!personCanUse(person, moduleId)) throw new Error('Esta pessoa não tem acesso a este módulo.');
         const adapter = adapters.get(moduleId);
+        await adapter?.applyPeople?.(clone(state.people));
         await adapter?.activatePerson?.(clone(person));
         localStorage.setItem(`alo_core_last_person_${moduleId}`, person.id);
         return safePerson(person);
@@ -615,6 +625,25 @@
         if (element) element.checked = Boolean(checked);
     }
 
+    function selectPersonEmoji(emoji) {
+        const selected = PERSON_EMOJIS.includes(emoji) ? emoji : '👤';
+        const input = document.getElementById('sharedPersonEmoji');
+        if (input) input.value = selected;
+        document.querySelectorAll('#sharedPersonEmojiGrid [data-person-emoji]').forEach(button => {
+            const active = button.dataset.personEmoji === selected;
+            button.classList.toggle('selected', active);
+            button.setAttribute('aria-selected', String(active));
+        });
+    }
+
+    function renderPersonEmojiGrid(emoji) {
+        const grid = document.getElementById('sharedPersonEmojiGrid');
+        if (!grid) return;
+        const selected = PERSON_EMOJIS.includes(emoji) ? emoji : '👤';
+        grid.innerHTML = PERSON_EMOJIS.map(option => `<button type="button" role="option" data-person-emoji="${option}" aria-label="Escolher ${option}" aria-selected="${option === selected}" class="${option === selected ? 'selected' : ''}" onclick="AloSharedData.selectPersonEmoji('${option}')">${option}</button>`).join('');
+        selectPersonEmoji(selected);
+    }
+
     async function renderComprasCategories(person, isNew) {
         const container = document.getElementById('sharedPersonComprasCategories');
         if (!container) return;
@@ -648,7 +677,7 @@
         global.fecharModal?.('modalPessoasCompartilhadas');
         document.getElementById('sharedPersonId').value = id;
         document.getElementById('sharedPersonName').value = id ? person.nome : '';
-        document.getElementById('sharedPersonEmoji').value = person.emoji || '👤';
+        renderPersonEmojiGrid(person.emoji || '👤');
         document.getElementById('sharedPersonPin').value = '';
         document.getElementById('sharedPersonPin').placeholder = id && person.credentials.alternatives.length ? 'Em branco mantém o PIN atual' : 'Opcional · use 4 ou mais dígitos';
         setCheckbox('sharedPersonAdmin', person.isAdmin);
@@ -852,10 +881,10 @@
     }
 
     global.AloSharedData = Object.freeze({
-        VERSION, SCHEMA_VERSION, L42_PERMISSION_KEYS,
+        VERSION, SCHEMA_VERSION, L42_PERMISSION_KEYS, PERSON_EMOJIS,
         configure, registerAdapter, ensureReady, refreshSources, updateFromModule, describe, subscribe,
         listLoginPeople, authenticate, activateForModule, logoutModule,
-        openManager, closeManager, openPersonForm, toggleAccessFields, toggleEmployeeFields, backToManager,
+        openManager, closeManager, openPersonForm, selectPersonEmoji, toggleAccessFields, toggleEmployeeFields, backToManager,
         savePersonForm, toggleCurrentPersonActive, renderPeopleManager,
         getModuleData, getUnifiedData, getCatalogIndex,
         getBackup, getCloudData, applyCloudState, restoreBackup

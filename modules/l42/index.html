@@ -475,7 +475,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.9";
+const APP_VERSION="2.1.10";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1924,9 +1924,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    // O glifo de emoji muda de cor entre aparelhos. O SVG mantém exatamente
-    // o equipamento preto com a folha branca solicitado para este atalho.
-    btn.innerHTML='<svg viewBox="0 0 40 40" aria-hidden="true"><path fill="#20242a" d="M7 10h26a4 4 0 0 1 4 4v19a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4Z"/><path fill="#fff" stroke="#20242a" stroke-width="2" d="M11 3h18v23l-4-3-4 3-4-3-6 3Z"/><circle cx="30" cy="31" r="2.4" fill="#fff"/></svg>';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.10" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -7101,8 +7099,16 @@ async function mesclarBancoEtiquetasPeloHost(pacote){
 function atualizarNuvemEtiquetasPeloHost(status,mensagem){
     const indicador=document.getElementById('indicadorConexao');
     if(!indicador)return;
-    const simbolos={ok:'🟢',syncing:'🟡',pending:'🟡',offline:'🔴',error:'🔴',local:'⚪'};
-    indicador.textContent=simbolos[status]||'⚪';
+    if(!window.ALO_L42_EMBEDDED){
+        const icones={ok:'🟢',syncing:'🟡',pending:'🟡',offline:'🔴',error:'🔴',local:'⚪'};
+        indicador.textContent=icones[status]||icones.local;
+        indicador.title=mensagem||'Sincronização de Etiquetas';
+        return;
+    }
+    const classes={ok:'sincronizado',syncing:'sincronizando',pending:'sincronizando',offline:'offline',error:'erro',local:'local'};
+    indicador.classList.remove('sincronizado','sincronizando','offline','erro','local');
+    indicador.classList.add(classes[status]||'local');
+    indicador.textContent='';
     indicador.title=mensagem||'Sincronização de Etiquetas';
     indicador.setAttribute('aria-label',indicador.title);
 }
@@ -7181,6 +7187,7 @@ if(!window.ALO_L42_EMBEDDED){
 </script>
 <style>
 html.alo-l42-embedded #splash-screen{display:none!important}
+html,body{overscroll-behavior:none}
 html.alo-l42-embedded .app-container{max-width:none;box-shadow:none}
 html.alo-l42-embedded .header{width:100%;box-sizing:border-box}
 html.alo-l42-embedded .header>div{min-width:0}
@@ -7191,7 +7198,15 @@ html.alo-l42-embedded .header>div{min-width:0}
 .alo-l42-profile-button{min-width:76px;max-width:148px;height:38px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 9px;border:1px solid rgba(255,255,255,.28);border-radius:7px;background:rgba(255,255,255,.14);color:#fff;cursor:pointer}
 .alo-l42-profile-button span{font-size:22px;line-height:1}.alo-l42-profile-button strong{min-width:0;overflow:hidden;font-size:15px;text-overflow:ellipsis;white-space:nowrap}
 html.alo-l42-embedded #seletorOperador{display:none!important}
-html.alo-l42-embedded .status-conexao{width:36px;height:36px;display:grid;place-items:center;border-radius:7px;background:rgba(255,255,255,.14);font-size:13px;cursor:pointer}
+html.alo-l42-embedded .app-sync-indicator{width:36px;min-width:36px;height:36px;position:relative;margin:0;padding:0;border:0;border-radius:7px;background:transparent;color:transparent;cursor:pointer}
+html.alo-l42-embedded .app-sync-indicator::after{width:12px;height:12px;position:absolute;inset:50% auto auto 50%;border:1px solid rgba(255,255,255,.8);border-radius:50%;background:#94a3aa;box-shadow:0 0 0 2px rgba(0,0,0,.12);content:'';transform:translate(-50%,-50%)}
+html.alo-l42-embedded .app-sync-indicator.sincronizado::after{background:#21c98a}
+html.alo-l42-embedded .app-sync-indicator.sincronizando::after{background:#f5c542;animation:alo-l42-sync-pulse .9s ease-in-out infinite alternate}
+html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .app-sync-indicator.erro::after{background:#e44343}
+@keyframes alo-l42-sync-pulse{to{opacity:.52}}
+.label-motion-menu-button img,#btnScannerQRHome img{width:38px;height:38px;display:block;object-fit:contain}
+#btnScannerQRHome::before{content:none!important}
+#btnScannerQRHome{font-size:0!important}
 .alo-l42-overlay-back{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;z-index:3;width:48px;height:48px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,255,255,.48);border-radius:8px;background:rgba(255,255,255,.16);color:#fff;font-size:32px;line-height:1;cursor:pointer;backdrop-filter:blur(5px)}
 #supabaseAccountScreen .alo-l42-overlay-back,#supabaseRecoveryScreen .alo-l42-overlay-back{position:fixed}
 @media(max-width:430px){html.alo-l42-embedded .header{gap:6px;padding:7px 8px}.alo-l42-module-back strong{display:none}.alo-l42-module-back img{width:42px;height:42px}.alo-l42-profile-button{min-width:62px;max-width:94px;padding:0 6px;gap:4px}.alo-l42-profile-button span{font-size:20px}.alo-l42-profile-button strong{font-size:13px}}
@@ -7202,7 +7217,7 @@ html.alo-l42-embedded .status-conexao{width:36px;height:36px;display:grid;place-
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.9" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.10" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7227,6 +7242,20 @@ html.alo-l42-embedded .status-conexao{width:36px;height:36px;display:grid;place-
         if(nome)nome.textContent=operador&&operador.nome||'Perfil';
     };
     window.atualizarCabecalhoOperadorEtiquetas();
+    const scannerHome=document.getElementById('btnScannerQRHome');
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.10" alt="">';
+    const indicadorAntigo=document.getElementById('indicadorConexao');
+    if(indicadorAntigo){
+        const indicador=document.createElement('button');
+        indicador.type='button';
+        indicador.id='indicadorConexao';
+        indicador.className='app-sync-indicator local';
+        indicador.title='Dados somente neste aparelho';
+        indicador.setAttribute('aria-label',indicador.title);
+        indicador.setAttribute('aria-live','polite');
+        indicador.addEventListener('click',()=>parent.AloEtiquetasCloud?.sync?.().catch(()=>{}));
+        indicadorAntigo.replaceWith(indicador);
+    }
     const addOverlayBack=()=>{
         ['login-screen','supabaseAccountScreen','supabaseRecoveryScreen'].forEach(id=>{
             const screen=document.getElementById(id);

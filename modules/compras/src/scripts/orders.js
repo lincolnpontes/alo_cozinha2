@@ -430,6 +430,7 @@ function abrirModalAvulso(catId) {
 
 function salvarAvulso() {
     const catId = document.getElementById('avulsoCatId').value;
+    if(!podeUsarCategoriaCompras(catId, 'pedido')) return mostrarToast('Seu perfil não pode pedir itens desta categoria.', 'erro');
     const nome = document.getElementById('avulsoNome').value.trim();
     if(!nome) return alert('Por favor, digite o nome do item avulso.');
     const qtdStr = document.getElementById('avulsoQtd').value.trim();

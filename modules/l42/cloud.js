@@ -46,6 +46,14 @@
         dirtyTimer = setTimeout(() => sync().catch(() => {}), immediate ? 0 : 700);
     }
 
+    async function readJsonResponse(response) {
+        const body = await response.text();
+        try { return JSON.parse(body); }
+        catch (error) {
+            throw new Error('O Google Apps Script atual ainda não aceita a sincronização de Etiquetas. Publique o código mais recente.');
+        }
+    }
+
     async function requestRemote(baseRevision) {
         const url = new URL(serverUrl());
         url.searchParams.set('action', 'carregar_etiquetas_banco');
@@ -53,7 +61,7 @@
         url.searchParams.set('_', String(Date.now()));
         const response = await fetch(url.toString(), { cache: 'no-store', redirect: 'follow' });
         if (!response.ok) throw new Error(`Servidor indisponível (${response.status}).`);
-        const result = await response.json();
+        const result = await readJsonResponse(response);
         if (result.status !== 'ok') throw new Error(result.message || 'Não foi possível carregar Etiquetas.');
         return result;
     }
@@ -70,7 +78,7 @@
             })
         });
         if (!response.ok) throw new Error(`Servidor indisponível (${response.status}).`);
-        return response.json();
+        return readJsonResponse(response);
     }
 
     async function mergeAndSave(remote, baseRevision) {

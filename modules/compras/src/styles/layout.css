@@ -17,7 +17,7 @@
         body.theme-compras .header { background-color: #521565 !important; }
         .btn-menu-ferramentas { font-size:20px; font-weight:900; line-height:1; }
         .area-conteudo { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .scroll-area { overflow-y: auto; flex: 1; min-height: 0; padding-bottom: 90px; -webkit-overflow-scrolling: touch; }
+        .scroll-area { overflow-y: auto; flex: 1; min-height: 0; padding-bottom: 90px; overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }
         .filters { padding: 6px 10px; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:8px; white-space:nowrap; border-bottom:1px solid #eee; background:white; flex-shrink:0; }
         .filtros-principais { display:flex; align-items:center; gap:8px; min-width:0; flex:1; overflow:hidden; }
         .filtros-principais::-webkit-scrollbar { display:none; }

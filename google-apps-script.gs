@@ -753,7 +753,8 @@ function encodeEtiquetasBank_(dados) {
 function decodeEtiquetasBank_(payload, checksum) {
   const compressed = Utilities.base64Decode(String(payload || ''));
   if (etiquetasChecksum_(compressed) !== String(checksum || '')) throw new Error('Falha na integridade do banco de Etiquetas.');
-  const text = Utilities.ungzip(Utilities.newBlob(compressed)).getDataAsString('UTF-8');
+  const gzipBlob = Utilities.newBlob(compressed, 'application/x-gzip', 'etiquetas.json.gz');
+  const text = Utilities.ungzip(gzipBlob).getDataAsString('UTF-8');
   return JSON.parse(text || '{}');
 }
 

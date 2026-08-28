@@ -1,6 +1,6 @@
 :root { --pedido:#1565c0; --compras:#521565; --sucesso:#267447; --alerta:#b45309; --perigo:#c62828; --texto:#202124; --texto-suave:#687078; --borda:#dfe3e7; --fundo:#f3f5f7; --raio:8px; }
         *, *::before, *::after { box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; position: fixed; overflow: hidden; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; position: fixed; overflow: hidden; margin: 0; padding: 0; overscroll-behavior: none; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; }
         input, select, textarea, .modal { user-select: text; -webkit-user-select: text; font-family: inherit; }
         .app-container { width: 100%; max-width: 100%; height: 100%; background-color: #ffffff; display: flex; flex-direction: column; position: absolute; top: 0; left: 0; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }

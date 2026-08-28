@@ -80,7 +80,23 @@ function criarBancoBase() {
     function marcarMudancaEstrutural(registro = null) { const agora = agoraServidor(); db.configs.ultimaMudancaLocal = agora; db.configs.syncPendente = true; if(registro) { registro.atualizadoEm = agora; if(Array.isArray(registro.historicoPrecos)) registro.historicoPrecos = AloFeiraDomain.normalizarHistoricoPrecos(registro.historicoPrecos, agora); } salvarBanco(); }
     function marcarMudancaConfiguracao() { const agora = agoraServidor(); db.configs.atualizadoEm = agora; db.configs.ultimaMudancaLocal = agora; db.configs.syncPendente = true; salvarBanco(); }
     function marcarMudancaPedido(pedido) { if(!pedido) return; pedido.dataStatus = agoraServidor(); db.configs.syncPendente = true; salvarBanco(); }
-    function getCatsPermitidas(colabLogado) { if(!colabLogado) return null; if(colabLogado.isAdmin) return null; let cats = db.configs.modo === 'pedido' ? colabLogado.catsPermitidasPedido : colabLogado.catsPermitidasCompras; return cats !== undefined ? cats : colabLogado.catsPermitidas; }
+    function getCatsPermitidas(colabLogado, modo = db.configs.modo) {
+        if(!colabLogado) return null;
+        const especificas = modo === 'pedido' ? colabLogado.catsPermitidasPedido : colabLogado.catsPermitidasCompras;
+        if(Array.isArray(especificas)) return especificas;
+        if(Array.isArray(colabLogado.catsPermitidas)) return colabLogado.catsPermitidas;
+        return [];
+    }
+    function podeUsarCategoriaCompras(categoriaId, modo = db.configs.modo, colabLogado = null) {
+        const operador = colabLogado || db.colaboradores.find(c => c.id === db.configs.colabAtivoId && c.ativo !== false);
+        const permitidas = getCatsPermitidas(operador, modo);
+        return permitidas === null || permitidas.includes(categoriaId);
+    }
+    function podeUsarProdutoCompras(produto, modo = db.configs.modo, avisar = false) {
+        const permitido = Boolean(produto && podeUsarCategoriaCompras(produto.categoria, modo));
+        if(!permitido && avisar) mostrarToast(`Seu perfil não pode ${modo === 'pedido' ? 'pedir' : 'comprar'} itens desta categoria.`, 'erro');
+        return permitido;
+    }
     function temAcessoAdmin() { const ativos = db.colaboradores.filter(c => c.ativo !== false); if(ativos.length === 0) return true; const atual = ativos.find(c => c.id === db.configs.colabAtivoId); return Boolean(atual && atual.isAdmin); }
     function formatarDataHora(ts) { if(!ts) return ""; let d = new Date(ts); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} às ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
     function formatarDataBr(dataStr) { if(!dataStr) return ""; if(dataStr.includes('-')) { const partes = dataStr.split('-'); if(partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`; } return dataStr; }

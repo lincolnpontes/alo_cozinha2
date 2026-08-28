@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">Leitor de QR Code</title>
+  <g fill="none" stroke="#20242a" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="3" d="M5 15V7a2 2 0 0 1 2-2h8M33 5h8a2 2 0 0 1 2 2v8M43 33v8a2 2 0 0 1-2 2h-8M15 43H7a2 2 0 0 1-2-2v-8"/>
+    <path stroke-width="2.5" d="M12 12h9v9h-9zM27 12h9v9h-9zM12 27h9v9h-9z"/>
+    <path stroke-width="3" d="M28 28h3v3h-3zM35 28h1v1h-1zM28 35h1v1h-1zM34 34h3v3h-3z"/>
+  </g>
+</svg>

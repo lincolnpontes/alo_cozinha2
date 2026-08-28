@@ -1056,7 +1056,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.9</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.10</div>'), true, 'a tela inicial deve mostrar a versão');
     assert.equal(html.includes('Senha de Segurança'), true);
     assert.equal(html.includes('Senha Mestra'), false);
     assert.equal(app.includes("senhaMestra: \"\""), false, 'o aplicativo cru não deve trazer senha definida no código');
@@ -1073,11 +1073,11 @@ function testV2027TaskExperience() {
     assert.equal(comprasApp.includes('podeConfigurarKds'), true);
     assert.equal(sync.includes('serverIsBehindRequestedState'), true, 'leituras atrasadas não podem rebaixar um status solicitado');
     assert.equal(css.includes('.module-nav-icon { width: 56px;'), true, 'as imagens dos módulos devem ganhar destaque sem aumentar o cabeçalho');
-    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.9/g) || []).length, 2, 'o KDS deve usar sua imagem própria no início e no cabeçalho');
-    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.9/g) || []).length, 2, 'o Checklist deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-kds\.png\?v=2\.1\.10/g) || []).length, 3, 'o KDS deve usar sua imagem própria no início, no cabeçalho e nos acessos');
+    assert.equal((html.match(/assets\/module-checklist\.png\?v=2\.1\.10/g) || []).length, 3, 'o Checklist deve usar sua imagem própria no início, no cabeçalho e nos acessos');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-kds.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-checklist.png')), true);
-    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.9/g) || []).length, 2, 'a Lista de Compras deve usar sua imagem própria no início e no cabeçalho');
+    assert.equal((html.match(/assets\/module-feira\.png\?v=2\.1\.10/g) || []).length, 3, 'a Lista de Compras deve usar sua imagem própria no início, no cabeçalho e nos acessos');
     assert.equal(fs.existsSync(path.join(root, 'assets', 'module-feira.png')), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'compras', 'index.html')), true, 'a Lista de Compras completa deve acompanhar o app');
     assert.equal(html.includes('<strong>Lista de Compras</strong>'), true, 'a tela inicial deve usar o novo nome do módulo');
@@ -1399,7 +1399,7 @@ function testComprasUsesUnifiedHost() {
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/compras/index.html?v=2.1.9' },
+        dataset: { src: 'modules/compras/index.html?v=2.1.10' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1476,7 +1476,7 @@ function testV217ModuleArchitecture() {
     assert.deepEqual(closedSessions, ['compras', 'l42'], 'o host deve encerrar a sessão do módulo protegido ao sair');
 
     const contracts = context.AloDataContracts.describe();
-    assert.equal(contracts.appVersion, '2.1.9');
+    assert.equal(contracts.appVersion, '2.1.10');
     assert.equal(context.AloDataContracts.get('kds').localStorage.includes('kds_v1_db'), true);
     assert.equal(context.AloDataContracts.get('checklist').localStorage.includes('alo_tasks_outbox_v2'), true);
     assert.equal(context.AloDataContracts.get('compras').localStorage.includes('alofeira_v1'), true);
@@ -1495,13 +1495,13 @@ function testV217ModuleArchitecture() {
 
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const shellCache = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
-    assert.equal(html.includes('core/module-host.js?v=2.1.9'), true);
-    assert.equal(html.includes('core/shared-data.js?v=2.1.9'), true);
-    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.9'), true);
-    assert.equal(html.includes('modules/l42/index.html?embedded=1&amp;v=2.1.9'), true);
-    assert.equal(html.includes('modules/l42/icon.png?v=2.1.9'), true);
-    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.9'), true);
-    assert.equal(shellCache.includes('./core/shared-data.js?v=2.1.9'), true);
+    assert.equal(html.includes('core/module-host.js?v=2.1.10'), true);
+    assert.equal(html.includes('core/shared-data.js?v=2.1.10'), true);
+    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.10'), true);
+    assert.equal(html.includes('modules/l42/index.html?embedded=1&amp;v=2.1.10'), true);
+    assert.equal(html.includes('modules/l42/icon.png?v=2.1.10'), true);
+    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.10'), true);
+    assert.equal(shellCache.includes('./core/shared-data.js?v=2.1.10'), true);
     assert.equal(shellCache.includes('./modules/compras/index.html'), true);
     assert.equal(shellCache.includes('./modules/l42/index.html'), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'icon.png')), true);
@@ -1531,6 +1531,7 @@ function testV219UnifiedPeopleAndDataHub() {
     assert.equal(shared.includes('person.podeEntrar === true && personCanUse(person, purpose)'), true, 'somente acessos habilitados para o módulo podem aparecer no login');
     assert.equal(shared.includes("person.credentials = { alternatives: [] }"), false, 'desligar o login não deve destruir o PIN criptografado');
     assert.equal(shared.includes('async function getUnifiedData()'), true, 'o núcleo deve expor os dados dos módulos por um único hub');
+    assert.equal(shared.includes('await adapter?.applyPeople?.(clone(state.people))'), true, 'o módulo deve receber os acessos centrais antes de abrir a sessão');
     assert.equal(checklist.includes('global.AloSharedData.openManager()'), true, 'o Checklist deve usar o cadastro central de pessoas');
     assert.equal(compras.includes('const acessos = recebidas.filter'), true, 'funcionários sem login não devem virar operadores de Compras');
     assert.equal(l42.includes("window.parent.AloSharedData.openManager()"), true, 'o L42 deve abrir o cadastro central de pessoas');
@@ -1545,22 +1546,23 @@ function testV219UnifiedPeopleAndDataHub() {
     assert.equal(html.indexOf('sharedPersonEmployee') < html.indexOf('sharedPersonAdmin'), true, 'Administrador deve aparecer abaixo de Funcionário');
     assert.equal(l42.includes('1999'), false, 'Etiquetas não deve manter uma senha administrativa fixa no código');
     assert.equal(kds.includes("destinoLoginOperador === 'etiquetas' && sessaoPodeConfigurarEtiquetas"), true, 'a sessão autorizada de Etiquetas deve abrir suas configurações sem novo login');
-    assert.equal(checklistStyles.includes('.module-home {\n    position: fixed;\n    inset: 0;\n    z-index: 700;\n    display: flex;'), true, 'a tela de módulos deve nascer centralizada no desktop');
+    assert.match(checklistStyles, /\.module-home\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?z-index:\s*700;[\s\S]*?display:\s*flex;/, 'a tela de módulos deve nascer centralizada no desktop');
     assert.equal(checklistStyles.includes('overflow-y: auto;'), true, 'a tela de módulos deve rolar em celulares baixos');
     assert.equal(checklistStyles.includes('touch-action: pan-y;'), true, 'a tela de módulos deve aceitar o deslizamento vertical por toque');
-    assert.equal(l42.includes("if(!window.ALO_L42_EMBEDDED){\n    iniciarSupabaseApp()"), true, 'o módulo incorporado não deve iniciar um segundo backend');
+    assert.match(l42, /if\(!window\.ALO_L42_EMBEDDED\)\s*\{\s*iniciarSupabaseApp\(\)/, 'o módulo incorporado não deve iniciar um segundo backend');
     assert.equal(l42.includes("window.parent.AloL42Module?.backToSettings?.()"), true, 'as configurações incorporadas devem voltar ao painel central');
     assert.equal(l42Cloud.includes("action: 'salvar_etiquetas_banco'"), true, 'Etiquetas deve salvar no backend unificado');
     assert.equal(l42Cloud.includes("url.searchParams.set('action', 'carregar_etiquetas_banco')"), true, 'Etiquetas deve carregar do backend unificado');
     assert.equal(l42Cloud.includes('expectedRevision'), true, 'Etiquetas deve usar controle otimista de revisão');
     assert.equal(gas.includes("SHEET_ETIQUETAS_BANCO = 'Etiquetas - Banco'"), true, 'o Apps Script deve reservar armazenamento próprio para Etiquetas');
     assert.equal(gas.includes('Utilities.gzip'), true, 'o banco de Etiquetas deve ser compactado antes da gravação');
+    assert.equal(gas.includes("Utilities.newBlob(compressed, 'application/x-gzip', 'etiquetas.json.gz')"), true, 'a descompactação deve receber um blob gzip válido');
     assert.equal(gas.includes('PROP_ETIQUETAS_ACTIVE_SLOT'), true, 'a troca do banco deve usar slots atômicos');
     assert.equal(gas.includes('const fallbackSlot = slot === \'A\' ? \'B\' : \'A\';'), true, 'a leitura deve recuperar o slot anterior se o ativo estiver corrompido');
     assert.equal(etiquetasSave.includes('sheet.clearContents()'), false, 'a gravação não pode apagar o slot confirmado antes de validar o novo');
     assert.equal(etiquetasSave.includes('limparEtiquetasSlot_(sheet, nextSlot)'), true, 'somente o slot inativo deve ser preparado para a nova gravação');
     assert.equal(gas.includes("action === 'salvar_etiquetas_banco'"), true, 'o Apps Script deve aceitar gravação de Etiquetas');
-    assert.equal(shellCache.includes('./modules/l42/cloud.js?v=2.1.9'), true, 'a sincronização de Etiquetas deve funcionar offline após o primeiro carregamento');
+    assert.equal(shellCache.includes('./modules/l42/cloud.js?v=2.1.10'), true, 'a sincronização de Etiquetas deve funcionar offline após o primeiro carregamento');
 }
 
 async function testEmployeeCanExistWithoutLogin() {
@@ -1634,6 +1636,61 @@ async function testLoginPeopleAreFilteredByModule() {
     assert.equal(admin.permissions.l42.acesso, true, 'administrador deve aparecer com Etiquetas habilitado');
 }
 
+function testV2110AccessSyncAndApkPolish() {
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+    const shared = fs.readFileSync(path.join(root, 'core', 'shared-data.js'), 'utf8');
+    const comprasCore = fs.readFileSync(path.join(root, 'modules', 'compras', 'src', 'scripts', 'core.js'), 'utf8');
+    const comprasActions = [
+        'modules/compras/src/scripts/orders.js',
+        'modules/compras/src/scripts/purchases.js',
+        'modules/compras/src/scripts/purchase-details.js'
+    ].map(file => fs.readFileSync(path.join(root, file), 'utf8')).join('\n');
+    const comprasStyles = fs.readFileSync(path.join(root, 'modules', 'checklist', 'styles.css'), 'utf8');
+    const l42 = fs.readFileSync(path.join(root, 'modules', 'l42', 'index.html'), 'utf8');
+    const l42Cloud = fs.readFileSync(path.join(root, 'modules', 'l42', 'cloud.js'), 'utf8');
+    const shellCache = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
+    const kds = fs.readFileSync(path.join(root, 'modules', 'kds', 'app.js'), 'utf8');
+    const androidMain = fs.readFileSync(path.join(root, 'android', 'app', 'src', 'main', 'java', 'com', 'aloetiqueta', 'l42', 'MainActivity.java'), 'utf8');
+    const androidBuild = fs.readFileSync(path.join(root, 'android', 'app', 'build.gradle'), 'utf8');
+    const apkScript = fs.readFileSync(path.join(root, 'build-apk.ps1'), 'utf8');
+    const emojiCatalog = shared.slice(shared.indexOf('const PERSON_EMOJIS'), shared.indexOf('];', shared.indexOf('const PERSON_EMOJIS')) + 2);
+
+    assert.equal(html.includes('Abrir Configurações KDS'), true);
+    assert.equal(html.includes('Abrir Configurações Checklist'), true);
+    assert.equal(html.includes('Abrir Configurações Etiquetas'), true);
+    assert.equal(html.includes('🛒 Receber no modo Compras'), false, 'as permissões de Compras não devem ganhar emojis avulsos');
+    assert.equal(html.includes('🧾 Comprar no modo Compras'), false, 'as permissões de Compras não devem ganhar emojis avulsos');
+    assert.equal(html.includes('id="sharedPersonEmojiGrid"'), true, 'o seletor de pessoa deve usar uma grade compacta');
+    assert.equal(emojiCatalog.includes('🧹') || emojiCatalog.includes('🏍') || emojiCatalog.includes('📄'), false, 'a grade deve conter apenas pessoas e funções');
+    assert.equal(styles.includes('#sharedPersonActiveAction.btn-action { background: #238636; }'), true, 'Ativar deve ser verde');
+    assert.equal(styles.includes('.shared-person-actions button { align-items: center; justify-content: center; text-align: center; }'), true, 'os botões de estado devem centralizar o texto');
+
+    assert.equal(comprasCore.includes('if(colabLogado.isAdmin) return null'), false, 'administrador também deve respeitar categorias habilitadas');
+    assert.equal(comprasCore.includes('function podeUsarProdutoCompras'), true);
+    assert.equal((comprasActions.match(/podeUsarProdutoCompras/g) || []).length >= 6, true, 'entrada, edição e compra devem validar a categoria');
+    assert.equal(comprasStyles.includes('max-width: clamp(76px, calc(100vw - 266px), 138px)'), true, 'o nome do operador deve ocupar o espaço móvel disponível');
+
+    assert.equal(l42.includes("className='app-sync-indicator local'"), true, 'Etiquetas deve usar o mesmo indicador dos módulos');
+    assert.equal(l42.includes("parent.AloEtiquetasCloud?.sync?.()"), true, 'a bolinha de Etiquetas deve permitir nova sincronização');
+    assert.equal(l42Cloud.includes('O Google Apps Script atual ainda não aceita a sincronização de Etiquetas'), true, 'backend antigo deve produzir um erro útil');
+    assert.equal(l42.includes('assets/qr-reader.svg?v=2.1.10'), true);
+    assert.equal(l42.includes('assets/printer-controls.svg?v=2.1.10'), true);
+    assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'assets', 'qr-reader.svg')), true);
+    assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'assets', 'printer-controls.svg')), true);
+    assert.equal(shellCache.includes('./modules/l42/assets/qr-reader.svg?v=2.1.10'), true);
+    assert.equal(shellCache.includes('./modules/l42/assets/printer-controls.svg?v=2.1.10'), true);
+
+    assert.equal(kds.includes('AloL42Module.getBackup()'), true, 'o backup único deve coletar Etiquetas');
+    assert.match(kds, /\n\s+l42,\r?\n/, 'o arquivo completo deve conter a seção Etiquetas');
+    assert.equal(androidMain.includes('webView.loadUrl("file:///android_asset/index.html")'), true, 'o APK deve abrir os arquivos empacotados');
+    assert.equal(androidMain.includes('WebView.OVER_SCROLL_NEVER'), true, 'o APK não deve atualizar por gesto de puxar');
+    assert.equal(styles.includes('overscroll-behavior: none'), true);
+    assert.equal(androidBuild.includes('versionCode 40'), true);
+    assert.equal(androidBuild.includes('versionName "2.1.10"'), true);
+    assert.equal(apkScript.includes('Alo-Cozinha-v2.1.10.apk'), true);
+}
+
 (async () => {
     await testAcceptAndConfirm();
     await testOfflineRetry();
@@ -1670,7 +1727,8 @@ async function testLoginPeopleAreFilteredByModule() {
     testV219UnifiedPeopleAndDataHub();
     await testEmployeeCanExistWithoutLogin();
     await testLoginPeopleAreFilteredByModule();
-    console.log('Testes críticos da v2.1.9 passaram.');
+    testV2110AccessSyncAndApkPolish();
+    console.log('Testes críticos da v2.1.10 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

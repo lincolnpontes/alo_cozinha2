@@ -1,5 +1,6 @@
 const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_ATIVIDADES = 'Atividades';
+const SHEET_ETIQUETAS_BANCO = 'Etiquetas - Banco';
 const PROP_BANCO = 'kds_banco';
 const PROP_BANCO_REVISION = 'kds_banco_revision';
 const PROP_PEDIDOS_REVISION = 'kds_pedidos_revision';
@@ -8,6 +9,10 @@ const PROP_FOTOS_TAREFAS = 'kds_fotos_tarefas';
 const PROP_MIGRACAO_PREFIX = 'kds_migracao_';
 const PROP_SPREADSHEET_ID = 'kds_spreadsheet_id';
 const PROP_PEDIDOS_SHIFT_START_PREFIX = 'kds_pedidos_shift_start_';
+const PROP_ETIQUETAS_ACTIVE_SLOT = 'kds_etiquetas_active_slot';
+const PROP_ETIQUETAS_REVISION = 'kds_etiquetas_revision';
+const PROP_ETIQUETAS_LAST_OPERATION = 'kds_etiquetas_last_operation';
+const ETIQUETAS_CELL_LIMIT = 35000;
 const PEDIDOS_SHIFT_START_HOUR = 4;
 const PASTA_FOTOS_TAREFAS = 'Alô Cozinha - Fotos das Tarefas';
 const NOME_PLANILHA_DADOS = 'Alô Cozinha - Banco de Dados';
@@ -471,7 +476,7 @@ function bancosComRevisao_() {
   const bancoStr = getProperties_().getProperty(PROP_BANCO);
   const banco = bancoStr ? JSON.parse(bancoStr) : {};
   banco._revision = Number(getProperties_().getProperty(PROP_BANCO_REVISION) || '0');
-  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true, dadosCompartilhados: true };
+  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true, dadosCompartilhados: true, etiquetasUnificadas: true };
   return banco;
 }
 
@@ -723,6 +728,138 @@ function filtrarHistorico_(sheet, start, end) {
       const timestamp = new Date(order.timestamp).getTime();
       return timestamp >= startTime && timestamp <= endTime;
     });
+}
+
+function getEtiquetasSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(SHEET_ETIQUETAS_BANCO);
+  if (!sheet) sheet = spreadsheet.insertSheet(SHEET_ETIQUETAS_BANCO);
+  const headers = ['Slot', 'Revisao', 'AtualizadoEm', 'Checksum', 'Indice', 'Total', 'Conteudo', 'OperacaoId'];
+  if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  return sheet;
+}
+
+function etiquetasChecksum_(bytes) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
+  return Utilities.base64Encode(digest);
+}
+
+function encodeEtiquetasBank_(dados) {
+  const json = JSON.stringify(dados || {});
+  const compressed = Utilities.gzip(Utilities.newBlob(json, 'application/json')).getBytes();
+  return { payload: Utilities.base64Encode(compressed), checksum: etiquetasChecksum_(compressed) };
+}
+
+function decodeEtiquetasBank_(payload, checksum) {
+  const compressed = Utilities.base64Decode(String(payload || ''));
+  if (etiquetasChecksum_(compressed) !== String(checksum || '')) throw new Error('Falha na integridade do banco de Etiquetas.');
+  const text = Utilities.ungzip(Utilities.newBlob(compressed)).getDataAsString('UTF-8');
+  return JSON.parse(text || '{}');
+}
+
+function etiquetasRows_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  return sheet.getRange(2, 1, lastRow - 1, 8).getDisplayValues().filter(row => row[0]);
+}
+
+function etiquetasSlotFromRows_(rows, slot) {
+  const selected = rows.filter(row => row[0] === slot).sort((a, b) => Number(a[4]) - Number(b[4]));
+  if (!selected.length) return null;
+  const total = Number(selected[0][5] || 0);
+  if (!total || selected.length !== total) throw new Error('O banco de Etiquetas está incompleto.');
+  const payload = selected.map(row => row[6] || '').join('');
+  return {
+    slot: slot,
+    revision: Number(selected[0][1] || 0),
+    updatedAt: selected[0][2] || '',
+    checksum: selected[0][3] || '',
+    operationId: selected[0][7] || '',
+    dados: decodeEtiquetasBank_(payload, selected[0][3])
+  };
+}
+
+function carregarEtiquetasBanco_() {
+  const properties = getProperties_();
+  const rows = etiquetasRows_(getEtiquetasSheet_());
+  let slot = properties.getProperty(PROP_ETIQUETAS_ACTIVE_SLOT) || '';
+  if (!slot && rows.length) {
+    slot = rows.sort((a, b) => Number(b[1]) - Number(a[1]))[0][0];
+  }
+  if (!slot) return { slot: 'A', revision: 0, updatedAt: '', checksum: '', operationId: '', dados: null };
+  try {
+    return etiquetasSlotFromRows_(rows, slot) || { slot: slot, revision: 0, updatedAt: '', checksum: '', operationId: '', dados: null };
+  } catch (activeError) {
+    const fallbackSlot = slot === 'A' ? 'B' : 'A';
+    const fallback = etiquetasSlotFromRows_(rows, fallbackSlot);
+    if (!fallback) throw activeError;
+    properties.setProperty(PROP_ETIQUETAS_ACTIVE_SLOT, fallbackSlot);
+    return fallback;
+  }
+}
+
+function limparEtiquetasSlot_(sheet, slot) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  const slots = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  for (let index = slots.length - 1; index >= 0; index -= 1) {
+    if (slots[index][0] === slot) sheet.deleteRow(index + 2);
+  }
+}
+
+function salvarEtiquetasBanco_(dados, expectedRevision, operationId) {
+  if (!dados || typeof dados !== 'object') return { status: 'error', message: 'Banco de Etiquetas inválido.' };
+  const properties = getProperties_();
+  const current = carregarEtiquetasBanco_();
+  const normalizedOperationId = String(operationId || '').trim();
+  const lastOperation = properties.getProperty(PROP_ETIQUETAS_LAST_OPERATION) || '';
+  if (normalizedOperationId && normalizedOperationId === lastOperation) {
+    return { status: 'ok', revision: current.revision, updatedAt: current.updatedAt, repeated: true };
+  }
+  if (expectedRevision !== undefined && expectedRevision !== null && Number(expectedRevision) !== Number(current.revision || 0)) {
+    return { status: 'conflict', revision: current.revision, updatedAt: current.updatedAt, dados: current.dados };
+  }
+
+  const nextRevision = Number(current.revision || 0) + 1;
+  const nextSlot = current.slot === 'A' ? 'B' : 'A';
+  const now = new Date().toISOString();
+  const encoded = encodeEtiquetasBank_(dados);
+  const chunks = [];
+  for (let index = 0; index < encoded.payload.length; index += ETIQUETAS_CELL_LIMIT) {
+    chunks.push(encoded.payload.substring(index, index + ETIQUETAS_CELL_LIMIT));
+  }
+  const operation = normalizedOperationId || Utilities.getUuid();
+  const newRows = chunks.map((chunk, index) => [nextSlot, nextRevision, now, encoded.checksum, index, chunks.length, chunk, operation]);
+  const sheet = getEtiquetasSheet_();
+  limparEtiquetasSlot_(sheet, nextSlot);
+  if (newRows.length) sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 8).setValues(newRows);
+  SpreadsheetApp.flush();
+  const verified = etiquetasSlotFromRows_(etiquetasRows_(sheet), nextSlot);
+  if (!verified || verified.revision !== nextRevision) throw new Error('Não foi possível validar a gravação de Etiquetas.');
+  properties.setProperties({
+    [PROP_ETIQUETAS_ACTIVE_SLOT]: nextSlot,
+    [PROP_ETIQUETAS_REVISION]: String(nextRevision),
+    [PROP_ETIQUETAS_LAST_OPERATION]: operation
+  });
+  return { status: 'ok', revision: nextRevision, updatedAt: now, checksum: encoded.checksum };
+}
+
+function handleEtiquetasGet_(e) {
+  const lock = getLock_();
+  let locked = false;
+  try {
+    lock.waitLock(15000);
+    locked = true;
+    const current = carregarEtiquetasBanco_();
+    if (String(e.parameter.revision || '') === String(current.revision)) {
+      return json_({ status: 'ok', changed: false, revision: current.revision, updatedAt: current.updatedAt, serverTime: new Date().toISOString() });
+    }
+    return json_({ status: 'ok', changed: true, revision: current.revision, updatedAt: current.updatedAt, dados: current.dados, serverTime: new Date().toISOString() });
+  } catch (error) {
+    return json_({ status: 'error', message: error.message, serverTime: new Date().toISOString() });
+  } finally {
+    if (locked) lock.releaseLock();
+  }
 }
 
 const SHEET_FEIRA_BANCO = 'Alô Feira - Banco';
@@ -1104,6 +1241,10 @@ function doPost(e) {
       return json_({ status: 'ok' });
     }
 
+    if (action === 'salvar_etiquetas_banco') {
+      return json_(salvarEtiquetasBanco_(params.dados, params.expectedRevision, params.operationId));
+    }
+
     if (action === 'salvar_banco') {
       return json_(salvarBanco_(params.dados || {}, params.expectedRevision));
     }
@@ -1120,6 +1261,7 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.app === 'alofeira') return handleFeiraGet_(e);
   const action = e && e.parameter ? e.parameter.action : '';
   if (action === 'carregar_banco') return json_(bancosComRevisao_());
+  if (action === 'carregar_etiquetas_banco') return handleEtiquetasGet_(e);
   if (action === 'foto_tarefa') return json_(fotoTarefa_(e.parameter.tarefaId));
   if (action === 'status_migracao') return json_(getMigrationStatus_(e.parameter.migrationId));
 

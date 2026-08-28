@@ -2,47 +2,47 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="icon.png?v=2.1.8">
-    <link rel="apple-touch-icon" href="icon.png?v=2.1.8">
+    <link rel="icon" href="icon.png?v=2.1.9">
+    <link rel="apple-touch-icon" href="icon.png?v=2.1.9">
     <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v2.1.8</title>
-    <link rel="stylesheet" href="styles.css?v=2.1.8">
-    <link rel="stylesheet" href="modules/checklist/styles.css?v=2.1.8">
+    <title>Alô Cozinha v2.1.9</title>
+    <link rel="stylesheet" href="styles.css?v=2.1.9">
+    <link rel="stylesheet" href="modules/checklist/styles.css?v=2.1.9">
 </head>
 <body class="theme-panelas" oncontextmenu="return false;">
 
 <div id="overlayInatividade"></div>
 
 <div id="splashScreen">
-    <img src="icon.png?v=2.1.8" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
+    <img src="icon.png?v=2.1.9" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v2.1.8</div>
+    <div class="splash-versao">v2.1.9</div>
 </div>
 
 <main id="moduleHome" class="module-home" aria-label="Escolher módulo">
     <div class="module-home-inner">
-        <img src="icon.png?v=2.1.8" alt="Alô Cozinha" class="module-home-logo">
+        <img src="icon.png?v=2.1.9" alt="Alô Cozinha" class="module-home-logo">
         <h1>Alô Cozinha</h1>
-        <div class="module-home-version">v2.1.8</div>
+        <div class="module-home-version">v2.1.9</div>
         <div class="module-choice-grid">
             <button class="module-choice module-choice-kds" onclick="AloTasks.openModule('kds')">
-                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.8" alt="">
+                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.9" alt="">
                 <strong>KDS - Sistema de Pedidos</strong>
             </button>
             <button class="module-choice module-choice-tasks" onclick="AloTasks.openModule('tasks')">
-                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.8" alt="">
+                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.9" alt="">
                 <strong>Checklist</strong>
             </button>
             <button class="module-choice module-choice-feira" onclick="abrirModuloCompras()">
-                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.8" alt="">
+                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.9" alt="">
                 <strong>Lista de Compras</strong>
             </button>
             <button class="module-choice module-choice-l42" onclick="abrirModuloL42()">
-                <img class="module-choice-icon" src="modules/l42/icon.png?v=2.1.8" alt="">
-                <strong>Alô L42</strong>
+                <img class="module-choice-icon" src="modules/l42/icon.png?v=2.1.9" alt="">
+                <strong>Etiquetas</strong>
             </button>
             <button class="module-choice module-choice-settings" onclick="abrirLoginAdmin('painel')">
                 <span class="module-choice-icon">⚙️</span>
@@ -53,7 +53,7 @@
 </main>
 
 <section id="publicTaskView" class="public-task-view" style="display:none" aria-label="Consulta da atividade">
-    <header><img src="icon.png?v=2.1.8" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
+    <header><img src="icon.png?v=2.1.9" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
     <main id="publicTaskContent"><div class="tasks-empty">Carregando atividade...</div></main>
 </section>
 
@@ -73,7 +73,7 @@
     <div class="header" id="mainHeader">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="KDS, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-kds.png?v=2.1.8" class="module-nav-icon" alt="">
+            <img src="assets/module-kds.png?v=2.1.9" class="module-nav-icon" alt="">
         </button>
         <div class="module-header-center">
             <div class="header-area-picker">
@@ -227,7 +227,7 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.8</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.9</div>
 
         <button class="btn-outline" onclick="AloFeiraModule.openManager('restaurante', 'central')">🏢 Dados do Restaurante</button>
         <button class="btn-outline" onclick="abrirGerenciar('areas')">🗺️ Setores do Estabelecimento</button>
@@ -235,6 +235,7 @@
         <button class="btn-outline" onclick="abrirConfiguracoesKds()">🍽️ Configurações KDS</button>
         <button class="btn-outline" onclick="AloTasks.openSettingsMenu()" style="border-color:#00695c; color:#00695c;">📋 Configurações Tarefas</button>
         <button class="btn-outline" onclick="abrirConfiguracoesCompras()" style="border-color:#b35b08; color:#9a4d06;">🛒 Configurações Compras</button>
+        <button class="btn-outline" onclick="abrirConfiguracoesEtiquetas()" style="border-color:#008b8b; color:#006f6f;">🏷️ Configurações Etiquetas</button>
         <button class="btn-danger" onclick="solicitarAcessoAvancado()">⚠️ Configurações Avançadas</button>
 
         <div class="modal-actions">
@@ -255,50 +256,42 @@
 
 <div class="modal-overlay" id="modalPessoaCompartilhada">
     <div class="modal shared-person-form-modal">
-        <div class="modal-title">Pessoa</div>
+        <div class="modal-title">Funcionário e Acessos</div>
         <input id="sharedPersonId" type="hidden">
         <div class="shared-person-identity">
             <div class="form-group"><label for="sharedPersonName">Nome:</label><input id="sharedPersonName" type="text" autocomplete="off"></div>
-            <div class="form-group shared-person-emoji-field"><label for="sharedPersonEmoji">Emoji:</label><input id="sharedPersonEmoji" type="text" maxlength="8" autocomplete="off"></div>
+            <div class="form-group shared-person-emoji-field"><label for="sharedPersonEmoji">Emoji:</label><select id="sharedPersonEmoji" aria-label="Emoji do funcionário">
+                <optgroup label="Pessoas"><option>👤</option><option>👩</option><option>👨</option><option>👩🏻</option><option>👩🏼</option><option>👩🏽</option><option>👩🏾</option><option>👩🏿</option><option>👨🏻</option><option>👨🏼</option><option>👨🏽</option><option>👨🏾</option><option>👨🏿</option></optgroup>
+                <optgroup label="Cozinha"><option>🧑‍🍳</option><option>👩‍🍳</option><option>👨‍🍳</option><option>👩🏻‍🍳</option><option>👩🏼‍🍳</option><option>👩🏽‍🍳</option><option>👩🏾‍🍳</option><option>👩🏿‍🍳</option><option>👨🏻‍🍳</option><option>👨🏼‍🍳</option><option>👨🏽‍🍳</option><option>👨🏾‍🍳</option><option>👨🏿‍🍳</option></optgroup>
+                <optgroup label="Gestão e atendimento"><option>🧑‍💼</option><option>👩‍💼</option><option>👨‍💼</option><option>👩🏻‍💼</option><option>👩🏽‍💼</option><option>👩🏿‍💼</option><option>👨🏻‍💼</option><option>👨🏽‍💼</option><option>👨🏿‍💼</option><option>🧑‍💻</option><option>👩‍💻</option><option>👨‍💻</option><option>🧑‍🔧</option><option>🧑‍🌾</option><option>🧹</option><option>🛵</option><option>🧾</option></optgroup>
+            </select></div>
         </div>
         <div class="shared-switch-list">
             <label class="task-toggle-row"><span class="task-toggle-copy"><b>👤</b><strong>Funcionário</strong></span><span class="switch-moderno"><input id="sharedPersonEmployee" type="checkbox" onchange="AloSharedData.toggleEmployeeFields()"><span class="switch-trilho"></span></span></label>
             <div id="sharedPersonEmployeeFields" class="form-group shared-employee-area"><label for="sharedPersonChecklistArea">Setor:</label><select id="sharedPersonChecklistArea"></select></div>
-            <label class="task-toggle-row shared-login-toggle"><span class="task-toggle-copy"><b>🔐</b><strong>Pode entrar no aplicativo</strong></span><span class="switch-moderno"><input id="sharedPersonCanLogin" type="checkbox" onchange="AloSharedData.toggleLoginFields()"><span class="switch-trilho"></span></span></label>
-            <label class="task-toggle-row"><span class="task-toggle-copy"><b>✓</b><strong>Cadastro ativo</strong></span><span class="switch-moderno"><input id="sharedPersonActive" type="checkbox"><span class="switch-trilho"></span></span></label>
+            <label class="task-toggle-row shared-admin-toggle"><span class="task-toggle-copy"><b>★</b><strong>Administrador</strong></span><span class="switch-moderno"><input id="sharedPersonAdmin" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label>
+        </div>
+        <div class="shared-access-groups">
+            <section class="shared-access-card"><div class="shared-access-heading"><span>🍽️</span><b>KDS</b></div><label class="task-toggle-row"><span class="task-toggle-copy"><strong>Configurações KDS</strong></span><span class="switch-moderno"><input id="sharedPersonKdsConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
+            <section class="shared-access-card"><div class="shared-access-heading"><span>📋</span><b>Checklist</b></div><label class="task-toggle-row"><span class="task-toggle-copy"><strong>Configurações Checklist</strong></span><span class="switch-moderno"><input id="sharedPersonChecklistConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
+            <section class="shared-access-card">
+                <div class="shared-access-heading"><span>🛒</span><b>Lista de Compras</b><span class="switch-moderno"><input id="sharedPersonComprasAccess" type="checkbox" aria-label="Acessar Lista de Compras" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></div>
+                <div id="sharedPersonComprasFields" class="shared-access-details">
+                    <label class="task-toggle-row"><span class="task-toggle-copy"><b>📥</b><strong>Receber no modo Compras</strong></span><span class="switch-moderno"><input id="sharedPersonComprasReceive" type="checkbox"><span class="switch-trilho"></span></span></label>
+                    <label class="task-toggle-row"><span class="task-toggle-copy"><b>🛒</b><strong>Comprar no modo Compras</strong></span><span class="switch-moderno"><input id="sharedPersonComprasBuy" type="checkbox"><span class="switch-trilho"></span></span></label>
+                    <div class="shared-category-permissions"><div class="shared-category-title"><strong>Categorias permitidas</strong><span>Pedir</span><span>Comprar</span></div><div id="sharedPersonComprasCategories"></div></div>
+                </div>
+            </section>
+            <section class="shared-access-card">
+                <div class="shared-access-heading"><span>🏷️</span><b>Etiquetas</b><span class="switch-moderno"><input id="sharedPersonLabelsAccess" type="checkbox" aria-label="Acessar Etiquetas" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></div>
+                <div id="sharedPersonLabelsFields" class="shared-access-details"><label class="task-toggle-row"><span class="task-toggle-copy"><b>⚙️</b><strong>Mostrar engrenagem de configurações</strong></span><span class="switch-moderno"><input id="sharedPersonLabelsConfig" type="checkbox"><span class="switch-trilho"></span></span></label></div>
+            </section>
         </div>
         <div id="sharedPersonLoginFields" class="shared-login-fields">
-            <div class="form-group"><label for="sharedPersonPin">PIN:</label><input id="sharedPersonPin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
-            <label class="task-toggle-row"><span class="task-toggle-copy"><b>★</b><strong>Administrador</strong></span><span class="switch-moderno"><input id="sharedPersonAdmin" type="checkbox"><span class="switch-trilho"></span></span></label>
-            <details class="shared-permission-group" open>
-                <summary>KDS e Checklist</summary>
-                <label class="task-toggle-row"><span class="task-toggle-copy"><b>🍽️</b><strong>Configurações KDS</strong></span><span class="switch-moderno"><input id="sharedPersonKdsConfig" type="checkbox"><span class="switch-trilho"></span></span></label>
-                <label class="task-toggle-row"><span class="task-toggle-copy"><b>📋</b><strong>Configurações Checklist</strong></span><span class="switch-moderno"><input id="sharedPersonChecklistConfig" type="checkbox"><span class="switch-trilho"></span></span></label>
-            </details>
-            <details class="shared-permission-group">
-                <summary>Lista de Compras</summary>
-                <label class="task-toggle-row"><span class="task-toggle-copy"><b>📥</b><strong>Receber pedidos</strong></span><span class="switch-moderno"><input id="sharedPersonComprasReceive" type="checkbox"><span class="switch-trilho"></span></span></label>
-                <label class="task-toggle-row"><span class="task-toggle-copy"><b>🛒</b><strong>Realizar compras</strong></span><span class="switch-moderno"><input id="sharedPersonComprasBuy" type="checkbox"><span class="switch-trilho"></span></span></label>
-            </details>
-            <details class="shared-permission-group">
-                <summary>L42</summary>
-                <div class="shared-l42-permissions">
-                    <label><input id="sharedPersonL42_imprimir" type="checkbox"> Imprimir</label>
-                    <label><input id="sharedPersonL42_estoque" type="checkbox"> Estoque</label>
-                    <label><input id="sharedPersonL42_darBaixa" type="checkbox"> Dar baixa</label>
-                    <label><input id="sharedPersonL42_movimentacao" type="checkbox"> Movimentação</label>
-                    <label><input id="sharedPersonL42_relatorios" type="checkbox"> Relatórios</label>
-                    <label><input id="sharedPersonL42_produtos" type="checkbox"> Produtos</label>
-                    <label><input id="sharedPersonL42_categorias" type="checkbox"> Categorias</label>
-                    <label><input id="sharedPersonL42_estilo" type="checkbox"> Estilo</label>
-                    <label><input id="sharedPersonL42_configuracoes" type="checkbox"> Configurações</label>
-                    <label><input id="sharedPersonL42_operadores" type="checkbox"> Pessoas</label>
-                    <label><input id="sharedPersonL42_avancado" type="checkbox"> Avançado</label>
-                </div>
-            </details>
+            <div class="form-group shared-pin-field"><label for="sharedPersonPin">PIN de acesso:</label><input id="sharedPersonPin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
         </div>
         <div class="modal-actions shared-person-actions">
-            <button id="sharedPersonDeactivate" class="btn-danger" type="button" onclick="AloSharedData.deactivateCurrentPerson()">Desativar</button>
+            <button id="sharedPersonActiveAction" class="btn-danger" type="button" onclick="AloSharedData.toggleCurrentPersonActive()">Desativar</button>
             <button class="btn-cancel" type="button" onclick="AloSharedData.backToManager()">Cancelar</button>
             <button class="btn-action" type="button" onclick="AloSharedData.savePersonForm()">Salvar</button>
         </div>
@@ -311,6 +304,17 @@
         <button class="btn-outline" onclick="AloFeiraModule.openManager('produtos')">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="AloFeiraModule.openManager('fornecedores')">🚚 Gerenciar Fornecedores</button>
         <div class="modal-actions"><button class="btn-cancel" onclick="voltarConfiguracoesCompras()">Voltar</button></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalConfigEtiquetas">
+    <div class="modal">
+        <div class="modal-title">Configurações Etiquetas</div>
+        <button class="btn-outline" onclick="AloL42Module.openSettings('produtos')">🍔 Gerenciar Produtos</button>
+        <button class="btn-outline" onclick="AloL42Module.openSettings('categorias')">🏷️ Gerenciar Categorias</button>
+        <button class="btn-outline" onclick="AloL42Module.openSettings('etiquetas')">🖨️ Impressão e Etiqueta</button>
+        <button class="btn-outline" onclick="AloL42Module.openSettings('basicas')">⚙️ Configurações Básicas</button>
+        <div class="modal-actions"><button class="btn-cancel" onclick="voltarConfiguracoesEtiquetas()">Voltar</button></div>
     </div>
 </div>
 
@@ -479,7 +483,7 @@
     <header class="tasks-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Checklist, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-checklist.png?v=2.1.8" class="module-nav-icon" alt="">
+            <img src="assets/module-checklist.png?v=2.1.9" class="module-nav-icon" alt="">
         </button>
         <div class="module-header-center">
             <div class="header-area-picker tasks-area-picker">
@@ -514,7 +518,7 @@
     <header class="feira-module-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Compras, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-feira.png?v=2.1.8" class="module-nav-icon" alt="">
+            <img src="assets/module-feira.png?v=2.1.9" class="module-nav-icon" alt="">
         </button>
         <div class="feira-mode-picker header-area-picker">
             <button type="button" id="feiraModeButton" class="header-area-button" onclick="AloFeiraModule.toggleModePicker()" aria-haspopup="listbox" aria-expanded="false" aria-label="Escolher operação de compras">
@@ -542,11 +546,11 @@
             <button class="module-settings-button" type="button" onclick="abrirLoginAdmin('compras')" aria-label="Configurações Compras" title="Configurações Compras">⚙️</button>
         </div>
     </header>
-    <iframe id="feiraFrame" class="feira-frame" title="Lista de Compras" data-src="modules/compras/index.html?embedded=1&amp;v=2.1.8-compras-r1"></iframe>
+    <iframe id="feiraFrame" class="feira-frame" title="Lista de Compras" data-src="modules/compras/index.html?embedded=1&amp;v=2.1.9-compras-r1"></iframe>
 </section>
 
-<section id="l42Module" class="l42-module" style="display:none;" aria-label="Alô L42">
-    <iframe id="l42Frame" class="l42-frame" title="Alô L42" allow="camera" data-src="modules/l42/index.html?embedded=1&amp;v=2.1.8"></iframe>
+<section id="l42Module" class="l42-module" style="display:none;" aria-label="Etiquetas">
+    <iframe id="l42Frame" class="l42-frame" title="Etiquetas" allow="camera" data-src="modules/l42/index.html?embedded=1&amp;v=2.1.9"></iframe>
 </section>
 
 <div class="modal-overlay" id="modalMenuProdutos">
@@ -775,25 +779,26 @@
     </div>
 </div>
 
-<script defer src="core/module-host.js?v=2.1.8"></script>
-<script defer src="core/data-contracts.js?v=2.1.8"></script>
-<script defer src="core/shared-data.js?v=2.1.8"></script>
-<script defer src="modules/kds/module.js?v=2.1.8"></script>
-<script defer src="modules/checklist/module.js?v=2.1.8"></script>
-<script defer src="modules/compras/module.js?v=2.1.8"></script>
-<script defer src="modules/l42/module.js?v=2.1.8"></script>
-<script defer src="modules/kds/logic.js?v=2.1.8"></script>
-<script defer src="modules/kds/storage.js?v=2.1.8"></script>
-<script defer src="core/api.js?v=2.1.8"></script>
-<script defer src="modules/kds/audio.js?v=2.1.8"></script>
-<script defer src="modules/kds/sync.js?v=2.1.8"></script>
-<script defer src="core/catalog-sync.js?v=2.1.8"></script>
-<script defer src="core/ui-dialog.js?v=2.1.8"></script>
-<script defer src="modules/checklist/templates.js?v=2.1.8"></script>
-<script defer src="modules/checklist/vendor/qrcode.js?v=2.1.8"></script>
-<script defer src="modules/compras/host.js?v=2.1.8"></script>
-<script defer src="modules/l42/host.js?v=2.1.8"></script>
-<script defer src="modules/checklist/app.js?v=2.1.8"></script>
-<script defer src="modules/kds/app.js?v=2.1.8"></script>
+<script defer src="core/module-host.js?v=2.1.9"></script>
+<script defer src="core/data-contracts.js?v=2.1.9"></script>
+<script defer src="core/shared-data.js?v=2.1.9"></script>
+<script defer src="modules/kds/module.js?v=2.1.9"></script>
+<script defer src="modules/checklist/module.js?v=2.1.9"></script>
+<script defer src="modules/compras/module.js?v=2.1.9"></script>
+<script defer src="modules/l42/module.js?v=2.1.9"></script>
+<script defer src="modules/kds/logic.js?v=2.1.9"></script>
+<script defer src="modules/kds/storage.js?v=2.1.9"></script>
+<script defer src="core/api.js?v=2.1.9"></script>
+<script defer src="modules/kds/audio.js?v=2.1.9"></script>
+<script defer src="modules/kds/sync.js?v=2.1.9"></script>
+<script defer src="core/catalog-sync.js?v=2.1.9"></script>
+<script defer src="core/ui-dialog.js?v=2.1.9"></script>
+<script defer src="modules/checklist/templates.js?v=2.1.9"></script>
+<script defer src="modules/checklist/vendor/qrcode.js?v=2.1.9"></script>
+<script defer src="modules/compras/host.js?v=2.1.9"></script>
+<script defer src="modules/l42/cloud.js?v=2.1.9"></script>
+<script defer src="modules/l42/host.js?v=2.1.9"></script>
+<script defer src="modules/checklist/app.js?v=2.1.9"></script>
+<script defer src="modules/kds/app.js?v=2.1.9"></script>
 </body>
 </html>

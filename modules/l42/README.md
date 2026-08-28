@@ -1,11 +1,11 @@
-# Módulo Alô L42
+# Módulo Etiquetas
 
-O módulo preserva a aplicação Alô L42 v2.22 dentro de um `iframe`, isolando CSS, estado e falhas dos demais módulos do Alô Cozinha.
+O módulo Etiquetas preserva as rotinas maduras de câmera, estoque e impressão dentro de um `iframe`, isolando CSS, estado e falhas dos demais módulos do Alô Cozinha.
 
-- As chaves locais `etiquetadora_*` e `alo_supabase_*` não foram renomeadas.
-- A conta e a sincronização Supabase existentes continuam sendo a fonte de verdade do L42.
-- O host encaminha ao `iframe` os retornos da câmera nativa e da autenticação Android.
+- As chaves locais `etiquetadora_*` e `alo_supabase_*` não foram renomeadas para preservar instalações anteriores.
+- Quando incorporado, o módulo usa a mesma URL do Google Apps Script dos demais módulos; o Supabase legado não é iniciado.
+- O host encaminha ao `iframe` os retornos da câmera nativa.
 - `AloNative` e `AloPrinter` continuam disponíveis no APK para câmera, arquivos e impressão TCP.
-- O código de backend importado do projeto original está preservado em `backend/` para a futura migração unificada.
+- O banco remoto é compactado e salvo em slots A/B validados por checksum, com revisão e idempotência.
 
-O L42 ainda usa seu backend Supabase próprio nesta versão. Integrar autenticação e dados dos quatro módulos será uma migração posterior, com esquema e retorno definidos antes de qualquer troca de fonte de verdade.
+O identificador interno `l42` e o pacote Android antigo continuam existindo somente por compatibilidade técnica com a impressora, os backups e as atualizações instaladas.

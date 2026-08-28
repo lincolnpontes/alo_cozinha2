@@ -15,9 +15,16 @@
     position: fixed;
     inset: 0;
     z-index: 700;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
     background: var(--tasks-bg);
     color: var(--tasks-ink);
 }
@@ -140,8 +147,8 @@
     color: #fff;
     cursor: pointer;
 }
-.feira-profile-button span { flex: 0 0 auto; font-size: 20px; line-height: 1; }
-.feira-profile-button strong { min-width: 0; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.feira-profile-button span { flex: 0 0 auto; font-size: 22px; line-height: 1; }
+.feira-profile-button strong { min-width: 0; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
 .app-sync-indicator {
     width: 40px;
     min-width: 40px;
@@ -805,7 +812,8 @@
 .task-history-observation > div { margin-top: 5px; color: #37474f; }
 
 @media (max-width: 640px) {
-    .module-home { padding: 18px; }
+    .module-home { align-items: flex-start; padding: 18px; }
+    .module-home-inner { margin-block: auto; }
     .module-home h1 { font-size: 26px; }
     .module-home-version { margin-bottom: 18px; }
     .module-choice-grid { grid-template-columns: 1fr; }
@@ -867,8 +875,8 @@
     .feira-mode-picker .header-area-button strong { font-size: 13px; }
     .feira-header-actions { gap: 3px; }
     .feira-profile-button { min-width: 50px; max-width: 74px; height: 36px; padding-inline: 4px; gap: 3px; }
-    .feira-profile-button span { font-size: 18px; }
-    .feira-profile-button strong { font-size: 12px; }
+    .feira-profile-button span { font-size: 20px; }
+    .feira-profile-button strong { font-size: 13px; }
     .app-sync-indicator::after { width: 12px; height: 12px; border-width: 1px; }
     .advanced-action-grid { grid-template-columns: 1fr; }
 }
@@ -895,9 +903,9 @@
     .feira-mode-picker .header-area-button { min-width: 72px; padding-inline: 2px; }
     .feira-mode-picker .header-area-button strong { font-size: 12px; }
     .feira-mode-picker .header-area-emoji { font-size: 17px; }
-    .feira-profile-button { max-width: 70px; }
-    .feira-profile-button span { display: none; }
-    .feira-profile-button strong { font-size: 11px; }
+    .feira-profile-button { max-width: 76px; }
+    .feira-profile-button span { display: inline; }
+    .feira-profile-button strong { font-size: 12px; }
 }
 
 @media print {

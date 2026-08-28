@@ -188,6 +188,12 @@
         return child.obterDadosCompartilhadosComprasPeloHost();
     }
 
+    async function getCategories() {
+        const child = await waitForChild();
+        if (typeof child.listarCategoriasComprasPeloHost !== 'function') return [];
+        return child.listarCategoriasComprasPeloHost();
+    }
+
     async function applySharedPeople(people) {
         const child = await waitForChild();
         if (typeof child.aplicarPessoasCompartilhadasComprasPeloHost !== 'function') throw new Error('Compras ainda não aceita pessoas compartilhadas.');
@@ -245,7 +251,7 @@
     global.AloFeiraModule = Object.freeze({
         configure, open, syncServerUrl, toggleModePicker, closeModePicker, setMode,
         updateHeader, refreshHeader, openProfile, openManager, prepareLogin, authenticateOperator,
-        logout, getBackup, restoreBackup, getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson,
+        logout, getBackup, restoreBackup, getSharedSnapshot, getCategories, applySharedPeople, applySharedRestaurant, activateSharedPerson,
         syncNow, clearHistory, backToSettings
     });
 })(window);

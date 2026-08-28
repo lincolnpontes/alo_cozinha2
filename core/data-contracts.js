@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.8';
+    const VERSION = '2.1.9';
     const SHARED_SCHEMA_VERSION = 2;
 
     const contracts = Object.freeze({
@@ -32,8 +32,8 @@
         l42: Object.freeze({
             owner: 'l42',
             localStorage: Object.freeze(['etiquetadora_db', 'etiquetadora_operadorAtual', 'alo_supabase_session_v1']),
-            cloudNamespace: 'l42',
-            persistence: 'localStorage e Supabase do Alô L42',
+            cloudNamespace: 'etiquetas',
+            persistence: 'localStorage com sincronização no mesmo Google Apps Script dos demais módulos',
             futureTablePrefix: 'l42_'
         })
     });

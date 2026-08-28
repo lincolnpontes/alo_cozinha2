@@ -1,6 +1,6 @@
 {
-  "name": "Alô L42",
-  "short_name": "L42",
+  "name": "Etiquetas",
+  "short_name": "Etiquetas",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f0f2f5",

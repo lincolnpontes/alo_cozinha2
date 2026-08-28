@@ -88,6 +88,11 @@ async function obterDadosCompartilhadosComprasPeloHost() {
     };
 }
 
+async function listarCategoriasComprasPeloHost() {
+    await comprasProntasHost;
+    return JSON.parse(JSON.stringify((db.categorias || []).filter(categoria => categoria?.ativo !== false)));
+}
+
 function hashCentralCompras(pessoa) {
     const alternativas = pessoa?.credentials?.alternatives || [];
     return alternativas.find(item => item.scheme === 'pbkdf2-sha256')?.hash || '';
@@ -96,7 +101,7 @@ function hashCentralCompras(pessoa) {
 async function aplicarPessoasCompartilhadasComprasPeloHost(pessoas) {
     await comprasProntasHost;
     const recebidas = Array.isArray(pessoas) ? pessoas : [];
-    const acessos = recebidas.filter(pessoa => pessoa?.podeEntrar === true);
+    const acessos = recebidas.filter(pessoa => pessoa?.podeEntrar === true && (pessoa?.isAdmin || pessoa?.permissions?.compras?.acesso === true));
     const antes = JSON.stringify(db.colaboradores || []);
     acessos.forEach(pessoa => {
         const idVinculado = String(pessoa?.links?.comprasId || '');

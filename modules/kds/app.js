@@ -1244,6 +1244,10 @@ let db = carregarBanco();
             abrirConfiguracoesCompras();
             return;
         }
+        if (destinoConfiguracoes === 'etiquetas') {
+            abrirConfiguracoesEtiquetas();
+            return;
+        }
         abrirPainelControle();
     }
 
@@ -1274,6 +1278,17 @@ let db = carregarBanco();
         if (destinoConfiguracoes !== 'compras') abrirModalNoTopo('modalPainelUnificado');
     }
 
+    function abrirConfiguracoesEtiquetas() {
+        fecharModal('modalPainelUnificado');
+        AloL42Module.open();
+        abrirModalNoTopo('modalConfigEtiquetas');
+    }
+
+    function voltarConfiguracoesEtiquetas() {
+        fecharModal('modalConfigEtiquetas');
+        if (destinoConfiguracoes !== 'etiquetas') abrirModalNoTopo('modalPainelUnificado');
+    }
+
     async function abrirModuloCompras() {
         await abrirLoginAdmin('compras_modulo');
     }
@@ -1283,10 +1298,19 @@ let db = carregarBanco();
     }
 
     async function abrirLoginAdmin(destino = 'painel') {
-        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'];
+        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'etiquetas', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'];
         destinoLoginOperador = destinosValidos.includes(destino) ? destino : 'painel';
-        if (['painel', 'kds', 'tasks', 'compras'].includes(destinoLoginOperador)) destinoConfiguracoes = destinoLoginOperador;
+        if (['painel', 'kds', 'tasks', 'compras', 'etiquetas'].includes(destinoLoginOperador)) destinoConfiguracoes = destinoLoginOperador;
         if (destinoLoginOperador === 'compras' && sessaoCompras?.isAdmin) {
+            abrirDestinoConfiguracoes();
+            return;
+        }
+        const sessaoPodeConfigurarEtiquetas = sessaoL42 && (
+            sessaoL42.isAdmin
+            || sessaoL42.podeConfigurarEtiquetas
+            || sessaoL42.permissions?.l42?.configuracoes
+        );
+        if (destinoLoginOperador === 'etiquetas' && sessaoPodeConfigurarEtiquetas) {
             abrirDestinoConfiguracoes();
             return;
         }
@@ -1298,7 +1322,7 @@ let db = carregarBanco();
         document.getElementById('tituloLoginOperador').innerText = destinoLoginOperador === 'compras_modulo'
             ? 'Entrar na Lista de Compras'
             : (destinoLoginOperador === 'l42_modulo'
-                ? 'Entrar no L42'
+                ? 'Entrar em Etiquetas'
                 : (destinoLoginOperador.startsWith('trocar_') ? 'Trocar pessoa' : 'Acesso às configurações'));
         select.innerHTML = '<option value="">Carregando operadores...</option>';
         select.disabled = true;
@@ -1309,7 +1333,12 @@ let db = carregarBanco();
         modal.style.display = 'flex';
 
         try {
-            const operadores = await AloSharedData.listLoginPeople();
+            const finalidade = ['compras_modulo', 'trocar_compras'].includes(destinoLoginOperador)
+                ? 'compras'
+                : (['l42_modulo', 'trocar_l42', 'etiquetas'].includes(destinoLoginOperador)
+                    ? 'l42'
+                    : (destinoLoginOperador === 'kds' ? 'kds' : (destinoLoginOperador === 'tasks' ? 'checklist' : 'painel')));
+            const operadores = await AloSharedData.listLoginPeople(finalidade);
             if (!operadores.length) {
                 fecharModal('modalLoginAdmin');
                 if (destinoLoginOperador === 'painel') {
@@ -1603,7 +1632,7 @@ let db = carregarBanco();
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.8',
+                version: '2.1.9',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1625,7 +1654,7 @@ let db = carregarBanco();
                 const file = new File([blob], nomeArquivo, {type: 'application/json'});
                 navigator.share({
                     title: 'Backup Alô Cozinha',
-                    text: 'Backup completo do KDS, Checklist, Lista de Compras e Alô L42.',
+                    text: 'Backup completo do KDS, Checklist, Lista de Compras e Etiquetas.',
                     files: [file]
                 }).catch(err => { baixarComoArquivo(blob, nomeArquivo); });
             } else {
@@ -1742,7 +1771,7 @@ let db = carregarBanco();
             if (modulos.kdsChecklist) detalhes.push(`KDS e Checklist: ${summary.produtos} produtos, ${summary.pedidos} pedidos e ${atividades.length} registros de atividades`);
             if (comprasSummary) detalhes.push(`Compras: ${comprasSummary.produtos} produtos, ${comprasSummary.operadores} operadores e ${comprasSummary.pedidos} pedidos`);
             const l42Dados = modulos.l42?.formato === 'alo-etiqueta-backup-completo' ? modulos.l42.dados : modulos.l42;
-            if (l42Dados) detalhes.push(`L42: ${Array.isArray(l42Dados.produtos) ? l42Dados.produtos.length : 0} produtos e ${Array.isArray(l42Dados.historico) ? l42Dados.historico.length : 0} registros`);
+            if (l42Dados) detalhes.push(`Etiquetas: ${Array.isArray(l42Dados.produtos) ? l42Dados.produtos.length : 0} produtos e ${Array.isArray(l42Dados.historico) ? l42Dados.historico.length : 0} registros`);
             const confirmed = await AloUiDialog.confirm(
                 `${detalhes.join('. ')}. A URL atual será preservada e registros repetidos não serão duplicados.`,
                 { title: modulos.completo ? 'Restaurar backup completo' : 'Restaurar backup', icon: '📥', confirmText: 'Restaurar na nuvem' }
@@ -1788,7 +1817,7 @@ let db = carregarBanco();
 
             if (modulos.l42) {
                 await AloL42Module.restoreBackup(modulos.l42);
-                etapasConcluidas.push('L42');
+                etapasConcluidas.push('Etiquetas');
             }
 
             if (modulos.compartilhado) {
@@ -2209,6 +2238,7 @@ let db = carregarBanco();
             const podeConfigurar = acessoOperacional
                 || (destinoLoginOperador === 'kds' && resultado.operador.podeConfigurarKds)
                 || (destinoLoginOperador === 'tasks' && resultado.operador.podeConfigurarChecklist)
+                || (destinoLoginOperador === 'etiquetas' && resultado.operador.podeConfigurarEtiquetas)
                 || (['painel', 'compras'].includes(destinoLoginOperador) && resultado.operador.isAdmin);
             if (!podeConfigurar) {
                 const modulo = destinoLoginOperador === 'kds' ? 'KDS' : (destinoLoginOperador === 'tasks' ? 'Checklist' : 'Alô Cozinha');
@@ -2435,6 +2465,7 @@ let db = carregarBanco();
         document.addEventListener('click', () => AloAudio.unlock(), { once: true });
         iniciar();
         window.AloFeiraModule?.configure({ getServerUrl: () => db.configs.url });
+        window.AloEtiquetasCloud?.configure({ getServerUrl: () => db.configs.url });
         if (window.AloTasks) {
             AloTasks.init({
                 getDatabase: () => db,
@@ -2450,6 +2481,7 @@ let db = carregarBanco();
                 applyRestaurant: restaurant => AloFeiraModule.applySharedRestaurant(restaurant),
                 activatePerson: person => AloFeiraModule.activateSharedPerson(person),
                 logout: () => AloFeiraModule.logout(),
+                getCategories: () => AloFeiraModule.getCategories(),
                 getFullData: () => AloFeiraModule.getBackup()
             });
             AloSharedData.registerAdapter('l42', {
@@ -2706,7 +2738,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.8').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.9').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

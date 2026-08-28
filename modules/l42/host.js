@@ -29,7 +29,7 @@
             if (frameReady && child) return child;
             await new Promise(resolve => setTimeout(resolve, 50));
         }
-        throw new Error('O Alô L42 demorou para abrir.');
+        throw new Error('O módulo Etiquetas demorou para abrir.');
     }
 
     function deliverNativeCallback(name, args) {
@@ -70,9 +70,13 @@
             frameReady = true;
             event.source.postMessage({ source: 'alo-cozinha', type: 'restore-legacy-storage', entries: legacyStorageSnapshot() }, '*');
             flushNativeCallbacks();
+            global.AloEtiquetasCloud?.sync?.().catch(() => {});
             return;
         }
         if (event.data.type === 'show-home') global.AloModuleHost?.showHome();
+        if (event.data.type === 'data-changed') global.AloEtiquetasCloud?.markDirty?.();
+        if (event.data.type === 'open-settings') global.abrirLoginAdmin?.('etiquetas');
+        if (event.data.type === 'switch-person') global.abrirLoginAdmin?.('trocar_l42');
     }
 
     function configure() {
@@ -81,25 +85,48 @@
 
     async function getBackup() {
         const child = await waitForChild();
-        if (typeof child.obterBackupL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de exportar.');
+        if (typeof child.obterBackupL42PeloHost !== 'function') throw new Error('Atualize o módulo Etiquetas antes de exportar.');
         return child.obterBackupL42PeloHost();
     }
 
     async function restoreBackup(bank) {
         const child = await waitForChild();
-        if (typeof child.restaurarBackupL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de restaurar.');
+        if (typeof child.restaurarBackupL42PeloHost !== 'function') throw new Error('Atualize o módulo Etiquetas antes de restaurar.');
         return child.restaurarBackupL42PeloHost(bank);
+    }
+
+    async function mergeCloudData(bank) {
+        const child = await waitForChild();
+        if (typeof child.mesclarBancoEtiquetasPeloHost !== 'function') throw new Error('Atualize Etiquetas antes de sincronizar.');
+        return child.mesclarBancoEtiquetasPeloHost(bank);
+    }
+
+    async function setCloudStatus(status, message) {
+        const child = childWindow();
+        if (typeof child?.atualizarNuvemEtiquetasPeloHost === 'function') child.atualizarNuvemEtiquetasPeloHost(status, message);
+    }
+
+    async function openSettings(section) {
+        global.fecharModal?.('modalConfigEtiquetas');
+        global.AloTasks?.openModule('l42');
+        const child = await waitForChild();
+        if (typeof child.abrirConfiguracaoEtiquetasPeloHost !== 'function') throw new Error('Atualize Etiquetas para abrir esta configuração.');
+        return child.abrirConfiguracaoEtiquetasPeloHost(section);
+    }
+
+    function backToSettings() {
+        global.abrirConfiguracoesEtiquetas?.();
     }
 
     async function getSharedSnapshot() {
         const child = await waitForChild();
-        if (typeof child.obterDadosCompartilhadosL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de integrar os dados.');
+        if (typeof child.obterDadosCompartilhadosL42PeloHost !== 'function') throw new Error('Atualize o módulo Etiquetas antes de integrar os dados.');
         return child.obterDadosCompartilhadosL42PeloHost();
     }
 
     async function applySharedPeople(people) {
         const child = await waitForChild();
-        if (typeof child.aplicarPessoasCompartilhadasL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de integrar os usuários.');
+        if (typeof child.aplicarPessoasCompartilhadasL42PeloHost !== 'function') throw new Error('Atualize o módulo Etiquetas antes de integrar os usuários.');
         return child.aplicarPessoasCompartilhadasL42PeloHost(people);
     }
 
@@ -111,7 +138,7 @@
 
     async function activateSharedPerson(person) {
         const child = await waitForChild();
-        if (typeof child.ativarPessoaCompartilhadaL42PeloHost !== 'function') throw new Error('Atualize o módulo L42 antes de entrar.');
+        if (typeof child.ativarPessoaCompartilhadaL42PeloHost !== 'function') throw new Error('Atualize o módulo Etiquetas antes de entrar.');
         return child.ativarPessoaCompartilhadaL42PeloHost(person);
     }
 
@@ -125,7 +152,7 @@
     global.receberLinkAutenticacaoSupabase = (...args) => deliverNativeCallback('receberLinkAutenticacaoSupabase', args);
 
     global.AloL42Module = Object.freeze({
-        configure, open, getBackup, restoreBackup,
+        configure, open, getBackup, restoreBackup, mergeCloudData, setCloudStatus, openSettings, backToSettings,
         getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson, logout,
         getFullData: getBackup
     });

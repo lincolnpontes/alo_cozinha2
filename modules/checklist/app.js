@@ -840,7 +840,7 @@
         if (activity.funcionarioId || !employees.length) return false;
         pendingEmployeeAction = { activityId: activity.id, action, direct };
         const select = document.getElementById('taskExecutionEmployee');
-        select.innerHTML = '<option value="">Qualquer pessoa da área</option>' + employees.map(employee =>
+        select.innerHTML = '<option value="">Todos</option>' + employees.map(employee =>
             `<option value="${escapeHtml(employee.id)}">${escapeHtml(employee.nome)}</option>`
         ).join('');
         document.getElementById('modalTaskEmployee').style.display = 'flex';
@@ -975,7 +975,7 @@
             <div class="task-finished-summary"><strong>${escapeHtml(activity.nome)}</strong><span class="task-detail-status ${statusClass}">${statusText}${editableStatus ? `<button type="button" class="task-status-edit-button" onclick="AloTasks.toggleTaskStatusEditMenu()" aria-label="Editar estado" title="Editar estado" aria-expanded="false">✎</button>` : ''}</span></div>
             <div class="task-detail-grid">
                 <div><small>Setor</small><strong>${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</strong></div>
-                <div><small>Responsável</small><strong>${escapeHtml(activity.funcionarioNome || employee?.nome || 'Qualquer pessoa da área')}</strong></div>
+                <div><small>Responsável</small><strong>${escapeHtml(activity.funcionarioNome || employee?.nome || 'Todos')}</strong></div>
                 <div><small>Data programada</small><strong>${escapeHtml(formatDateKey(activity.data))}</strong></div>
                 <div><small>Horário programado</small><strong>${escapeHtml(formatTime(activity.horario))}</strong></div>
                 ${activity.iniciadoEm ? `<div><small>Iniciada em</small><strong>${escapeHtml(formatDateTime(activity.iniciadoEm))}</strong></div>` : ''}
@@ -984,8 +984,8 @@
                 ${activity.remarcadoDe ? `<div><small>Remarcada da data</small><strong>${escapeHtml(formatDateKey(activity.remarcadoDe))}</strong></div>` : ''}
             </div>
             ${activity.registroPop ? '<div class="task-pop-badge">POP registrado</div>' : ''}
-            ${template.fotoReferencia ? '<div id="taskDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}
             ${procedure ? `<div class="task-procedure-box"><strong>Procedimento</strong><div class="task-procedure-content">${procedureHtml(procedure, procedureFormat)}</div></div>` : ''}
+            ${template.fotoReferencia ? '<div id="taskDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}
             ${activity.observacao ? `<div class="task-procedure-box"><strong>Observação</strong><div class="task-procedure-content">${sanitizeRichHtml(activity.observacao)}</div></div>` : ''}`;
         deps.openModalTop('modalTaskFinished');
         if (template.fotoReferencia) renderTaskPhoto(template.id, 'taskDetailPhoto');
@@ -1324,7 +1324,7 @@
         ).join('');
     }
     function employeeOptions(selected, areaId) {
-        return '<option value="">Qualquer pessoa da área</option>' + db().funcionarios.filter(employee => employee.ativo !== false && (!areaId || !employee.setorId || employee.setorId === areaId)).map(employee =>
+        return '<option value="">Todos</option>' + db().funcionarios.filter(employee => employee.ativo !== false && (!areaId || !employee.setorId || employee.setorId === areaId)).map(employee =>
             `<option value="${escapeHtml(employee.id)}" ${employee.id === selected ? 'selected' : ''}>${escapeHtml(employee.nome)}</option>`
         ).join('');
     }

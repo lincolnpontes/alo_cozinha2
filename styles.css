@@ -120,7 +120,8 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-person-item > button { width: 40px; height: 40px; flex: 0 0 40px; border: 0; border-radius: 6px; background: #eef4f4; font-size: 19px; cursor: pointer; }
         .shared-data-empty { padding: 24px 8px; color: #68777d; text-align: center; }
         .shared-data-empty.danger { color: #b3261e; }
-        .shared-person-identity { position: relative; display: grid; grid-template-columns: minmax(130px, 1fr) 52px minmax(104px, auto); align-items: start; gap: 8px; }
+        .shared-person-profile-card { padding: 9px; border: 1px solid #d8e2e1; border-radius: 7px; background: #fbfcfc; }
+        .shared-person-identity { position: relative; display: grid; grid-template-columns: minmax(130px, 1fr) 52px minmax(104px, auto); align-items: start; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid #e3e9e8; }
         .shared-person-identity .shared-person-name-field, .shared-person-emoji-field, .shared-person-pin-field { position: relative; min-width: 0; height: 64px; display: grid; grid-template-rows: 18px 42px; gap: 4px; margin: 0; }
         .shared-person-identity .shared-person-name-field > label, .shared-person-identity .shared-person-emoji-field > label { height: 18px; margin: 0; color: #555; font-size: 14px; font-weight: 700; line-height: 18px; }
         .shared-person-identity .shared-person-name-field input { height: 42px; }
@@ -130,7 +131,7 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-pin-button { min-width: 104px; height: 42px; padding: 0 8px; color: #17675b; font-size: 12px; font-weight: 850; }
         .shared-floating-picker { position: absolute; z-index: 8; border: 1px solid #cbd7d8; border-radius: 7px; background: #fff; box-shadow: 0 12px 34px rgba(31, 50, 56, .18); }
         .shared-emoji-picker { top: calc(100% + 6px); right: 0; width: min(318px, calc(100vw - 48px)); padding: 6px; }
-        .shared-pin-picker { position: fixed; z-index: 1510; top: 42%; left: 50%; width: min(330px, calc(100vw - 32px)); padding: 16px; box-sizing: border-box; transform: translate(-50%, -50%); }
+        .shared-pin-picker { position: fixed; z-index: 1510; top: 34%; left: 50%; width: min(330px, calc(100vw - 32px)); padding: 16px; box-sizing: border-box; transform: translate(-50%, -50%); }
         .shared-pin-picker > strong { display: block; margin-bottom: 9px; color: #294842; font-size: 14px; }
         .shared-pin-hint { margin: -3px 0 10px; color: #667771; font-size: 12px; line-height: 1.35; }
         .shared-pin-picker input { width: 100%; height: 42px; padding: 8px 10px; box-sizing: border-box; border: 1px solid #bdccca; border-radius: 6px; font-size: 18px; letter-spacing: 4px; }
@@ -140,7 +141,9 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-person-emoji-grid button { min-width: 0; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: #fff; font-size: 24px; cursor: pointer; }
         .shared-person-emoji-grid button:hover { border-color: #a8babe; background: #edf4f4; }
         .shared-person-emoji-grid button.selected { border-color: #087466; background: #dff2ee; box-shadow: inset 0 0 0 1px #087466; }
-        .shared-switch-list { display: grid; gap: 8px; }
+        .shared-switch-list { display: grid; gap: 0; }
+        .shared-person-profile-card .shared-switch-list .task-toggle-row { min-height: 42px; padding: 4px; border: 0; border-radius: 0; background: transparent; }
+        .shared-person-profile-card .shared-admin-toggle { border-top: 1px solid #e3e9e8 !important; }
         .shared-employee-area { margin: 0; padding: 0 4px 3px; }
         .shared-admin-toggle { border-color: #c5d8d3; background: #f3f8f7; }
         .shared-access-groups { display: grid; gap: 9px; margin-top: 12px; }
@@ -247,7 +250,7 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         input::placeholder { font-style: italic; color: #aaa; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; }
-        #modalLoginAdmin { align-items: flex-start; overflow-y: auto; box-sizing: border-box; padding: clamp(14px, 5vh, 48px) 0 14px; }
+        #modalLoginAdmin { align-items: center; overflow-y: auto; box-sizing: border-box; padding: 14px 0; }
         #modalLoginAdmin .modal-login-operador { width: min(320px, calc(100vw - 40px)); margin: 0 auto; padding: 16px; box-sizing: border-box; }
         #senhaAdmin { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         .pin-display-dots { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid #cbd4d7; border-radius: 7px; background: #f7f9fa; }

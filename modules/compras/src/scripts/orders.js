@@ -51,8 +51,8 @@ function renderizarMenuFerramentas() {
     const todosAtivo = categoriaAtual === null && (!compras || (!filtroFornecedorComprasId && !agrupamentoCompradoAtivo));
     let html = `<button type="button" class="menu-ferramentas-item ${compras ? '' : 'ultimo-grupo'}" role="menuitem" onclick="acionarMenuFerramentas('todos')"><span aria-hidden="true">≡</span><span>Mostrar todos os itens</span><span class="menu-estado" id="estadoMostrarTodos">${todosAtivo ? '✓' : ''}</span></button>`;
     if(compras) {
-        html += `<button type="button" class="menu-ferramentas-item" role="menuitem" onclick="acionarMenuFerramentas('fornecedor')"><span aria-hidden="true">🚚</span><span>Filtrar por fornecedor</span><span class="menu-estado" id="estadoFiltroFornecedor">${filtroFornecedorComprasId ? '✓' : ''}</span></button>`;
-        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" id="opcaoAgruparStatus" role="menuitem" onclick="acionarMenuFerramentas('agrupar')"><span aria-hidden="true">🗂️</span><span>Agrupar por status</span><span class="menu-estado" id="estadoAgruparStatus">${agrupamentoCompradoAtivo ? '✓' : ''}</span></button>`;
+        html += `<button type="button" class="menu-ferramentas-item" id="opcaoAgruparStatus" role="menuitem" onclick="acionarMenuFerramentas('agrupar')"><span aria-hidden="true">🗂️</span><span>Agrupar por status</span><span class="menu-estado" id="estadoAgruparStatus">${agrupamentoCompradoAtivo ? '✓' : ''}</span></button>`;
+        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('fornecedor')"><span aria-hidden="true">🚚</span><span>Filtrar por fornecedor</span><span class="menu-estado" id="estadoFiltroFornecedor">${filtroFornecedorComprasId ? '✓' : ''}</span></button>`;
     }
     html += '<div class="menu-ferramentas-separador" role="separator"></div>';
     html += '<div class="menu-categorias-titulo">Agrupar por categoria:</div>';

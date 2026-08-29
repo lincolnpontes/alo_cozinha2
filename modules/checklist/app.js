@@ -69,6 +69,24 @@
         try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
         catch (error) { return fallback; }
     }
+    function normalizeDateKey(value) {
+        if (!value) return todayKey();
+        const text = String(value);
+        const direct = text.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (direct) return direct[1];
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? todayKey() : todayKey(parsed);
+    }
+    function normalizeTimeKey(value) {
+        if (!value) return '00:00';
+        const text = String(value);
+        const direct = text.match(/^(\d{1,2}):(\d{2})/);
+        if (direct) return `${direct[1].padStart(2, '0')}:${direct[2]}`;
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime())
+            ? '00:00'
+            : `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+    }
     function normalizeActivity(activity) {
         return {
             id: String(activity.id || ''),
@@ -78,8 +96,8 @@
             setorId: String(activity.setorId || ''),
             funcionarioId: String(activity.funcionarioId || ''),
             status: activity.status || 'pendente',
-            data: activity.data || todayKey(),
-            horario: activity.horario || '00:00',
+            data: normalizeDateKey(activity.data),
+            horario: normalizeTimeKey(activity.horario),
             iniciadoEm: activity.iniciadoEm || '',
             finalizadoEm: activity.finalizadoEm || '',
             duracaoSegundos: Number(activity.duracaoSegundos || 0),
@@ -330,7 +348,7 @@
         const button = document.getElementById('tasksAreaPickerButton');
         if (!select || !options || !button) return;
         const activeAreas = db().setoresTarefas.filter(area => area.ativo !== false);
-        select.innerHTML = '<option value="todos">Todos os setores</option>' + activeAreas.map(area =>
+        select.innerHTML = '<option value="todos">Geral</option>' + activeAreas.map(area =>
             `<option value="${escapeHtml(area.id)}">${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</option>`
         ).join('');
         if (!activeAreas.some(area => area.id === selectedArea)) {
@@ -339,7 +357,7 @@
         }
         select.value = selectedArea;
         const current = selectedArea === 'todos'
-            ? { id: 'todos', nome: 'Todos', emoji: '📍' }
+            ? { id: 'todos', nome: 'Geral', emoji: '📍' }
             : getArea(selectedArea);
         document.getElementById('tasksAreaEmoji').textContent = current.emoji;
         const currentName = document.getElementById('tasksAreaName');
@@ -348,7 +366,7 @@
         const title = document.createElement('div');
         title.className = 'header-area-options-title';
         title.textContent = 'Trocar setor';
-        const choices = [{ id: 'todos', nome: 'Todos os setores', emoji: '📍' }, ...activeAreas];
+        const choices = [{ id: 'todos', nome: 'Geral', emoji: '📍' }, ...activeAreas];
         options.replaceChildren(title, ...choices.map(area => {
             const choice = document.createElement('button');
             choice.type = 'button';
@@ -748,8 +766,9 @@
         const list = document.getElementById('tasksList');
         if (!list) return;
         const groups = activityGroups();
-        const allToday = activities.filter(item => item.data === todayKey() && (selectedArea === 'todos' || item.setorId === selectedArea));
-        renderDashboard(allToday);
+        const todayActivities = activities.filter(item => item.data === todayKey());
+        const allToday = todayActivities.filter(item => selectedArea === 'todos' || item.setorId === selectedArea);
+        renderDashboard(todayActivities);
         document.getElementById('taskTabTotalCount').innerText = `(${allToday.length})`;
         document.getElementById('taskTabPendingCount').innerText = `(${allToday.filter(item => item.status === 'pendente').length})`;
         document.getElementById('taskTabRunningCount').innerText = `(${allToday.filter(item => item.status === 'em_execucao').length})`;
@@ -788,7 +807,7 @@
     function renderDashboard(allToday) {
         const dashboard = document.getElementById('tasksDashboard');
         if (!dashboard) return;
-        const visible = selectedTab === 'total';
+        const visible = selectedTab === 'total' && selectedArea === 'todos';
         dashboard.classList.toggle('visible', visible);
         if (!visible) { dashboard.innerHTML = ''; return; }
         const now = new Date();
@@ -804,7 +823,13 @@
             return item.registroPop || template?.registroPop || template?.fotoReferencia;
         }).length;
         const width = count => total ? `${Math.max(0, count / total * 100)}%` : '0%';
-        dashboard.innerHTML = `<div class="tasks-dashboard-main"><div class="tasks-dashboard-progress"><strong>${percent}%</strong><span>concluídas hoje</span></div><div class="tasks-dashboard-counts"><div class="tasks-dashboard-count"><b>${pending.length}</b><span>Pendentes</span></div><div class="tasks-dashboard-count running"><b>${running.length}</b><span>Em execução</span></div><div class="tasks-dashboard-count late"><b>${late.length}</b><span>Atrasadas</span></div><div class="tasks-dashboard-count done"><b>${done.length}</b><span>Concluídas</span></div></div></div><div class="tasks-dashboard-bar" aria-label="Distribuição das atividades"><span class="done" style="width:${width(done.length)}"></span><span class="running" style="width:${width(running.length)}"></span><span class="pending" style="width:${width(pending.length)}"></span><span class="late" style="width:${width(late.length)}"></span></div><div class="tasks-dashboard-foot"><span>Tempo médio: ${formatDuration(averageSeconds)}</span><span>POP/foto: ${registered}</span></div>`;
+        const sectors = db().setoresTarefas.filter(area => area.ativo !== false).map(area => {
+            const areaItems = allToday.filter(item => item.setorId === area.id);
+            const areaDone = areaItems.filter(item => item.status === 'concluida').length;
+            const areaPercent = areaItems.length ? Math.round(areaDone / areaItems.length * 100) : 0;
+            return `<div class="tasks-dashboard-sector"><strong>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</strong><div class="tasks-dashboard-sector-bar" aria-label="${areaPercent}% concluído"><span style="width:${areaPercent}%"></span></div><small>${areaDone}/${areaItems.length} · ${areaPercent}%</small></div>`;
+        }).join('');
+        dashboard.innerHTML = `<div class="tasks-dashboard-main"><div class="tasks-dashboard-progress"><strong>${percent}%</strong><span>concluídas hoje</span></div><div class="tasks-dashboard-counts"><div class="tasks-dashboard-count"><b>${pending.length}</b><span>Pendentes</span></div><div class="tasks-dashboard-count running"><b>${running.length}</b><span>Em execução</span></div><div class="tasks-dashboard-count late"><b>${late.length}</b><span>Atrasadas</span></div><div class="tasks-dashboard-count done"><b>${done.length}</b><span>Concluídas</span></div></div></div><div class="tasks-dashboard-bar" aria-label="Distribuição das atividades"><span class="done" style="width:${width(done.length)}"></span><span class="running" style="width:${width(running.length)}"></span><span class="pending" style="width:${width(pending.length)}"></span><span class="late" style="width:${width(late.length)}"></span></div><div class="tasks-dashboard-foot"><span>Tempo médio: ${formatDuration(averageSeconds)}</span><span>POP/foto: ${registered}</span></div><div class="tasks-dashboard-sectors" aria-label="Resultado por setor">${sectors}</div>`;
     }
 
     function employeesForActivity(activity) {

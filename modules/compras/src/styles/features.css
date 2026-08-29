@@ -14,6 +14,7 @@
         .seletor-item-compra { width:44px; height:44px; padding:0; margin-right:5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:0; background:transparent; font-family:inherit; font-weight:800; cursor:pointer; }
         .status-glyph { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-sizing:border-box; font-size:15px; border:1px solid transparent; transition:background-color .16s, color .16s, border-color .16s, transform .16s; }
         .status-glyph.pendente { color:#9a5200; background:#fff4df; border-color:#e8bd72; }
+        .status-glyph.neutro { color:#8a5a08; background:#fffdf8; border-color:#ddc88f; }
         .status-glyph.pedido_forn { color:#521565; background:#ddc8e3; border-color:#b98fc5; }
         .status-glyph.comprado, .status-glyph.entregue { color:#145218; background:#c8e4cf; border-color:#8fbe9a; }
         .status-glyph.rascunho { color:#1565c0; background:#dcecff; border-color:#82b1e6; }
@@ -24,13 +25,8 @@
         .item-status-pedido { width:44px; height:44px; margin-right:5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
         .status-pill { display:inline-flex; align-items:center; border-radius:999px; padding:5px 9px; font-size:10px; font-weight:800; background:#eceff1; color:#455a64; white-space:nowrap; }
         .pedido-draft-toggle { border: 0; background: transparent; cursor: pointer; }
-        .pedido-flow-state { min-height: 54px; align-items: center; gap: 10px; margin: -2px 0 13px; padding: 9px 11px; border: 1px solid #e7c47f; border-left: 5px solid #d98500; border-radius: 7px; background: #fff8e8; color: #59420f; box-shadow: 0 2px 8px rgba(126, 87, 16, .08); }
-        .pedido-flow-state > span { font-size: 18px; }
-        .pedido-flow-icon { color:#e18b00; }
-        .pedido-flow-state strong, .pedido-flow-state small { display: block; }
-        .pedido-flow-state strong { font-size: 14px; }
-        .pedido-flow-state small { margin-top: 2px; font-size: 11px; }
-        .pedido-flow-state > b { margin-left:auto; padding:5px 7px; border-radius:5px; background:#efd49b; color:#61420a; font-size:10px; text-transform:uppercase; white-space:nowrap; }
+        .pedido-flow-state { min-height: 42px; align-items: center; justify-content: center; margin: -2px 0 13px; padding: 8px 11px; border: 1px solid #e7c47f; border-left: 5px solid #d98500; border-radius: 7px; background: #fff8e8; color: #61420a; box-shadow: 0 2px 8px rgba(126, 87, 16, .08); }
+        .pedido-flow-state strong { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .3px; }
         .btn-editar-pedido { background:#238636; }
 
         .menu-compra-overlay { display:none; position:fixed; inset:0; z-index:1050; background:transparent; }

@@ -11,6 +11,8 @@ import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.webkit.ConsoleMessage;
@@ -26,16 +28,20 @@ import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import androidx.activity.ComponentActivity;
+import androidx.core.content.FileProvider;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 public class MainActivity extends ComponentActivity {
     static final int CAMERA_PERMISSION_REQUEST = 42;
     static final int STORAGE_PERMISSION_REQUEST = 43;
     static final int FILE_CHOOSER_REQUEST = 44;
+    static final int FILE_CAMERA_PERMISSION_REQUEST = 45;
     private static final int DEFAULT_SYSTEM_BAR_COLOR = Color.rgb(21, 101, 192);
 
     private FrameLayout rootLayout;
@@ -44,6 +50,7 @@ public class MainActivity extends ComponentActivity {
     private boolean scannerRequested;
     private int systemBarColor = DEFAULT_SYSTEM_BAR_COLOR;
     private ValueCallback<Uri[]> fileChooserCallback;
+    private Uri cameraPhotoUri;
     private String pendingAuthUrl;
 
     @Override
@@ -165,6 +172,14 @@ public class MainActivity extends ComponentActivity {
                 scannerRequested = false;
                 Toast.makeText(this, "A camera precisa de permissao para ler etiquetas.", Toast.LENGTH_LONG).show();
                 dispatchJavascript("window.cameraNativaFechada&&window.cameraNativaFechada()");
+            }
+        } else if (requestCode == FILE_CAMERA_PERMISSION_REQUEST && fileChooserCallback != null) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                launchCameraFileChooser();
+            } else {
+                fileChooserCallback.onReceiveValue(null);
+                fileChooserCallback = null;
+                Toast.makeText(this, "A camera precisa de permissao para tirar a foto.", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -318,6 +333,15 @@ public class MainActivity extends ComponentActivity {
                     fileChooserCallback.onReceiveValue(null);
                 }
                 fileChooserCallback = filePathCallback;
+                if (fileChooserParams.isCaptureEnabled()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                            && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.CAMERA}, FILE_CAMERA_PERMISSION_REQUEST);
+                    } else {
+                        launchCameraFileChooser();
+                    }
+                    return true;
+                }
                 try {
                     Intent intent = fileChooserParams.createIntent();
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -336,9 +360,33 @@ public class MainActivity extends ComponentActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_CHOOSER_REQUEST && fileChooserCallback != null) {
-            Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            Uri[] result = resultCode == RESULT_OK && cameraPhotoUri != null
+                    ? new Uri[]{cameraPhotoUri}
+                    : WebChromeClient.FileChooserParams.parseResult(resultCode, data);
             fileChooserCallback.onReceiveValue(result);
             fileChooserCallback = null;
+            cameraPhotoUri = null;
+        }
+    }
+
+    private void launchCameraFileChooser() {
+        try {
+            File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            if (directory == null) directory = getCacheDir();
+            File photo = File.createTempFile("alo_cozinha_", ".jpg", directory);
+            cameraPhotoUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", photo);
+            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraPhotoUri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            for (android.content.pm.ResolveInfo handler : getPackageManager().queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)) {
+                grantUriPermission(handler.activityInfo.packageName, cameraPhotoUri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            }
+            startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+        } catch (IOException | ActivityNotFoundException error) {
+            cameraPhotoUri = null;
+            if (fileChooserCallback != null) fileChooserCallback.onReceiveValue(null);
+            fileChooserCallback = null;
+            Toast.makeText(this, "Nao foi possivel abrir a camera.", Toast.LENGTH_LONG).show();
         }
     }
 

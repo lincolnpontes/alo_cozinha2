@@ -597,6 +597,20 @@ function getAtividadesData_(sheet) {
   return sheet.getRange(2, 1, lastRow - 1, HEADERS_ATIVIDADES.length).getValues();
 }
 
+function activityDateKey_(value) {
+  if (!value) return '';
+  if (value instanceof Date) return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : String(value);
+}
+
+function activityTimeKey_(value) {
+  if (!value) return '';
+  if (value instanceof Date) return Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm');
+  const match = String(value).match(/^(\d{1,2}):(\d{2})/);
+  return match ? ('0' + match[1]).slice(-2) + ':' + match[2] : String(value);
+}
+
 function activityFromRow_(row) {
   return {
     id: String(row[0] || ''),
@@ -605,8 +619,8 @@ function activityFromRow_(row) {
     setorId: String(row[3] || ''),
     funcionarioId: String(row[4] || ''),
     status: row[5] || 'pendente',
-    data: row[6] || '',
-    horario: row[7] || '',
+    data: activityDateKey_(row[6]),
+    horario: activityTimeKey_(row[7]),
     iniciadoEm: asIso_(row[8]),
     finalizadoEm: asIso_(row[9]),
     duracaoSegundos: Number(row[10] || 0),

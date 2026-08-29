@@ -1441,6 +1441,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         input.disabled = true;
         button.disabled = true;
         limparErroSenha('erroSenhaAdmin');
+        prepararTecladoPinAdmin();
         modal.style.display = 'flex';
 
         try {
@@ -1747,7 +1748,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.12',
+                version: '2.1.13',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2414,9 +2415,11 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         }
     }
 
+    let pinAdminDotsCache = null;
     function atualizarPinAdminVisual() {
         const value = document.getElementById('senhaAdmin')?.value || '';
-        document.querySelectorAll('#pinAdminDots i').forEach((dot, index) => dot.classList.toggle('filled', index < value.length));
+        if (!pinAdminDotsCache) pinAdminDotsCache = [...document.querySelectorAll('#pinAdminDots i')];
+        pinAdminDotsCache.forEach((dot, index) => dot.classList.toggle('filled', index < value.length));
         limparErroSenha('erroSenhaAdmin');
     }
 
@@ -2438,6 +2441,31 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const input = document.getElementById('senhaAdmin');
         if (input) input.value = '';
         atualizarPinAdminVisual();
+    }
+
+    function prepararTecladoPinAdmin() {
+        const keypad = document.getElementById('pinAdminKeypad');
+        if (!keypad || keypad.dataset.fastInput === '1') return;
+        keypad.dataset.fastInput = '1';
+        const activate = button => {
+            if (button.dataset.pinKey !== undefined) digitarPinAdmin(button.dataset.pinKey);
+            else if (button.dataset.pinAction === 'clear') limparPinAdmin();
+            else if (button.dataset.pinAction === 'backspace') apagarPinAdmin();
+        };
+        keypad.addEventListener('pointerdown', event => {
+            const button = event.target.closest('button');
+            if (!button || !keypad.contains(button)) return;
+            event.preventDefault();
+            button.dataset.lastPointerInput = String(Date.now());
+            activate(button);
+        }, { passive:false });
+        keypad.addEventListener('click', event => {
+            const button = event.target.closest('button');
+            if (!button || !keypad.contains(button)) return;
+            event.preventDefault();
+            if (Date.now() - Number(button.dataset.lastPointerInput || 0) < 600) return;
+            activate(button);
+        });
     }
 
     function confirmarSenhaAvancada() {
@@ -2931,7 +2959,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.12').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.13').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

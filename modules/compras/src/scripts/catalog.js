@@ -57,7 +57,7 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
                 const concluidos = pedidosDeste.filter(pa => pa.excluido || ['comprado', 'entregue', 'cancelado'].includes(pa.status)); const ultimoConcluido = concluidos.length > 0 ? concluidos[concluidos.length - 1] : null; const pedidoEditavel = pedidosDeste.find(pa => !pa.excluido && ['rascunho', 'pendente', 'pedido_forn'].includes(pa.status));
                 if (p.avulso && !ultimoConcluido && !pedidoEditavel) { return; }
 
-                let classesExtra = ""; let infoDireita = ""; let iconeListaPedido = '○'; let classeIconePedido = 'pendente';
+                let classesExtra = ""; let infoDireita = ""; let iconeListaPedido = '○'; let classeIconePedido = 'neutro';
                 let defaultUn = p.unidades && p.unidades.length > 0 ? p.unidades[0] : '';
                 let padraoTexto = (p.qtdPadrao !== null && p.qtdPadrao !== '') ? `(Padrão: ${p.qtdPadrao} ${defaultUn})` : '';
                 if(p.obsPadrao) { let quebra = padraoTexto ? '<br>' : ''; padraoTexto += `${quebra}<span style="color:#000; font-size:11px;">Obs Padrão: ${escaparHtml(p.obsPadrao)}</span>`; }
@@ -73,6 +73,7 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
                     infoDireita += `<div style="text-align: right;"><div class="status-badge ${statusClass}" style="margin-bottom: 2px;">${statusName}</div>${exibicaoQtd}${obsVisual}</div>`;
                     classesExtra += (pedidoEditavel.status === 'rascunho') ? "item-pedido-rascunho " : "item-pedido-ativo ";
                     if(pedidoEditavel.status === 'rascunho') { iconeListaPedido = '✓'; classeIconePedido = 'rascunho'; }
+                    else if(pedidoEditavel.status === 'pendente') { iconeListaPedido = '✓'; classeIconePedido = 'pendente'; }
                     else if(pedidoEditavel.status === 'pedido_forn') { iconeListaPedido = iconePedidoFornecedorSvg('icone-send icone-send-status'); classeIconePedido = 'pedido_forn'; }
                     if(pedidoEditavel.status === 'rascunho') temRascunho = true;
                 } else if (ultimoConcluido) {
@@ -91,14 +92,16 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
                     let exibicaoQtd = qtdStrDisplay && !ultimoConcluido.excluido ? `<div style="font-size: 11px; color: #777;">${escaparHtml(qtdStrDisplay)}</div>` : "";
                     infoDireita += `<div style="text-align: right;"><div class="status-badge ${statusClass}" style="margin-bottom: 2px;">${statusName}</div>${exibicaoQtd}${obsVisual}</div>`;
                     if(ultimoConcluido.excluido || ultimoConcluido.status === 'cancelado') { iconeListaPedido = '×'; classeIconePedido = 'cancelado'; }
-                    else { iconeListaPedido = '✓'; classeIconePedido = ultimoConcluido.status === 'entregue' ? 'entregue' : 'comprado'; }
+                    else { iconeListaPedido = '○'; classeIconePedido = 'neutro'; }
                 }
 
                 let pedIdAtributo = pedidoEditavel ? pedidoEditavel.idUnico : '';
                 const rotuloAcao = pedidoEditavel ? (pedidoEditavel.status === 'rascunho' ? 'Editar pedido de' : 'Item no fluxo de compra:') : 'Adicionar';
                 const seletorRascunho = !pedidoEditavel || pedidoEditavel.status === 'rascunho'
                     ? `<button type="button" class="item-status-pedido pedido-draft-toggle" aria-label="${pedidoEditavel ? 'Remover' : 'Adicionar'} ${escaparHtml(p.nome)} ${pedidoEditavel ? 'da' : 'à'} lista de envio" aria-pressed="${Boolean(pedidoEditavel)}" onclick="alternarRascunhoPedido(event, '${p.id}', '${pedIdAtributo}')"><span class="status-glyph ${classeIconePedido}">${iconeListaPedido}</span></button>`
-                    : `<span class="item-status-pedido" aria-hidden="true"><span class="status-glyph ${classeIconePedido}">${iconeListaPedido}</span></span>`;
+                    : pedidoEditavel.status === 'pendente'
+                        ? `<button type="button" class="item-status-pedido pedido-draft-toggle" aria-label="Editar pedido pendente de ${escaparHtml(p.nome)}" onclick="event.stopPropagation(); abrirModalEditarPedido('${pedIdAtributo}', '${p.id}')"><span class="status-glyph ${classeIconePedido}">${iconeListaPedido}</span></button>`
+                        : `<span class="item-status-pedido" aria-hidden="true"><span class="status-glyph ${classeIconePedido}">${iconeListaPedido}</span></span>`;
                 htmlPrincipal += `<li class="item item-pedido ${classesExtra}" data-id="${p.id}" data-pedid="${pedIdAtributo}" data-cat-id="${catId}" data-sub-id="${subcatGroupId}">${seletorRascunho}<button type="button" class="item-main-action" aria-label="${rotuloAcao} ${escaparHtml(p.nome)}" onclick="cliqueItemPedido('${p.id}', this.closest('.item'))"><div class="item-info"><div class="item-title">${escaparHtml(p.nome)}</div><div class="item-subtitle">${padraoTexto}</div></div><div class="info-direita" style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">${infoDireita}</div></button></li>`;
                 itensMostrados++;
             });

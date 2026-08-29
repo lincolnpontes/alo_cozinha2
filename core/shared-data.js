@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.12';
+    const VERSION = '2.1.13';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -667,9 +667,16 @@
         button.textContent = removing ? 'PIN será removido' : (input.value ? 'Novo PIN pronto' : (button.dataset.hasPin === '1' ? 'Alterar PIN' : 'PIN de acesso'));
     }
 
+    let personPinSnapshot = { value:'', remove:'0' };
     function togglePersonPinPicker(requested) {
+        const picker = document.getElementById('sharedPersonPinPicker');
+        const opening = requested === undefined ? picker?.style.display === 'none' : Boolean(requested);
+        if (opening) personPinSnapshot = {
+            value: document.getElementById('sharedPersonPin')?.value || '',
+            remove: document.getElementById('sharedPersonPinRemove')?.value || '0'
+        };
         toggleFloatingPicker('sharedPersonPinPicker', 'sharedPersonPinButton', requested);
-        if (requested !== false) {
+        if (opening) {
             togglePersonEmojiPicker(false);
             toggleComprasCategories(false);
             setTimeout(() => document.getElementById('sharedPersonPin')?.focus(), 40);
@@ -701,12 +708,20 @@
         togglePersonPinPicker(false);
     }
 
+    function cancelPersonPinDraft() {
+        const input = document.getElementById('sharedPersonPin');
+        const removing = document.getElementById('sharedPersonPinRemove');
+        if (input) input.value = personPinSnapshot.value;
+        if (removing) removing.value = personPinSnapshot.remove;
+        updatePersonPinButton();
+        togglePersonPinPicker(false);
+    }
+
     function updateComprasCategorySummary() {
-        const summary = document.getElementById('sharedPersonComprasCategorySummary');
-        if (!summary) return;
         const order = document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked').length;
         const shopping = document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked').length;
-        summary.textContent = `${order} para pedir · ${shopping} para comprar`;
+        const button = document.getElementById('sharedPersonComprasCategoryButton');
+        if (button) button.setAttribute('aria-label', `Permissões por categoria: ${order} para pedir e ${shopping} para comprar`);
     }
 
     function toggleComprasCategories(requested) {
@@ -779,7 +794,11 @@
         document.getElementById('sharedPersonName').value = id ? person.nome : '';
         renderPersonEmojiGrid(person.emoji || '👤');
         document.getElementById('sharedPersonPin').value = '';
-        document.getElementById('sharedPersonPin').placeholder = id && person.credentials.alternatives.length ? 'Em branco mantém o PIN atual' : 'Opcional · use 4 ou mais dígitos';
+        document.getElementById('sharedPersonPin').placeholder = 'Novo PIN';
+        const pinHint = document.getElementById('sharedPersonPinHint');
+        if (pinHint) pinHint.textContent = id && person.credentials.alternatives.length
+            ? 'Deixe em branco para manter o PIN atual.'
+            : 'Use pelo menos 4 dígitos.';
         document.getElementById('sharedPersonPinRemove').value = '0';
         const pinButton = document.getElementById('sharedPersonPinButton');
         if (pinButton) pinButton.dataset.hasPin = person.credentials.alternatives.length ? '1' : '0';
@@ -986,7 +1005,7 @@
         configure, registerAdapter, ensureReady, refreshSources, updateFromModule, describe, subscribe,
         listLoginPeople, authenticate, activateForModule, logoutModule,
         openManager, closeManager, openPersonForm, selectPersonEmoji, togglePersonEmojiPicker, togglePersonPinPicker,
-        updatePersonPinDraft, removePersonPinDraft, confirmPersonPinDraft, toggleComprasCategories,
+        updatePersonPinDraft, removePersonPinDraft, confirmPersonPinDraft, cancelPersonPinDraft, toggleComprasCategories,
         saveComprasCategories, cancelComprasCategories, updateComprasCategorySummary, toggleAccessFields, toggleEmployeeFields, backToManager,
         savePersonForm, toggleCurrentPersonActive, renderPeopleManager,
         getModuleData, getUnifiedData, getCatalogIndex,

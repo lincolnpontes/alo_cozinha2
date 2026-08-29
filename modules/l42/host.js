@@ -2,6 +2,7 @@
     const FRAME_ID = 'l42Frame';
     const pendingNativeCallbacks = [];
     let frameReady = false;
+    let lastCloudStatus = { status: 'local', message: 'Aguardando abertura de Etiquetas' };
 
     function frameElement() {
         return document.getElementById(FRAME_ID);
@@ -70,6 +71,7 @@
             frameReady = true;
             event.source.postMessage({ source: 'alo-cozinha', type: 'restore-legacy-storage', entries: legacyStorageSnapshot() }, '*');
             flushNativeCallbacks();
+            setCloudStatus(lastCloudStatus.status, lastCloudStatus.message);
             global.AloEtiquetasCloud?.sync?.().catch(() => {});
             return;
         }
@@ -102,6 +104,7 @@
     }
 
     async function setCloudStatus(status, message) {
+        lastCloudStatus = { status, message };
         const child = childWindow();
         if (typeof child?.atualizarNuvemEtiquetasPeloHost === 'function') child.atualizarNuvemEtiquetasPeloHost(status, message);
     }

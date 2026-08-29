@@ -4,6 +4,7 @@
     const OPERATION_KEY = 'alo_etiquetas_cloud_operation_v1';
     const POLL_INTERVAL_MS = 8000;
     let getServerUrl = () => '';
+    let isModuleActive = () => false;
     let syncPromise = null;
     let syncTimer = null;
     let dirtyTimer = null;
@@ -151,15 +152,19 @@
 
     function startPolling() {
         clearInterval(syncTimer);
-        syncTimer = setInterval(() => sync().catch(() => {}), POLL_INTERVAL_MS);
+        syncTimer = setInterval(() => {
+            if (isDirty() || isModuleActive()) sync().catch(() => {});
+        }, POLL_INTERVAL_MS);
     }
 
     function configure(options = {}) {
         if (typeof options.getServerUrl === 'function') getServerUrl = options.getServerUrl;
+        if (typeof options.isModuleActive === 'function') isModuleActive = options.isModuleActive;
         startPolling();
         global.addEventListener('online', () => sync().catch(() => {}));
         global.addEventListener('offline', () => setStatus('offline', isDirty() ? 'Offline · alterações guardadas' : 'Offline'));
-        return sync().catch(() => false);
+        setStatus(isDirty() ? 'pending' : 'local', isDirty() ? 'Alterações aguardando envio' : 'Abra Etiquetas para sincronizar');
+        return isDirty() ? sync().catch(() => false) : Promise.resolve(true);
     }
 
     global.AloEtiquetasCloud = Object.freeze({ configure, sync, markDirty, isDirty, revision });

@@ -34,6 +34,7 @@ function abrirModalEditarPedido(paId, pId) {
     }
 
     const pedidoAtual = paId ? db.pedidosAtivos.find(x => x.idUnico === paId) : null;
+    const flowState = document.getElementById('editPedidoFlowState');
     if(pedidoAtual) {
         document.getElementById('editPedidoArea').style.display = 'block';
         document.getElementById('btnSalvarEdicaoPedido').style.display = 'block';
@@ -43,14 +44,25 @@ function abrirModalEditarPedido(paId, pId) {
         const selUn = document.getElementById('editPedidoUnidade');
         selUn.innerHTML = '';
         p.unidades.forEach(u => selUn.innerHTML += `<option value="${u}" ${pedidoAtual.unidade===u?'selected':''}>${u}</option>`);
+        if(pedidoAtual.status !== 'rascunho') {
+            flowState.style.display = 'flex';
+            flowState.innerHTML = `<span aria-hidden="true">↻</span><div><strong>No fluxo de compra</strong><small>${escaparHtml(rotuloStatusCompra(pedidoAtual.status))}</small></div>`;
+        } else {
+            flowState.style.display = 'none';
+            flowState.innerHTML = '';
+        }
     } else {
         document.getElementById('editPedidoArea').style.display = 'none';
         document.getElementById('btnSalvarEdicaoPedido').style.display = 'none';
         document.getElementById('editPedidoId').value = '';
+        flowState.style.display = 'none';
+        flowState.innerHTML = '';
     }
 
     renderizarHistoricoPedidosProduto(pId, paId);
-    document.getElementById('btnRemoverPedidoEdicao').style.display = pedidoAtual && pedidoAtual.status === 'rascunho' ? 'block' : 'none';
+    const removeButton = document.getElementById('btnRemoverPedidoEdicao');
+    removeButton.style.display = pedidoAtual && ['rascunho', 'pendente', 'pedido_forn'].includes(pedidoAtual.status) ? 'block' : 'none';
+    removeButton.textContent = pedidoAtual?.status === 'rascunho' ? 'Remover da lista de envio' : 'Cancelar pedido';
     document.getElementById('modalEditarPedido').style.display = 'flex';
 }
     function abrirHistoricoCompletoPedido() { document.getElementById('modalHistoricoPedidosProduto').style.display = 'flex'; }

@@ -1,11 +1,11 @@
-# Alô Cozinha v2.1.10
+# Alô Cozinha v2.1.11
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
-- A v2.1.10 transforma o antigo Alô L42 em Etiquetas, centraliza funcionários, PINs e permissões, adiciona as configurações do módulo ao painel principal e sincroniza etiquetas, estoque e histórico pela mesma URL do Google Apps Script.
-- A v2.1.10 grava o banco completo de Etiquetas compactado em dois slots validados, com revisão, checksum, idempotência e recuperação da cópia anterior antes de trocar a versão ativa.
+- A v2.1.11 transforma o antigo Alô L42 em Etiquetas, centraliza funcionários, PINs e permissões, adiciona as configurações do módulo ao painel principal e sincroniza etiquetas, estoque e histórico pela mesma URL do Google Apps Script.
+- A v2.1.11 grava o banco completo de Etiquetas compactado em dois slots validados, com revisão, checksum, idempotência e recuperação da cópia anterior antes de trocar a versão ativa.
 - A v2.1.8 criou a identidade central do produto: funcionário e login são capacidades independentes, Compras e Etiquetas usam a mesma sessão, o restaurante é compartilhado e o Core expõe um hub único de dados e backup.
 - A v2.1.7 integrou o antigo Alô L42 como quarto módulo, preservando banco local, câmera nativa e impressão TCP em um APK único assinado com o certificado anterior.
 - A v2.1.6 reorganizou o produto em `core/` e módulos independentes para KDS, Checklist e Compras, preservando todas as chaves de dados e preparando a entrada de novos módulos.

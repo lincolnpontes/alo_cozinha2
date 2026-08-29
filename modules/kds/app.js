@@ -1,7 +1,13 @@
 const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
-let db = carregarBanco();
+    let db = carregarBanco();
     let categoriaAtual = null;
-    let ordemPopular = false; // FLAG DO FILTRO "TODOS" DINÂMICO
+    const KDS_ORDER_KEY = 'alo_kds_product_order_v1';
+    let ordemProdutos = ['cadastro', 'categoria', 'mais_pedidos'].includes(localStorage.getItem(KDS_ORDER_KEY))
+        ? localStorage.getItem(KDS_ORDER_KEY)
+        : 'cadastro';
+    let menuOrdemAberto = false;
+    let popularidadeCache = { assinatura: '', valores: {} };
+    let popularidadeRemota = (() => { try { return JSON.parse(localStorage.getItem('alo_kds_popularity_v1') || '{}'); } catch (error) { return {}; } })();
     let pedidosServidor = [];
     let pedidosBloqueados = new Set();
     let pedidosCientes = new Set();
@@ -549,24 +555,60 @@ let db = carregarBanco();
     }
 
     function renderizarFiltros() {
-        let textoTodos = ordemPopular ? 'TODOS 🔥' : 'TODOS';
-        let html = `<div class="chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="filtrarCategoria(null)">${textoTodos}</div>`;
+        const rotulos = { cadastro: 'Ordem de cadastro', categoria: 'Ordem por categoria', mais_pedidos: 'Mais pedidos' };
+        let html = `<div class="kds-order-picker"><button type="button" class="chip kds-all-chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="toggleMenuOrdemProdutos(event)" aria-haspopup="menu" aria-expanded="${menuOrdemAberto}">TODOS <span aria-hidden="true">▾</span></button><div class="kds-order-menu" style="display:${menuOrdemAberto ? 'grid' : 'none'}" role="menu" aria-label="Ordenar produtos">${Object.entries(rotulos).map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${ordemProdutos === id}" class="${ordemProdutos === id ? 'selected' : ''}" onclick="selecionarOrdemProdutos('${id}', event)"><span>${label}</span><b>${ordemProdutos === id ? '✓' : ''}</b></button>`).join('')}</div></div>`;
         db.categorias.forEach(cat => { const isActive = categoriaAtual === cat.nome; html += `<div class="chip ${isActive ? 'active' : ''}" style="background-color: ${cat.cor}; color: ${cat.corTexto};" onclick="filtrarCategoria('${cat.nome}')">${cat.nome}</div>`; });
         document.getElementById('containerFiltros').innerHTML = html;
     }
 
     function filtrarCategoria(cat) {
-        if (cat === null && categoriaAtual === null) {
-            ordemPopular = !ordemPopular;
-        } else {
-            categoriaAtual = cat;
-            ordemPopular = false;
-        }
+        categoriaAtual = cat;
+        menuOrdemAberto = false;
         renderizarFiltros();
         renderizarListaPanelas();
     }
 
+    function toggleMenuOrdemProdutos(event) {
+        event?.stopPropagation?.();
+        categoriaAtual = null;
+        menuOrdemAberto = !menuOrdemAberto;
+        renderizarFiltros();
+        renderizarListaPanelas();
+    }
+
+    function selecionarOrdemProdutos(ordem, event) {
+        event?.stopPropagation?.();
+        if (!['cadastro', 'categoria', 'mais_pedidos'].includes(ordem)) return;
+        ordemProdutos = ordem;
+        categoriaAtual = null;
+        menuOrdemAberto = false;
+        localStorage.setItem(KDS_ORDER_KEY, ordem);
+        renderizarFiltros();
+        renderizarListaPanelas();
+        if (ordem === 'mais_pedidos') atualizarPopularidadeRemota();
+    }
+
+    async function atualizarPopularidadeRemota() {
+        if (!db.configs.url || !navigator.onLine) return;
+        try {
+            const url = new URL(db.configs.url);
+            url.searchParams.set('action', 'estatisticas_produtos');
+            url.searchParams.set('cb', String(Date.now()));
+            const response = await fetch(url.toString(), { cache:'no-store' });
+            const result = await response.json();
+            if (result.status !== 'ok' || !result.porArea) return;
+            popularidadeRemota = result;
+            localStorage.setItem('alo_kds_popularity_v1', JSON.stringify(result));
+            if (ordemProdutos === 'mais_pedidos') renderizarListaPanelas();
+        } catch (error) {}
+    }
+
     function getPopularidade30d() {
+        const remoto = popularidadeRemota?.porArea?.[getAreaAtual().id];
+        if (remoto && typeof remoto === 'object') return remoto;
+        const ultimoPedido = pedidosServidor[pedidosServidor.length - 1];
+        const assinatura = `${pedidosServidor.length}:${ultimoPedido?.id || ''}:${getAreaAtual().id}`;
+        if (popularidadeCache.assinatura === assinatura) return popularidadeCache.valores;
         let pop = {};
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
@@ -580,6 +622,7 @@ let db = carregarBanco();
                 pop[nomeBase] = (pop[nomeBase] || 0) + 1;
             }
         });
+        popularidadeCache = { assinatura, valores: pop };
         return pop;
     }
 
@@ -589,12 +632,18 @@ let db = carregarBanco();
         const produtosDaArea = db.produtos.filter(p => getAreasOrigemProduto(p).includes(areaAtual.id));
         let filtrados = categoriaAtual === null ? [...produtosDaArea] : produtosDaArea.filter(p => p.categoria === categoriaAtual);
 
-        if (categoriaAtual === null && ordemPopular) {
+        if (categoriaAtual === null && ordemProdutos === 'categoria') {
+            const categorias = new Map(db.categorias.map((categoria, index) => [categoria.nome, index]));
+            const cadastro = new Map(db.produtos.map((produto, index) => [produto, index]));
+            filtrados.sort((a, b) => (categorias.get(a.categoria) ?? Number.MAX_SAFE_INTEGER) - (categorias.get(b.categoria) ?? Number.MAX_SAFE_INTEGER)
+                || (cadastro.get(a) ?? 0) - (cadastro.get(b) ?? 0));
+        } else if (categoriaAtual === null && ordemProdutos === 'mais_pedidos') {
             let pop = getPopularidade30d();
+            const cadastro = new Map(db.produtos.map((produto, index) => [produto, index]));
             filtrados.sort((a, b) => {
                 let countA = pop[a.nome] || 0;
                 let countB = pop[b.nome] || 0;
-                return countB - countA;
+                return countB - countA || (cadastro.get(a) ?? 0) - (cadastro.get(b) ?? 0);
             });
         }
 
@@ -1226,6 +1275,11 @@ let db = carregarBanco();
     let sessaoAdministrativaAtiva = false;
     const ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1';
 
+    function atualizarEngrenagensDaSessao() {
+        const compras = document.getElementById('feiraSettingsButton');
+        if (compras) compras.style.display = sessaoCompras?.isAdmin ? 'inline-flex' : 'none';
+    }
+
     function abrirPainelControle() {
         document.getElementById('configUrlApp').value = db.configs.url || '';
         abrirModalNoTopo('modalPainelUnificado');
@@ -1632,7 +1686,7 @@ let db = carregarBanco();
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.10',
+                version: '2.1.11',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1643,6 +1697,7 @@ let db = carregarBanco();
                 },
                 compras,
                 l42,
+                fichasTecnicas: AloTechnicalSheets.getBackup(),
                 compartilhado: AloSharedData.getBackup()
             };
             const dataStr = JSON.stringify(dataToExport, null, 2);
@@ -1738,11 +1793,11 @@ let db = carregarBanco();
 
     function separarModulosDoBackup(importedData) {
         if (importedData?.format === 'backup_completo' && importedData?.app === 'alo_cozinha') {
-            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, compartilhado: importedData.compartilhado || null, completo: true };
+            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, fichasTecnicas: importedData.fichasTecnicas || null, compartilhado: importedData.compartilhado || null, completo: true };
         }
-        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, compartilhado: null, completo: false };
-        if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, compartilhado: null, completo: false };
-        return { kdsChecklist: importedData, compras: null, l42: null, compartilhado: null, completo: false };
+        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, fichasTecnicas: null, compartilhado: null, completo: false };
+        if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, fichasTecnicas: null, compartilhado: null, completo: false };
+        return { kdsChecklist: importedData, compras: null, l42: null, fichasTecnicas: null, compartilhado: null, completo: false };
     }
 
     async function importarDadosFisicos(event) {
@@ -1759,7 +1814,7 @@ let db = carregarBanco();
             }
             const importedData = JSON.parse(await lerArquivoTexto(file));
             const modulos = separarModulosDoBackup(importedData);
-            if (!modulos.kdsChecklist && !modulos.compras && !modulos.l42) throw new Error('O arquivo não contém dados reconhecidos.');
+            if (!modulos.kdsChecklist && !modulos.compras && !modulos.l42 && !modulos.fichasTecnicas) throw new Error('O arquivo não contém dados reconhecidos.');
             const summary = modulos.kdsChecklist ? resumoBackup(modulos.kdsChecklist) : { produtos: 0, categorias: 0, areas: 0, pedidos: 0 };
             const atividades = Array.isArray(modulos.kdsChecklist?.atividades) ? modulos.kdsChecklist.atividades : [];
             const comprasSummary = modulos.compras ? {
@@ -1772,6 +1827,7 @@ let db = carregarBanco();
             if (comprasSummary) detalhes.push(`Compras: ${comprasSummary.produtos} produtos, ${comprasSummary.operadores} operadores e ${comprasSummary.pedidos} pedidos`);
             const l42Dados = modulos.l42?.formato === 'alo-etiqueta-backup-completo' ? modulos.l42.dados : modulos.l42;
             if (l42Dados) detalhes.push(`Etiquetas: ${Array.isArray(l42Dados.produtos) ? l42Dados.produtos.length : 0} produtos e ${Array.isArray(l42Dados.historico) ? l42Dados.historico.length : 0} registros`);
+            if (modulos.fichasTecnicas) detalhes.push(`Fichas Técnicas: ${Array.isArray(modulos.fichasTecnicas.sheets) ? modulos.fichasTecnicas.sheets.length : 0} fichas`);
             const confirmed = await AloUiDialog.confirm(
                 `${detalhes.join('. ')}. A URL atual será preservada e registros repetidos não serão duplicados.`,
                 { title: modulos.completo ? 'Restaurar backup completo' : 'Restaurar backup', icon: '📥', confirmText: 'Restaurar na nuvem' }
@@ -1818,6 +1874,12 @@ let db = carregarBanco();
             if (modulos.l42) {
                 await AloL42Module.restoreBackup(modulos.l42);
                 etapasConcluidas.push('Etiquetas');
+            }
+
+            if (modulos.fichasTecnicas) {
+                AloTechnicalSheets.restoreBackup(modulos.fichasTecnicas);
+                AloTechnicalSheets.syncNow().catch(() => {});
+                etapasConcluidas.push('Fichas Técnicas');
             }
 
             if (modulos.compartilhado) {
@@ -2255,6 +2317,7 @@ let db = carregarBanco();
             if (destinoLoginOperador === 'compras_modulo' || destinoLoginOperador === 'trocar_compras') {
                 await AloSharedData.activateForModule('compras', resultado.operador.id);
                 sessaoCompras = resultado.operador;
+                atualizarEngrenagensDaSessao();
                 AloFeiraModule.refreshHeader();
                 if (destinoLoginOperador === 'compras_modulo') AloTasks.openModule('feira');
                 return;
@@ -2262,6 +2325,7 @@ let db = carregarBanco();
             if (destinoLoginOperador === 'l42_modulo' || destinoLoginOperador === 'trocar_l42') {
                 await AloSharedData.activateForModule('l42', resultado.operador.id);
                 sessaoL42 = resultado.operador;
+                atualizarEngrenagensDaSessao();
                 if (destinoLoginOperador === 'l42_modulo') AloTasks.openModule('l42');
                 return;
             }
@@ -2289,11 +2353,13 @@ let db = carregarBanco();
     function encerrarSessaoModulo(modulo) {
         if (modulo === 'feira' || modulo === 'compras') {
             sessaoCompras = null;
+            atualizarEngrenagensDaSessao();
             AloSharedData.logoutModule('compras').catch(() => {});
             return;
         }
         if (modulo === 'l42') {
             sessaoL42 = null;
+            atualizarEngrenagensDaSessao();
             AloSharedData.logoutModule('l42').catch(() => {});
         }
     }
@@ -2465,7 +2531,10 @@ let db = carregarBanco();
         document.addEventListener('click', () => AloAudio.unlock(), { once: true });
         iniciar();
         window.AloFeiraModule?.configure({ getServerUrl: () => db.configs.url });
-        window.AloEtiquetasCloud?.configure({ getServerUrl: () => db.configs.url });
+        window.AloEtiquetasCloud?.configure({
+            getServerUrl: () => db.configs.url,
+            isModuleActive: () => document.getElementById('l42Module')?.style.display !== 'none'
+        });
         if (window.AloTasks) {
             AloTasks.init({
                 getDatabase: () => db,
@@ -2474,6 +2543,11 @@ let db = carregarBanco();
                 openModalTop: abrirModalNoTopo
             });
         }
+        window.AloTechnicalSheets?.configure({
+            getUrl: () => db.configs.url,
+            getAreas: () => db.setoresTarefas || [],
+            openModalTop: abrirModalNoTopo
+        });
         if (window.AloSharedData) {
             AloSharedData.registerAdapter('compras', {
                 getSnapshot: () => AloFeiraModule.getSharedSnapshot(),
@@ -2693,6 +2767,12 @@ let db = carregarBanco();
             } else {
                 const nuvemDB = await AloApi.getBank(db.configs.url);
                 if(!bancoNuvemValido(nuvemDB) || !Array.isArray(nuvemDB.produtos)) return;
+                // Uma edição pode acontecer enquanto a leitura está em andamento. Nesse caso,
+                // publicar primeiro evita que a resposta antiga apague a alteração local.
+                if(db.configs.bancoPendente) {
+                    await publicarBancoPendente();
+                    return;
+                }
                 const revisaoNuvem = Number(nuvemDB._revision || 0);
                 const revisaoLocal = Number(db.configs.revisaoBanco || 0);
                 if(!db.configs.dadosBaixados || revisaoNuvem > revisaoLocal) {
@@ -2738,7 +2818,7 @@ let db = carregarBanco();
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.10').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.11').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

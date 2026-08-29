@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.10';
+    const VERSION = '2.1.11';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -123,6 +123,9 @@
         };
         if (permissions.compras?.acesso === undefined) normalized.permissions.compras.acesso = Boolean(links.comprasId);
         if (permissions.l42?.acesso === undefined) normalized.permissions.l42.acesso = Boolean(links.l42Nome);
+        // Etiquetas é um módulo operacional protegido por PIN. O controle específico
+        // permanece apenas para as configurações, evitando dois switches concorrentes.
+        if (normalized.credentials.alternatives.length) normalized.permissions.l42.acesso = true;
         grantAdminPermissions(normalized);
         refreshDerivedAccess(normalized);
         return normalized;
@@ -629,11 +632,41 @@
         const selected = PERSON_EMOJIS.includes(emoji) ? emoji : '👤';
         const input = document.getElementById('sharedPersonEmoji');
         if (input) input.value = selected;
+        const trigger = document.getElementById('sharedPersonEmojiButton');
+        if (trigger) trigger.textContent = selected;
         document.querySelectorAll('#sharedPersonEmojiGrid [data-person-emoji]').forEach(button => {
             const active = button.dataset.personEmoji === selected;
             button.classList.toggle('selected', active);
             button.setAttribute('aria-selected', String(active));
         });
+        togglePersonEmojiPicker(false);
+    }
+
+    function toggleFloatingPicker(pickerId, buttonId, requested) {
+        const picker = document.getElementById(pickerId);
+        const button = document.getElementById(buttonId);
+        if (!picker || !button) return;
+        const open = requested === undefined ? picker.style.display === 'none' : Boolean(requested);
+        picker.style.display = open ? 'block' : 'none';
+        button.setAttribute('aria-expanded', String(open));
+    }
+
+    function togglePersonEmojiPicker(requested) {
+        toggleFloatingPicker('sharedPersonEmojiPicker', 'sharedPersonEmojiButton', requested);
+        if (requested !== false) toggleComprasCategories(false);
+    }
+
+    function updateComprasCategorySummary() {
+        const button = document.getElementById('sharedPersonComprasCategoryButton');
+        if (!button) return;
+        const order = document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked').length;
+        const shopping = document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked').length;
+        button.innerHTML = `<span>Categorias: ${order} para pedir · ${shopping} para comprar</span><span aria-hidden="true">›</span>`;
+    }
+
+    function toggleComprasCategories(requested) {
+        toggleFloatingPicker('sharedPersonComprasCategoryPicker', 'sharedPersonComprasCategoryButton', requested);
+        if (requested !== false) togglePersonEmojiPicker(false);
     }
 
     function renderPersonEmojiGrid(emoji) {
@@ -656,6 +689,7 @@
         categories = categories.filter(category => category && category.ativo !== false && category.id);
         if (!categories.length) {
             container.innerHTML = '<div class="shared-category-empty">Nenhuma categoria cadastrada em Compras.</div>';
+            updateComprasCategorySummary();
             return;
         }
         const orderAllowed = new Set(person.permissions.compras.categoriasPedido || []);
@@ -665,8 +699,9 @@
             const name = escapeHtml(category.nome || 'Categoria');
             const orderChecked = isNew || orderAllowed.has(category.id) ? 'checked' : '';
             const shoppingChecked = isNew || shoppingAllowed.has(category.id) ? 'checked' : '';
-            return `<div class="shared-category-row" data-category-id="${id}"><span>${name}</span><label title="Pode pedir ${name}"><input type="checkbox" data-category-order ${orderChecked} aria-label="Pedir ${name}"></label><label title="Pode comprar ${name}"><input type="checkbox" data-category-shopping ${shoppingChecked} aria-label="Comprar ${name}"></label></div>`;
+            return `<div class="shared-category-row" data-category-id="${id}"><span>${name}</span><label title="Pode pedir ${name}"><input type="checkbox" data-category-order ${orderChecked} aria-label="Pedir ${name}" onchange="AloSharedData.updateComprasCategorySummary()"></label><label title="Pode comprar ${name}"><input type="checkbox" data-category-shopping ${shoppingChecked} aria-label="Comprar ${name}" onchange="AloSharedData.updateComprasCategorySummary()"></label></div>`;
         }).join('');
+        updateComprasCategorySummary();
     }
 
     async function openPersonForm(id = '') {
@@ -693,7 +728,6 @@
         setCheckbox('sharedPersonComprasAccess', person.permissions.compras.acesso);
         setCheckbox('sharedPersonComprasReceive', person.permissions.compras.receber);
         setCheckbox('sharedPersonComprasBuy', person.permissions.compras.comprar);
-        setCheckbox('sharedPersonLabelsAccess', person.permissions.l42.acesso);
         setCheckbox('sharedPersonLabelsConfig', person.permissions.l42.configuracoes);
         await renderComprasCategories(person, !id);
         toggleAccessFields();
@@ -710,8 +744,8 @@
     function toggleAccessFields() {
         const admin = document.getElementById('sharedPersonAdmin')?.checked;
         const compras = document.getElementById('sharedPersonComprasAccess')?.checked;
-        const labels = document.getElementById('sharedPersonLabelsAccess')?.checked;
-        const enabled = admin || compras || labels
+        const labelsConfig = document.getElementById('sharedPersonLabelsConfig')?.checked;
+        const enabled = admin || compras || labelsConfig
             || document.getElementById('sharedPersonKdsConfig')?.checked
             || document.getElementById('sharedPersonChecklistConfig')?.checked;
         const fields = document.getElementById('sharedPersonLoginFields');
@@ -719,7 +753,7 @@
         const comprasFields = document.getElementById('sharedPersonComprasFields');
         if (comprasFields) comprasFields.style.display = compras ? 'grid' : 'none';
         const labelsFields = document.getElementById('sharedPersonLabelsFields');
-        if (labelsFields) labelsFields.style.display = labels ? 'grid' : 'none';
+        if (labelsFields) labelsFields.style.display = 'grid';
     }
 
     function toggleEmployeeFields() {
@@ -743,7 +777,6 @@
         const kdsConfig = document.getElementById('sharedPersonKdsConfig').checked;
         const checklistConfig = document.getElementById('sharedPersonChecklistConfig').checked;
         const comprasAccess = document.getElementById('sharedPersonComprasAccess').checked;
-        const labelsAccess = document.getElementById('sharedPersonLabelsAccess').checked;
         if (!name) return global.AloUiDialog?.notice('Informe o nome da pessoa.', { title: 'Nome necessário', confirmText: 'Entendi' });
         if (pin && pin.length < 4) return global.AloUiDialog?.notice('Use pelo menos 4 dígitos no PIN.', { title: 'PIN muito curto', confirmText: 'Entendi' });
         if (state.people.some(person => person.id !== id && comparableText(person.nome) === comparableText(name))) {
@@ -768,7 +801,8 @@
         person.permissions.compras.comprar = document.getElementById('sharedPersonComprasBuy').checked;
         person.permissions.compras.categoriasPedido = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
         person.permissions.compras.categoriasCompras = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
-        const labelsConfig = labelsAccess && document.getElementById('sharedPersonLabelsConfig').checked;
+        const labelsConfig = document.getElementById('sharedPersonLabelsConfig').checked;
+        const labelsAccess = Boolean(admin || pin || person.credentials.alternatives.length || labelsConfig);
         person.permissions.l42.acesso = labelsAccess;
         ['imprimir', 'estoque', 'darBaixa', 'movimentacao', 'relatorios'].forEach(key => { person.permissions.l42[key] = labelsAccess; });
         ['produtos', 'categorias', 'estilo', 'configuracoes', 'avancado'].forEach(key => { person.permissions.l42[key] = labelsConfig; });
@@ -884,7 +918,8 @@
         VERSION, SCHEMA_VERSION, L42_PERMISSION_KEYS, PERSON_EMOJIS,
         configure, registerAdapter, ensureReady, refreshSources, updateFromModule, describe, subscribe,
         listLoginPeople, authenticate, activateForModule, logoutModule,
-        openManager, closeManager, openPersonForm, selectPersonEmoji, toggleAccessFields, toggleEmployeeFields, backToManager,
+        openManager, closeManager, openPersonForm, selectPersonEmoji, togglePersonEmojiPicker, toggleComprasCategories,
+        updateComprasCategorySummary, toggleAccessFields, toggleEmployeeFields, backToManager,
         savePersonForm, toggleCurrentPersonActive, renderPeopleManager,
         getModuleData, getUnifiedData, getCatalogIndex,
         getBackup, getCloudData, applyCloudState, restoreBackup

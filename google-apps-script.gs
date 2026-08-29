@@ -1,6 +1,7 @@
 const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_ATIVIDADES = 'Atividades';
 const SHEET_ETIQUETAS_BANCO = 'Etiquetas - Banco';
+const SHEET_FICHAS_TECNICAS = 'Checklist - Fichas Técnicas';
 const PROP_BANCO = 'kds_banco';
 const PROP_BANCO_REVISION = 'kds_banco_revision';
 const PROP_PEDIDOS_REVISION = 'kds_pedidos_revision';
@@ -12,6 +13,7 @@ const PROP_PEDIDOS_SHIFT_START_PREFIX = 'kds_pedidos_shift_start_';
 const PROP_ETIQUETAS_ACTIVE_SLOT = 'kds_etiquetas_active_slot';
 const PROP_ETIQUETAS_REVISION = 'kds_etiquetas_revision';
 const PROP_ETIQUETAS_LAST_OPERATION = 'kds_etiquetas_last_operation';
+const PROP_FICHAS_TECNICAS_REVISION = 'kds_fichas_tecnicas_revision';
 const ETIQUETAS_CELL_LIMIT = 35000;
 const PEDIDOS_SHIFT_START_HOUR = 4;
 const PASTA_FOTOS_TAREFAS = 'Alô Cozinha - Fotos das Tarefas';
@@ -476,8 +478,24 @@ function bancosComRevisao_() {
   const bancoStr = getProperties_().getProperty(PROP_BANCO);
   const banco = bancoStr ? JSON.parse(bancoStr) : {};
   banco._revision = Number(getProperties_().getProperty(PROP_BANCO_REVISION) || '0');
-  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true, dadosCompartilhados: true, etiquetasUnificadas: true };
+  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true, dadosCompartilhados: true, etiquetasUnificadas: true, fichasTecnicas: true };
   return banco;
+}
+
+function mesclarTarefasPorVersao_(atuais, recebidas) {
+  const porId = {};
+  (Array.isArray(atuais) ? atuais : []).forEach(tarefa => {
+    if (tarefa && tarefa.id) porId[String(tarefa.id)] = tarefa;
+  });
+  (Array.isArray(recebidas) ? recebidas : []).forEach(tarefa => {
+    if (!tarefa || !tarefa.id) return;
+    const id = String(tarefa.id);
+    const atual = porId[id];
+    const versaoAtual = Number(atual && (atual.revisaoDefinicao || atual.atualizadoEm) || 0);
+    const versaoRecebida = Number(tarefa.revisaoDefinicao || tarefa.atualizadoEm || 0);
+    if (!atual || versaoRecebida >= versaoAtual) porId[id] = tarefa;
+  });
+  return Object.keys(porId).map(id => porId[id]);
 }
 
 function salvarBanco_(dados, expectedRevision) {
@@ -502,7 +520,9 @@ function salvarBanco_(dados, expectedRevision) {
     areas: valorEnviadoOuAtual('areas', []),
     setoresTarefas: valorEnviadoOuAtual('setoresTarefas', []),
     funcionarios: valorEnviadoOuAtual('funcionarios', []),
-    tarefas: valorEnviadoOuAtual('tarefas', []),
+    tarefas: Object.prototype.hasOwnProperty.call(dados, 'tarefas')
+      ? mesclarTarefasPorVersao_(bancoAtual.tarefas, dados.tarefas)
+      : valorEnviadoOuAtual('tarefas', []),
     coreCompartilhado: valorEnviadoOuAtual('coreCompartilhado', null),
     configsTarefas: valorEnviadoOuAtual('configsTarefas', {}),
     configs: valorEnviadoOuAtual('configs', {})
@@ -730,6 +750,77 @@ function filtrarHistorico_(sheet, start, end) {
     });
 }
 
+function estatisticasProdutos_() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('kds_estatisticas_produtos_30d');
+  if (cached) return JSON.parse(cached);
+  const sheet = pedidosSheet();
+  const lastRow = sheet.getLastRow();
+  const porArea = {};
+  const limite = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, HEADERS_PEDIDOS.length).getValues().forEach(row => {
+      const timestamp = new Date(row[3]).getTime();
+      const status = String(row[2] || '');
+      if (!timestamp || timestamp < limite || status === 'cancelado') return;
+      const nome = String(row[1] || '').split(' (Obs:')[0];
+      const area = String(row[9] || 'panelas');
+      if (!porArea[area]) porArea[area] = {};
+      porArea[area][nome] = Number(porArea[area][nome] || 0) + 1;
+    });
+  }
+  const result = { status:'ok', periodoDias:30, porArea:porArea, atualizadoEm:new Date().toISOString() };
+  cache.put('kds_estatisticas_produtos_30d', JSON.stringify(result), 300);
+  return result;
+}
+
+function getFichasTecnicasSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(SHEET_FICHAS_TECNICAS);
+  if (!sheet) sheet = spreadsheet.insertSheet(SHEET_FICHAS_TECNICAS);
+  const headers = ['ID', 'AtualizadoEm', 'Revisao', 'Excluida', 'Dados'];
+  if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  return sheet;
+}
+
+function fichasTecnicas_() {
+  const sheet = getFichasTecnicasSheet_();
+  if (sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues().map(row => {
+    let ficha = {};
+    try { ficha = JSON.parse(String(row[4] || '{}')); } catch (error) {}
+    ficha.id = String(row[0] || ficha.id || '');
+    ficha.atualizadoEm = Number(row[1] || ficha.atualizadoEm || 0);
+    ficha.revisao = Number(row[2] || ficha.revisao || 0);
+    ficha.excluida = row[3] === true || String(row[3]).toLowerCase() === 'true';
+    return ficha;
+  }).filter(ficha => ficha.id);
+}
+
+function salvarFichasTecnicas_(operacoes) {
+  const atuais = fichasTecnicas_();
+  const porId = {};
+  atuais.forEach(ficha => { porId[String(ficha.id)] = ficha; });
+  let mudou = false;
+  (Array.isArray(operacoes) ? operacoes : []).forEach(operacao => {
+    const ficha = operacao && operacao.ficha;
+    if (!ficha || !ficha.id) return;
+    const atual = porId[String(ficha.id)];
+    const maisNova = !atual || Number(ficha.revisao || 0) > Number(atual.revisao || 0)
+      || (Number(ficha.revisao || 0) === Number(atual.revisao || 0) && Number(ficha.atualizadoEm || 0) > Number(atual.atualizadoEm || 0));
+    if (maisNova) { porId[String(ficha.id)] = ficha; mudou = true; }
+  });
+  if (!mudou) return Number(getProperties_().getProperty(PROP_FICHAS_TECNICAS_REVISION) || '0');
+  const todas = Object.keys(porId).map(id => porId[id]);
+  const rows = todas.map(ficha => [String(ficha.id), Number(ficha.atualizadoEm || 0), Number(ficha.revisao || 0), ficha.excluida === true, JSON.stringify(ficha)]);
+  const sheet = getFichasTecnicasSheet_();
+  if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).clearContent();
+  if (rows.length) sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+  const revision = Number(getProperties_().getProperty(PROP_FICHAS_TECNICAS_REVISION) || '0') + 1;
+  getProperties_().setProperty(PROP_FICHAS_TECNICAS_REVISION, String(revision));
+  return revision;
+}
+
 function getEtiquetasSheet_() {
   const spreadsheet = getSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(SHEET_ETIQUETAS_BANCO);
@@ -846,6 +937,10 @@ function salvarEtiquetasBanco_(dados, expectedRevision, operationId) {
 }
 
 function handleEtiquetasGet_(e) {
+  const revisionProperty = getProperties_().getProperty(PROP_ETIQUETAS_REVISION);
+  if (revisionProperty !== null && String(e.parameter.revision || '') === String(revisionProperty)) {
+    return json_({ status: 'ok', changed: false, revision: Number(revisionProperty || 0), serverTime: new Date().toISOString() });
+  }
   const lock = getLock_();
   let locked = false;
   try {
@@ -1242,6 +1337,10 @@ function doPost(e) {
       return json_({ status: 'ok' });
     }
 
+    if (action === 'salvar_fichas_tecnicas_lote') {
+      return json_({ status: 'ok', revision: salvarFichasTecnicas_(params.operacoes || []) });
+    }
+
     if (action === 'salvar_etiquetas_banco') {
       return json_(salvarEtiquetasBanco_(params.dados, params.expectedRevision, params.operationId));
     }
@@ -1265,6 +1364,15 @@ function doGet(e) {
   if (action === 'carregar_etiquetas_banco') return handleEtiquetasGet_(e);
   if (action === 'foto_tarefa') return json_(fotoTarefa_(e.parameter.tarefaId));
   if (action === 'status_migracao') return json_(getMigrationStatus_(e.parameter.migrationId));
+  if (action === 'estatisticas_produtos') return json_(estatisticasProdutos_());
+
+  if (action === 'sincronizar_fichas_tecnicas') {
+    const revision = Number(getProperties_().getProperty(PROP_FICHAS_TECNICAS_REVISION) || '0');
+    if (String(e.parameter.revision || '') === String(revision)) {
+      return json_({ status:'ok', changed:false, revision:revision, serverTime:new Date().toISOString() });
+    }
+    return json_({ status:'ok', changed:true, revision:revision, fichas:fichasTecnicas_(), serverTime:new Date().toISOString() });
+  }
 
   if (action === 'sincronizar_atividades') {
     const revision = getAtividadesRevision_();

@@ -20,27 +20,80 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
         const pedId = el.getAttribute('data-pedid');
         const produto = db.produtos.find(x => x.id === pId);
         if(!podeUsarProdutoCompras(produto, 'pedido', true)) return;
-        if(!pedId) {
-            const p = produto;
-            if(!p) return;
-            const qtd = (p.qtdPadrao !== null && p.qtdPadrao !== '') ? p.qtdPadrao : '';
-            const un = p.unidades[0] || '';
-            const obsPad = p.obsPadrao || '';
-            const novoPedId = 'pa_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-            db.pedidosAtivos.push({ idUnico: novoPedId, produtoId: pId, qtd, unidade: un, obs: obsPad, status: 'rascunho', dataStatus: agoraServidor(), excluido: false, historico: [], colaboradorId: db.configs.colabAtivoId });
+        if(!pedId) return abrirModalEditarPedido(null, pId);
+        const pedido = db.pedidosAtivos.find(pa => pa.idUnico === pedId);
+        if(!pedido) return;
+        if(pedido.status !== 'rascunho' && !temAcessoAdmin() && pedido.colaboradorId !== db.configs.colabAtivoId) {
+            return mostrarToast('Este pedido pertence a outro perfil.', 'erro');
+        }
+        abrirModalEditarPedido(pedId, pId);
+    }
+
+    function alternarRascunhoPedido(event, pId, pedId) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        const produto = db.produtos.find(item => item.id === pId);
+        if(!podeUsarProdutoCompras(produto, 'pedido', true)) return;
+        const existente = pedId ? db.pedidosAtivos.find(item => item.idUnico === pedId) : null;
+        if(existente) {
+            if(existente.status !== 'rascunho') return abrirModalEditarPedido(existente.idUnico, pId);
+            db.pedidosAtivos = db.pedidosAtivos.filter(item => item.idUnico !== existente.idUnico);
             salvarBanco();
             renderizarLista();
+            mostrarToast('Item retirado da lista de envio.', 'sucesso');
             return;
         }
-        const pedido = db.pedidosAtivos.find(pa => pa.idUnico === pedId);
-        if(pedido && pedido.status === 'rascunho') abrirModalEditarPedido(pedId, pId);
-        else mostrarToast('Este item já está no fluxo de compra.', 'info');
+        if(!produto) return;
+        const novoPedId = 'pa_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+        db.pedidosAtivos.push({
+            idUnico: novoPedId,
+            produtoId: pId,
+            qtd: (produto.qtdPadrao !== null && produto.qtdPadrao !== '') ? produto.qtdPadrao : '',
+            unidade: produto.unidades[0] || '',
+            obs: produto.obsPadrao || '',
+            status: 'rascunho',
+            dataStatus: agoraServidor(),
+            excluido: false,
+            historico: [],
+            colaboradorId: db.configs.colabAtivoId
+        });
+        salvarBanco();
+        renderizarLista();
     }
     function acaoDuploToque(el) { if(db.configs.modo === 'pedido') { const pId = el.getAttribute('data-id'); const produto = db.produtos.find(x => x.id === pId); if(!podeUsarProdutoCompras(produto, 'pedido', true)) return; const pedidosDeste = db.pedidosAtivos.filter(pa => pa.produtoId === pId && !pa.excluido && (pa.status === 'rascunho' || pa.status === 'pendente' || pa.status === 'pedido_forn')); const pedidoEditavel = pedidosDeste[pedidosDeste.length-1]; if(pedidoEditavel && pedidoEditavel.status !== 'rascunho') { let colabLogado = db.colaboradores.find(c => c.id === db.configs.colabAtivoId); let isAdmin = temAcessoAdmin(); if(!isAdmin && pedidoEditavel.colaboradorId !== db.configs.colabAtivoId) { return alert("🔒 Acesso Negado: Você só pode visualizar e editar pedidos que foram enviados pelo seu próprio perfil."); } } abrirModalEditarPedido(pedidoEditavel ? pedidoEditavel.idUnico : null, pId); } else { if (!getPermissoesComprasColab().comprar) return alert("Seu perfil não permite editar os detalhes das compras."); const paId = el.getAttribute('data-id'); const pa = db.pedidosAtivos.find(x => x.idUnico === paId); const produto = pa && db.produtos.find(x => x.id === pa.produtoId); if(!podeUsarProdutoCompras(produto, 'compras', true)) return; if(pa && !pa.excluido) { abrirHistoricoCompra(paId); } } }
     function abrirConfirmarCancelamento(paId) { const pa = db.pedidosAtivos.find(x => x.idUnico === paId); if(!pa) return; const p = db.produtos.find(prod => prod.id === pa.produtoId); document.getElementById('cancelamentoCompraId').value = paId; document.getElementById('textoConfirmarCancelamento').innerHTML = `<b>${escaparHtml(p ? p.nome : 'Este item')}</b>`; document.getElementById('modalConfirmarCancelamento').style.display = 'flex'; }
     function confirmarCancelamentoCompra() { const paId = document.getElementById('cancelamentoCompraId').value; const pa = db.pedidosAtivos.find(x => x.idUnico === paId); if(!pa) return fecharModal('modalConfirmarCancelamento'); registrarDesfazer(pa); delete pa.transicaoProgresso; delete pa.statusAnterior; pa.status = 'cancelado'; pa.dataStatus = agoraServidor(); delete pa.dataConclusao; delete pa.dataPedidoFornecedor; db.configs.syncPendente = true; salvarBanco(); fecharModal('modalConfirmarCancelamento'); fecharMenuAcaoCompra(); renderizarLista(); sincronizarFundo(false, true); mostrarToast('Item cancelado. Você pode desfazer.', 'sucesso'); }
 
-    function removerPedidoPelaEdicao() { const pedId = document.getElementById('editPedidoId').value; const pa = db.pedidosAtivos.find(x => x.idUnico === pedId && x.status === 'rascunho'); if(!pa) return; db.pedidosAtivos = db.pedidosAtivos.filter(x => x.idUnico !== pedId); salvarBanco(); fecharModal('modalEditarPedido'); renderizarLista(); mostrarToast('Item removido do pedido.', 'sucesso'); }
+    function removerPedidoPelaEdicao() {
+        const pedId = document.getElementById('editPedidoId').value;
+        const pa = db.pedidosAtivos.find(x => x.idUnico === pedId && !x.excluido);
+        if(!pa) return;
+        if(pa.status === 'rascunho') {
+            db.pedidosAtivos = db.pedidosAtivos.filter(x => x.idUnico !== pedId);
+            salvarBanco();
+            fecharModal('modalEditarPedido');
+            renderizarLista();
+            mostrarToast('Item removido da lista de envio.', 'sucesso');
+            return;
+        }
+        abrirConfirmacaoApp({
+            titulo:'Cancelar pedido?',
+            mensagem:'O item continuará no histórico como cancelado.',
+            rotulo:'Cancelar pedido',
+            cor:'#c62828',
+            acao:() => {
+                pa.status = 'cancelado';
+                pa.dataStatus = agoraServidor();
+                pa.historico = pa.historico || [];
+                pa.historico.push({ data: new Date(pa.dataStatus).toLocaleString(), msg: 'Pedido cancelado no modo Pedir' });
+                db.configs.syncPendente = true;
+                salvarBanco();
+                fecharModal('modalEditarPedido');
+                renderizarLista();
+                sincronizarFundo(false, true);
+            }
+        });
+    }
 
     function rotuloStatusCompra(status) {
         return { pendente:'Pendente', pedido_forn:'Pedido ao fornecedor', comprado:'Comprado', entregue:'Recebido', cancelado:'Cancelado' }[status] || status;

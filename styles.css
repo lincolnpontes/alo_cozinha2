@@ -48,6 +48,13 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .chip { background-color: #e0e0e0; color: #333; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
         .chip.active { border: 2px solid #333; opacity: 0.9; }
         #containerFiltros .chip { border-radius: 6px; }
+        .kds-order-picker { position: relative; flex: 0 0 auto; }
+        .kds-all-chip { min-height: 36px; border: 0; font: inherit; font-weight: 800; cursor: pointer; }
+        .kds-all-chip span { margin-left: 3px; font-size: 12px; }
+        .kds-order-menu { position: fixed; z-index: 1200; left: 14px; top: 126px; width: min(250px, calc(100vw - 28px)); overflow: hidden; border: 1px solid #ccd5d9; border-radius: 7px; background: #fff; box-shadow: 0 12px 32px rgba(25, 40, 48, .2); }
+        .kds-order-menu button { min-height: 45px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 13px; border: 0; border-bottom: 1px solid #edf0f1; background: #fff; color: #273940; font-size: 14px; font-weight: 750; text-align: left; cursor: pointer; }
+        .kds-order-menu button:last-child { border-bottom: 0; }
+        .kds-order-menu button.selected { background: #edf5f0; color: #196128; }
 
         .list { padding: 0; margin: 0; list-style: none; padding-bottom: 20px; }
         .item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: transform 0.2s; overflow: hidden; touch-action: pan-y; }
@@ -112,7 +119,14 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-person-item > button { width: 40px; height: 40px; flex: 0 0 40px; border: 0; border-radius: 6px; background: #eef4f4; font-size: 19px; cursor: pointer; }
         .shared-data-empty { padding: 24px 8px; color: #68777d; text-align: center; }
         .shared-data-empty.danger { color: #b3261e; }
-        .shared-person-identity { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+        .shared-person-identity { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 58px; align-items: end; gap: 9px; }
+        .shared-person-name-field { min-width: 0; }
+        .shared-person-emoji-field { position: relative; min-width: 0; }
+        .shared-person-emoji-field > label { display: block; margin: 0 0 5px; font-size: 13px; font-weight: 700; }
+        .shared-picker-button { border: 1px solid #c9d4d6; border-radius: 7px; background: #fff; color: #244b44; cursor: pointer; }
+        .shared-emoji-button { width: 58px; height: 42px; display: grid; place-items: center; padding: 0; font-size: 25px; }
+        .shared-floating-picker { position: absolute; z-index: 8; border: 1px solid #cbd7d8; border-radius: 7px; background: #fff; box-shadow: 0 12px 34px rgba(31, 50, 56, .18); }
+        .shared-emoji-picker { top: calc(100% + 6px); right: 0; width: min(318px, calc(100vw - 48px)); padding: 6px; }
         .shared-person-emoji-grid { max-height: 178px; display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 5px; overflow-y: auto; padding: 7px; border: 1px solid #d8e0e2; border-radius: 7px; background: #f6f8f9; overscroll-behavior: contain; }
         .shared-person-emoji-grid button { min-width: 0; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: #fff; font-size: 24px; cursor: pointer; }
         .shared-person-emoji-grid button:hover { border-color: #a8babe; background: #edf4f4; }
@@ -127,11 +141,15 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-access-heading > img { width: 34px; height: 34px; flex: 0 0 34px; object-fit: contain; }
         .shared-access-heading > b { flex: 1; font-size: 15px; }
         .shared-access-card .task-toggle-row { min-height: 42px; margin: 0; padding: 6px 4px; border: 0; border-radius: 0; background: transparent; }
+        .shared-access-card .shared-access-child { margin-left: 43px; width: calc(100% - 43px); box-sizing: border-box; }
         .shared-access-card > .task-toggle-row { margin-top: 2px; border-top: 1px solid #e3e9e8; }
         .shared-access-details { display: grid; gap: 0; padding-top: 2px; border-top: 1px solid #e3e9e8; }
         .shared-access-details .task-toggle-row + .task-toggle-row { border-top: 1px solid #e8edec; }
         .shared-pin-field { margin: 0; padding: 10px; border: 1px solid #b7d6ce; border-radius: 7px; background: #f2f8f6; }
-        .shared-category-permissions { margin-top: 2px; overflow: hidden; border: 1px solid #dfe5e5; border-radius: 6px; background: white; }
+        .shared-category-picker-wrap { position: relative; padding: 5px 0 3px; }
+        .shared-category-picker-button { width: 100%; min-height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 1px solid #d6dfe0; border-radius: 6px; background: #f7f9f9; color: #365650; font-size: 13px; font-weight: 800; text-align: left; cursor: pointer; }
+        .shared-category-picker-button span { font-size: 20px; line-height: 1; }
+        .shared-category-picker { right: 0; bottom: calc(100% + 5px); width: min(410px, calc(100vw - 48px)); max-height: min(330px, 55vh); overflow-y: auto; }
         .shared-category-title, .shared-category-row { min-height: 38px; display: grid; grid-template-columns: minmax(0, 1fr) 62px 62px; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid #edf0f0; }
         .shared-category-title { min-height: 32px; color: #60706e; font-size: 11px; text-align: center; background: #f5f8f7; }
         .shared-category-title strong { text-align: left; }
@@ -171,6 +189,9 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         @media (max-width: 430px) {
             .area-module-switch-grid { grid-template-columns: 1fr; }
             .shared-person-actions button { flex: 1 1 30%; }
+            .shared-person-identity { grid-template-columns: minmax(0, 1fr) 54px; }
+            .shared-emoji-button { width: 54px; }
+            .shared-access-card .shared-access-child { margin-left: 34px; width: calc(100% - 34px); }
             .pedido-cozinha {
                 display: grid;
                 grid-template-columns: minmax(0, 1fr) auto;

@@ -1601,7 +1601,9 @@
                 permiteRemarcacao: document.getElementById('taskAllowReschedule').checked,
                 registroPop: document.getElementById('taskPopRequired').checked,
                 fotoReferencia: removeTaskPhoto ? false : Boolean(pendingTaskPhoto || current?.fotoReferencia || formState.hasPhoto),
-                ativo: document.getElementById('taskActive').checked
+                ativo: document.getElementById('taskActive').checked,
+                atualizadoEm: Date.now(),
+                revisaoDefinicao: Number(current?.revisaoDefinicao || 0) + 1
             };
             if (pendingTaskPhoto || removeTaskPhoto) {
                 const serverUrl = deps.getUrl();

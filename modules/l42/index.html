@@ -277,7 +277,7 @@ body{color:#20242a;background:var(--fundo)}
 .header>div:nth-child(2){justify-content:center!important;transform:translateX(-10px)}
 .operator-select-shell .operator-emoji{margin-right:10px;color:#d8dde5;filter:grayscale(1) saturate(0) brightness(1.45);opacity:.96;text-shadow:0 1px 1px rgba(23,38,58,.72)!important}
 .operator-select-shell:focus-within .operator-emoji{filter:grayscale(1) saturate(0) brightness(1.7) drop-shadow(0 1px 2px rgba(0,0,0,.35))}
-#btnConfigGear{font-size:28px!important;min-width:44px;min-height:44px;display:flex!important;align-items:center;justify-content:center}
+#btnConfigGear{font-size:28px!important;min-width:44px;min-height:44px;align-items:center;justify-content:center}
 #btnScannerQRHome::before{transform:translateY(-4px) scaleY(1.20);transform-origin:top center}
 .label-editor-header{padding:4px 10px}
 .label-editor-header>div{transform:none}
@@ -475,7 +475,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.10";
+const APP_VERSION="2.1.11";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1220,6 +1220,10 @@ function bancoParaNuvem(){
     clone.configs.senhaAdmin="";
     clone.configs.printerHost="";
     clone.configs.printerPort="9100";
+    clone.configs.printerGapMm="";
+    clone.configs.printerMediaMode="";
+    clone.configs.printerCommandMode="";
+    clone.configs.modo="";
     clone.configs.serverClockOffset=0;
     clone.configs.serverClockSyncedAt=0;
     delete clone.configs.urlAppScript;
@@ -1924,7 +1928,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.10" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.11" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -7217,7 +7221,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.10" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.11" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7243,7 +7247,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.10" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.11" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

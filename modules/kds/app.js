@@ -401,7 +401,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             setoresTarefas: [{ id: 'setor_cozinha', nome: 'Cozinha', emoji: '🧑‍🍳', ativo: true }],
             funcionarios: [], tarefas: [], coreCompartilhado: null,
             configsTarefas: { som: 'beep', volume: '80', repeticaoMinutos: '5' },
-            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido" }
+            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido", loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true } }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
         if(local) {
@@ -414,6 +414,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             if(!local.configs.telaAtiva) local.configs.telaAtiva = "sim";
             if(!local.configs.inatividade) local.configs.inatividade = "0";
             if(!local.configs.reenvio) local.configs.reenvio = "permitido";
+            local.configs.loginObrigatorioModulos = { kds:false, checklist:false, compras:true, l42:true, ...(local.configs.loginObrigatorioModulos || {}) };
             if(!local.configs.volumeCozinha) local.configs.volumeCozinha = "100";
             if(!local.configs.volumePanelas) local.configs.volumePanelas = "70";
             if(!Array.isArray(local.setoresTarefas) || !local.setoresTarefas.length) local.setoresTarefas = defaultDB.setoresTarefas;
@@ -527,6 +528,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         document.getElementById('configVolumeCozinha').value = db.configs.volumeCozinha || "100";
         document.getElementById('configVolumePanelas').value = db.configs.volumePanelas || "70";
         atualizarLabelsVolume();
+        sincronizarSwitchesLogin();
+        atualizarEngrenagensDaSessao();
         aplicarModoVisual(db.configs.areaAtual);
         solicitarWakeLock(); resetInatividade();
         const splash = document.getElementById('splashScreen');
@@ -556,7 +559,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function renderizarFiltros() {
         const rotulos = { cadastro: 'Ordem de cadastro', categoria: 'Ordem por categoria', mais_pedidos: 'Mais pedidos' };
-        let html = `<div class="kds-order-picker"><button type="button" class="chip kds-all-chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="toggleMenuOrdemProdutos(event)" aria-haspopup="menu" aria-expanded="${menuOrdemAberto}">TODOS <span aria-hidden="true">▾</span></button><div class="kds-order-menu" style="display:${menuOrdemAberto ? 'grid' : 'none'}" role="menu" aria-label="Ordenar produtos">${Object.entries(rotulos).map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${ordemProdutos === id}" class="${ordemProdutos === id ? 'selected' : ''}" onclick="selecionarOrdemProdutos('${id}', event)"><span>${label}</span><b>${ordemProdutos === id ? '✓' : ''}</b></button>`).join('')}</div></div>`;
+        let html = `<div class="kds-order-picker"><button type="button" class="chip kds-all-chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="toggleMenuOrdemProdutos(event)" aria-haspopup="menu" aria-expanded="${menuOrdemAberto}">TODOS <span class="filter-menu-chevron" aria-hidden="true">⌄</span></button><div class="kds-order-menu" style="display:${menuOrdemAberto ? 'grid' : 'none'}" role="menu" aria-label="Ordenar produtos">${Object.entries(rotulos).map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${ordemProdutos === id}" class="${ordemProdutos === id ? 'selected' : ''}" onclick="selecionarOrdemProdutos('${id}', event)"><span>${label}</span><b>${ordemProdutos === id ? '✓' : ''}</b></button>`).join('')}</div></div>`;
         db.categorias.forEach(cat => { const isActive = categoriaAtual === cat.nome; html += `<div class="chip ${isActive ? 'active' : ''}" style="background-color: ${cat.cor}; color: ${cat.corTexto};" onclick="filtrarCategoria('${cat.nome}')">${cat.nome}</div>`; });
         document.getElementById('containerFiltros').innerHTML = html;
     }
@@ -570,7 +573,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function toggleMenuOrdemProdutos(event) {
         event?.stopPropagation?.();
-        categoriaAtual = null;
+        if (categoriaAtual !== null) {
+            categoriaAtual = null;
+            menuOrdemAberto = false;
+            renderizarFiltros();
+            renderizarListaPanelas();
+            return;
+        }
         menuOrdemAberto = !menuOrdemAberto;
         renderizarFiltros();
         renderizarListaPanelas();
@@ -1272,12 +1281,49 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let destinoLoginOperador = 'painel';
     let sessaoCompras = null;
     let sessaoL42 = null;
+    let sessaoKds = null;
+    let sessaoChecklist = null;
     let sessaoAdministrativaAtiva = false;
     const ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1';
 
     function atualizarEngrenagensDaSessao() {
         const compras = document.getElementById('feiraSettingsButton');
-        if (compras) compras.style.display = sessaoCompras?.isAdmin ? 'inline-flex' : 'none';
+        if (compras) compras.style.display = !exigeLoginModulo('compras') || sessaoCompras?.isAdmin ? 'inline-flex' : 'none';
+        const kds = document.getElementById('kdsSettingsButton');
+        if (kds) kds.style.display = !exigeLoginModulo('kds') || sessaoKds?.podeConfigurarKds || sessaoKds?.isAdmin ? 'inline-flex' : 'none';
+        const checklist = document.getElementById('tasksSettingsButton');
+        if (checklist) checklist.style.display = !exigeLoginModulo('checklist') || sessaoChecklist?.podeConfigurarChecklist || sessaoChecklist?.isAdmin ? 'inline-flex' : 'none';
+        atualizarChipOperador('kdsOperatorChip', sessaoKds, exigeLoginModulo('kds'));
+        atualizarChipOperador('tasksOperatorChip', sessaoChecklist, exigeLoginModulo('checklist'));
+    }
+
+    function atualizarChipOperador(id, sessao, loginAtivo) {
+        const chip = document.getElementById(id);
+        if (!chip) return;
+        chip.style.display = loginAtivo && sessao ? 'inline-flex' : 'none';
+        if (!sessao) return;
+        const emoji = chip.querySelector('span');
+        const nome = chip.querySelector('strong');
+        if (emoji) emoji.textContent = sessao.emoji || '👤';
+        if (nome) nome.textContent = sessao.nome || '';
+    }
+
+    function exigeLoginModulo(modulo) {
+        const defaults = { kds:false, checklist:false, compras:true, l42:true };
+        return db.configs.loginObrigatorioModulos?.[modulo] ?? defaults[modulo] ?? false;
+    }
+
+    function sincronizarSwitchesLogin() {
+        [['loginRequiredKds','kds'],['loginRequiredChecklist','checklist'],['loginRequiredCompras','compras'],['loginRequiredL42','l42']].forEach(([id, modulo]) => {
+            const input = document.getElementById(id);
+            if (input) input.checked = exigeLoginModulo(modulo);
+        });
+    }
+
+    function salvarExigirLoginModulo(modulo, exigir) {
+        db.configs.loginObrigatorioModulos = { kds:false, checklist:false, compras:true, l42:true, ...(db.configs.loginObrigatorioModulos || {}), [modulo]:Boolean(exigir) };
+        marcarBancoAlterado();
+        atualizarEngrenagensDaSessao();
     }
 
     function abrirPainelControle() {
@@ -1306,6 +1352,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     function abrirConfiguracoesKds() {
+        sincronizarSwitchesLogin();
         fecharModal('modalPainelUnificado');
         abrirModalNoTopo('modalConfigKds');
     }
@@ -1321,6 +1368,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     function abrirConfiguracoesCompras() {
+        sincronizarSwitchesLogin();
         fecharModal('modalPainelUnificado');
         AloFeiraModule.open();
         AloFeiraModule.refreshHeader();
@@ -1333,6 +1381,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     function abrirConfiguracoesEtiquetas() {
+        sincronizarSwitchesLogin();
         fecharModal('modalPainelUnificado');
         AloL42Module.open();
         abrirModalNoTopo('modalConfigEtiquetas');
@@ -1343,16 +1392,26 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         if (destinoConfiguracoes !== 'etiquetas') abrirModalNoTopo('modalPainelUnificado');
     }
 
+    async function abrirModuloComLogin(modulo) {
+        const canonical = modulo === 'tasks' ? 'checklist' : (modulo === 'feira' ? 'compras' : modulo);
+        if (!exigeLoginModulo(canonical)) {
+            AloTasks.openModule(canonical === 'checklist' ? 'tasks' : (canonical === 'compras' ? 'feira' : canonical));
+            atualizarEngrenagensDaSessao();
+            return;
+        }
+        await abrirLoginAdmin(canonical === 'checklist' ? 'checklist_modulo' : `${canonical}_modulo`);
+    }
+
     async function abrirModuloCompras() {
-        await abrirLoginAdmin('compras_modulo');
+        await abrirModuloComLogin('compras');
     }
 
     async function abrirModuloL42() {
-        await abrirLoginAdmin('l42_modulo');
+        await abrirModuloComLogin('l42');
     }
 
     async function abrirLoginAdmin(destino = 'painel') {
-        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'etiquetas', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'];
+        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'etiquetas', 'kds_modulo', 'trocar_kds', 'checklist_modulo', 'trocar_checklist', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'];
         destinoLoginOperador = destinosValidos.includes(destino) ? destino : 'painel';
         if (['painel', 'kds', 'tasks', 'compras', 'etiquetas'].includes(destinoLoginOperador)) destinoConfiguracoes = destinoLoginOperador;
         if (destinoLoginOperador === 'compras' && sessaoCompras?.isAdmin) {
@@ -1373,25 +1432,27 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const select = document.getElementById('operadorAdmin');
         const input = document.getElementById('senhaAdmin');
         const button = document.getElementById('btnConfirmarLoginOperador');
-        document.getElementById('tituloLoginOperador').innerText = destinoLoginOperador === 'compras_modulo'
-            ? 'Entrar na Lista de Compras'
-            : (destinoLoginOperador === 'l42_modulo'
-                ? 'Entrar em Etiquetas'
-                : (destinoLoginOperador.startsWith('trocar_') ? 'Trocar pessoa' : 'Acesso às configurações'));
+        const titulosModulo = { kds_modulo:'Entrar no KDS', checklist_modulo:'Entrar no Checklist', compras_modulo:'Entrar na Lista de Compras', l42_modulo:'Entrar em Etiquetas' };
+        document.getElementById('tituloLoginOperador').innerText = titulosModulo[destinoLoginOperador]
+            || (destinoLoginOperador.startsWith('trocar_') ? 'Trocar pessoa' : 'Acesso às configurações');
         select.innerHTML = '<option value="">Carregando operadores...</option>';
         select.disabled = true;
-        input.value = '';
+        limparPinAdmin();
         input.disabled = true;
         button.disabled = true;
         limparErroSenha('erroSenhaAdmin');
         modal.style.display = 'flex';
 
         try {
-            const finalidade = ['compras_modulo', 'trocar_compras'].includes(destinoLoginOperador)
-                ? 'compras'
-                : (['l42_modulo', 'trocar_l42', 'etiquetas'].includes(destinoLoginOperador)
-                    ? 'l42'
-                    : (destinoLoginOperador === 'kds' ? 'kds' : (destinoLoginOperador === 'tasks' ? 'checklist' : 'painel')));
+            const finalidade = ['kds_modulo', 'trocar_kds'].includes(destinoLoginOperador)
+                ? 'kds_operacional'
+                : (['checklist_modulo', 'trocar_checklist'].includes(destinoLoginOperador)
+                    ? 'checklist_operacional'
+                    : (['compras_modulo', 'trocar_compras'].includes(destinoLoginOperador)
+                        ? 'compras'
+                        : (['l42_modulo', 'trocar_l42', 'etiquetas'].includes(destinoLoginOperador)
+                            ? 'l42'
+                            : (destinoLoginOperador === 'kds' ? 'kds' : (destinoLoginOperador === 'tasks' ? 'checklist' : 'painel')))));
             const operadores = await AloSharedData.listLoginPeople(finalidade);
             if (!operadores.length) {
                 fecharModal('modalLoginAdmin');
@@ -1686,7 +1747,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.11',
+                version: '2.1.12',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2294,9 +2355,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         button.disabled = true;
         try {
             const resultado = await AloSharedData.authenticate(select.value, input.value);
-            if (!resultado?.ok) return senhaIncorreta('senhaAdmin', 'erroSenhaAdmin');
+            if (!resultado?.ok) {
+                senhaIncorreta('senhaAdmin', 'erroSenhaAdmin');
+                limparPinAdmin();
+                return;
+            }
             localStorage.setItem(ULTIMO_OPERADOR_LOGIN_KEY, resultado.operador.id);
-            const acessoOperacional = ['compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'].includes(destinoLoginOperador);
+            const acessoOperacional = ['kds_modulo', 'trocar_kds', 'checklist_modulo', 'trocar_checklist', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'].includes(destinoLoginOperador);
             const podeConfigurar = acessoOperacional
                 || (destinoLoginOperador === 'kds' && resultado.operador.podeConfigurarKds)
                 || (destinoLoginOperador === 'tasks' && resultado.operador.podeConfigurarChecklist)
@@ -2305,14 +2370,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             if (!podeConfigurar) {
                 const modulo = destinoLoginOperador === 'kds' ? 'KDS' : (destinoLoginOperador === 'tasks' ? 'Checklist' : 'Alô Cozinha');
                 document.getElementById('erroSenhaAdmin').innerText = `Esta pessoa não tem acesso às configurações do ${modulo}.`;
-                input.value = '';
-                input.focus();
+                limparPinAdmin();
                 return;
             }
 
             input.blur();
             fecharModal('modalLoginAdmin');
-            input.value = '';
+            limparPinAdmin();
             limparErroSenha('erroSenhaAdmin');
             if (destinoLoginOperador === 'compras_modulo' || destinoLoginOperador === 'trocar_compras') {
                 await AloSharedData.activateForModule('compras', resultado.operador.id);
@@ -2320,6 +2384,18 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 atualizarEngrenagensDaSessao();
                 AloFeiraModule.refreshHeader();
                 if (destinoLoginOperador === 'compras_modulo') AloTasks.openModule('feira');
+                return;
+            }
+            if (destinoLoginOperador === 'kds_modulo' || destinoLoginOperador === 'trocar_kds') {
+                sessaoKds = resultado.operador;
+                atualizarEngrenagensDaSessao();
+                if (destinoLoginOperador === 'kds_modulo') AloTasks.openModule('kds');
+                return;
+            }
+            if (destinoLoginOperador === 'checklist_modulo' || destinoLoginOperador === 'trocar_checklist') {
+                sessaoChecklist = resultado.operador;
+                atualizarEngrenagensDaSessao();
+                if (destinoLoginOperador === 'checklist_modulo') AloTasks.openModule('tasks');
                 return;
             }
             if (destinoLoginOperador === 'l42_modulo' || destinoLoginOperador === 'trocar_l42') {
@@ -2336,6 +2412,32 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         } finally {
             button.disabled = false;
         }
+    }
+
+    function atualizarPinAdminVisual() {
+        const value = document.getElementById('senhaAdmin')?.value || '';
+        document.querySelectorAll('#pinAdminDots i').forEach((dot, index) => dot.classList.toggle('filled', index < value.length));
+        limparErroSenha('erroSenhaAdmin');
+    }
+
+    function digitarPinAdmin(numero) {
+        const input = document.getElementById('senhaAdmin');
+        if (!input || input.value.length >= 12) return;
+        input.value += String(numero).replace(/\D/g, '');
+        atualizarPinAdminVisual();
+    }
+
+    function apagarPinAdmin() {
+        const input = document.getElementById('senhaAdmin');
+        if (!input) return;
+        input.value = input.value.slice(0, -1);
+        atualizarPinAdminVisual();
+    }
+
+    function limparPinAdmin() {
+        const input = document.getElementById('senhaAdmin');
+        if (input) input.value = '';
+        atualizarPinAdminVisual();
     }
 
     function confirmarSenhaAvancada() {
@@ -2361,6 +2463,16 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             sessaoL42 = null;
             atualizarEngrenagensDaSessao();
             AloSharedData.logoutModule('l42').catch(() => {});
+            return;
+        }
+        if (modulo === 'kds') {
+            sessaoKds = null;
+            atualizarEngrenagensDaSessao();
+            return;
+        }
+        if (modulo === 'tasks' || modulo === 'checklist') {
+            sessaoChecklist = null;
+            atualizarEngrenagensDaSessao();
         }
     }
 
@@ -2674,7 +2786,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 volumePanelas: settings.volumePanelas || '70',
                 telaAtiva: settings.telaAtiva || 'sim',
                 inatividade: settings.inatividade || '0',
-                reenvio: settings.reenvio || 'permitido'
+                reenvio: settings.reenvio || 'permitido',
+                loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true, ...(settings.loginObrigatorioModulos || {}) }
             }
         };
     }
@@ -2818,7 +2931,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.11').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.12').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

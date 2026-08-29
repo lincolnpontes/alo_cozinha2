@@ -1,12 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
   <title id="title">Controles da etiquetadora</title>
-  <rect x="4.5" y="9" width="39" height="30" rx="6" fill="#f7f8f9" stroke="#20242a" stroke-width="3"/>
-  <rect x="10" y="14" width="20" height="5" rx="1.5" fill="#20242a"/>
-  <circle cx="14" cy="28" r="5" fill="#2aa75f" stroke="#16733d" stroke-width="1.5"/>
-  <g fill="none" stroke="#20242a" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5">
-    <path d="m22 23 6 5-6 5"/>
-    <path d="M29 23v10"/>
-    <circle cx="36" cy="28" r="3" fill="#20242a"/>
-    <path d="M18 43h12M24 39v4"/>
+  <rect x="3.5" y="11" width="41" height="26" rx="6" fill="#f7f8f9" stroke="#20242a" stroke-width="3"/>
+  <g fill="none" stroke="#20242a" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.7">
+    <path d="M16 19l-6 5 6 5"/>
+    <path d="M10 19v10"/>
+    <path d="M32 19l6 5-6 5"/>
+    <path d="M38 19v10"/>
   </g>
+  <circle cx="24" cy="24" r="5.4" fill="#2aa75f" stroke="#176f42" stroke-width="1.8"/>
 </svg>

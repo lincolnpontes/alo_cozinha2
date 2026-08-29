@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.11';
+    const VERSION = '2.1.12';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -21,6 +21,7 @@
     let state = loadLocalState();
     let refreshPromise = null;
     let sourcesLoaded = Boolean(state.migration?.identitiesMerged);
+    let comprasCategorySnapshot = [];
 
     function clone(value) {
         return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -540,20 +541,22 @@
         if (purpose === 'l42') return person.permissions.l42.acesso === true;
         if (purpose === 'kds') return person.permissions.kds.configuracoes === true;
         if (purpose === 'checklist') return person.permissions.checklist.configuracoes === true;
+        if (purpose === 'kds_operacional' || purpose === 'checklist_operacional') return person.permissions.checklist.funcionario === true;
         if (purpose === 'painel') return person.isAdmin === true;
         return true;
     }
 
     async function listLoginPeople(purpose = '') {
         await ensureReady();
-        return state.people.filter(person => person.ativo !== false && person.podeEntrar === true && personCanUse(person, purpose))
+        const operational = purpose === 'kds_operacional' || purpose === 'checklist_operacional';
+        return state.people.filter(person => person.ativo !== false && (operational || person.podeEntrar === true) && personCanUse(person, purpose))
             .sort((a, b) => a.nome.localeCompare(b.nome))
             .map(safePerson);
     }
 
     async function authenticate(id, pin) {
         await ensureReady();
-        const person = state.people.find(item => item.id === id && item.ativo !== false && item.podeEntrar === true);
+        const person = state.people.find(item => item.id === id && item.ativo !== false);
         if (!person) return { ok: false, reason: 'not_found' };
         const credentials = person.credentials.alternatives;
         let valid = credentials.length === 0 && String(pin || '') === '';
@@ -656,17 +659,79 @@
         if (requested !== false) toggleComprasCategories(false);
     }
 
+    function updatePersonPinButton() {
+        const button = document.getElementById('sharedPersonPinButton');
+        const input = document.getElementById('sharedPersonPin');
+        const removing = document.getElementById('sharedPersonPinRemove')?.value === '1';
+        if (!button || !input) return;
+        button.textContent = removing ? 'PIN será removido' : (input.value ? 'Novo PIN pronto' : (button.dataset.hasPin === '1' ? 'Alterar PIN' : 'PIN de acesso'));
+    }
+
+    function togglePersonPinPicker(requested) {
+        toggleFloatingPicker('sharedPersonPinPicker', 'sharedPersonPinButton', requested);
+        if (requested !== false) {
+            togglePersonEmojiPicker(false);
+            toggleComprasCategories(false);
+            setTimeout(() => document.getElementById('sharedPersonPin')?.focus(), 40);
+        }
+    }
+
+    function updatePersonPinDraft() {
+        const removing = document.getElementById('sharedPersonPinRemove');
+        if (removing) removing.value = '0';
+        updatePersonPinButton();
+    }
+
+    function removePersonPinDraft() {
+        const input = document.getElementById('sharedPersonPin');
+        const removing = document.getElementById('sharedPersonPinRemove');
+        if (input) input.value = '';
+        if (removing) removing.value = '1';
+        updatePersonPinButton();
+        togglePersonPinPicker(false);
+    }
+
+    function confirmPersonPinDraft() {
+        const input = document.getElementById('sharedPersonPin');
+        if (input?.value && input.value.length < 4) {
+            global.AloUiDialog?.notice('Use pelo menos 4 dígitos no PIN.', { title:'PIN muito curto', confirmText:'Entendi' });
+            return;
+        }
+        updatePersonPinButton();
+        togglePersonPinPicker(false);
+    }
+
     function updateComprasCategorySummary() {
-        const button = document.getElementById('sharedPersonComprasCategoryButton');
-        if (!button) return;
+        const summary = document.getElementById('sharedPersonComprasCategorySummary');
+        if (!summary) return;
         const order = document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked').length;
         const shopping = document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked').length;
-        button.innerHTML = `<span>Categorias: ${order} para pedir · ${shopping} para comprar</span><span aria-hidden="true">›</span>`;
+        summary.textContent = `${order} para pedir · ${shopping} para comprar`;
     }
 
     function toggleComprasCategories(requested) {
-        toggleFloatingPicker('sharedPersonComprasCategoryPicker', 'sharedPersonComprasCategoryButton', requested);
-        if (requested !== false) togglePersonEmojiPicker(false);
+        const picker = document.getElementById('sharedPersonComprasCategoryPicker');
+        const button = document.getElementById('sharedPersonComprasCategoryButton');
+        if (!picker || !button) return;
+        const open = requested === undefined ? picker.style.display !== 'flex' : Boolean(requested);
+        if (open) comprasCategorySnapshot = [...document.querySelectorAll('#sharedPersonComprasCategories input')].map(input => input.checked);
+        picker.style.display = open ? 'flex' : 'none';
+        button.setAttribute('aria-expanded', String(open));
+        if (open) {
+            togglePersonEmojiPicker(false);
+            togglePersonPinPicker(false);
+        }
+    }
+
+    function saveComprasCategories() {
+        updateComprasCategorySummary();
+        toggleComprasCategories(false);
+    }
+
+    function cancelComprasCategories() {
+        [...document.querySelectorAll('#sharedPersonComprasCategories input')].forEach((input, index) => { input.checked = Boolean(comprasCategorySnapshot[index]); });
+        updateComprasCategorySummary();
+        toggleComprasCategories(false);
     }
 
     function renderPersonEmojiGrid(emoji) {
@@ -697,9 +762,9 @@
         container.innerHTML = categories.map(category => {
             const id = escapeHtml(category.id);
             const name = escapeHtml(category.nome || 'Categoria');
-            const orderChecked = isNew || orderAllowed.has(category.id) ? 'checked' : '';
-            const shoppingChecked = isNew || shoppingAllowed.has(category.id) ? 'checked' : '';
-            return `<div class="shared-category-row" data-category-id="${id}"><span>${name}</span><label title="Pode pedir ${name}"><input type="checkbox" data-category-order ${orderChecked} aria-label="Pedir ${name}" onchange="AloSharedData.updateComprasCategorySummary()"></label><label title="Pode comprar ${name}"><input type="checkbox" data-category-shopping ${shoppingChecked} aria-label="Comprar ${name}" onchange="AloSharedData.updateComprasCategorySummary()"></label></div>`;
+        const orderChecked = orderAllowed.has(category.id) ? 'checked' : '';
+        const shoppingChecked = shoppingAllowed.has(category.id) ? 'checked' : '';
+            return `<div class="shared-category-row" data-category-id="${id}"><span>${name}</span><label class="shared-category-choice" title="Pode pedir ${name}"><input type="checkbox" data-category-order ${orderChecked} aria-label="Pedir ${name}" onchange="AloSharedData.updateComprasCategorySummary()"><span aria-hidden="true">✓</span></label><label class="shared-category-choice" title="Pode comprar ${name}"><input type="checkbox" data-category-shopping ${shoppingChecked} aria-label="Comprar ${name}" onchange="AloSharedData.updateComprasCategorySummary()"><span aria-hidden="true">✓</span></label></div>`;
         }).join('');
         updateComprasCategorySummary();
     }
@@ -707,7 +772,7 @@
     async function openPersonForm(id = '') {
         const person = state.people.find(item => item.id === id) || normalizePerson({
             id: '', nome: '', emoji: '👤', ativo: true, podeEntrar: false, isAdmin: false,
-            permissions: { checklist: { funcionario: true } }
+            permissions: { checklist: { funcionario: true }, compras: { acesso:false, receber:false, comprar:false, categoriasPedido:[], categoriasCompras:[] } }
         });
         global.fecharModal?.('modalPessoasCompartilhadas');
         document.getElementById('sharedPersonId').value = id;
@@ -715,6 +780,10 @@
         renderPersonEmojiGrid(person.emoji || '👤');
         document.getElementById('sharedPersonPin').value = '';
         document.getElementById('sharedPersonPin').placeholder = id && person.credentials.alternatives.length ? 'Em branco mantém o PIN atual' : 'Opcional · use 4 ou mais dígitos';
+        document.getElementById('sharedPersonPinRemove').value = '0';
+        const pinButton = document.getElementById('sharedPersonPinButton');
+        if (pinButton) pinButton.dataset.hasPin = person.credentials.alternatives.length ? '1' : '0';
+        updatePersonPinButton();
         setCheckbox('sharedPersonAdmin', person.isAdmin);
         setCheckbox('sharedPersonEmployee', person.permissions.checklist.funcionario);
         const areaSelect = document.getElementById('sharedPersonChecklistArea');
@@ -725,7 +794,6 @@
         }
         setCheckbox('sharedPersonKdsConfig', person.permissions.kds.configuracoes);
         setCheckbox('sharedPersonChecklistConfig', person.permissions.checklist.configuracoes);
-        setCheckbox('sharedPersonComprasAccess', person.permissions.compras.acesso);
         setCheckbox('sharedPersonComprasReceive', person.permissions.compras.receber);
         setCheckbox('sharedPersonComprasBuy', person.permissions.compras.comprar);
         setCheckbox('sharedPersonLabelsConfig', person.permissions.l42.configuracoes);
@@ -743,15 +811,9 @@
 
     function toggleAccessFields() {
         const admin = document.getElementById('sharedPersonAdmin')?.checked;
-        const compras = document.getElementById('sharedPersonComprasAccess')?.checked;
         const labelsConfig = document.getElementById('sharedPersonLabelsConfig')?.checked;
-        const enabled = admin || compras || labelsConfig
-            || document.getElementById('sharedPersonKdsConfig')?.checked
-            || document.getElementById('sharedPersonChecklistConfig')?.checked;
-        const fields = document.getElementById('sharedPersonLoginFields');
-        if (fields) fields.style.display = enabled ? 'block' : 'none';
         const comprasFields = document.getElementById('sharedPersonComprasFields');
-        if (comprasFields) comprasFields.style.display = compras ? 'grid' : 'none';
+        if (comprasFields) comprasFields.style.display = 'grid';
         const labelsFields = document.getElementById('sharedPersonLabelsFields');
         if (labelsFields) labelsFields.style.display = 'grid';
     }
@@ -776,7 +838,11 @@
         const admin = document.getElementById('sharedPersonAdmin').checked;
         const kdsConfig = document.getElementById('sharedPersonKdsConfig').checked;
         const checklistConfig = document.getElementById('sharedPersonChecklistConfig').checked;
-        const comprasAccess = document.getElementById('sharedPersonComprasAccess').checked;
+        const comprasReceive = document.getElementById('sharedPersonComprasReceive').checked;
+        const comprasBuy = document.getElementById('sharedPersonComprasBuy').checked;
+        const categoriasPedido = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
+        const categoriasCompras = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
+        const comprasAccess = Boolean(admin || comprasReceive || comprasBuy || categoriasPedido.length || categoriasCompras.length);
         if (!name) return global.AloUiDialog?.notice('Informe o nome da pessoa.', { title: 'Nome necessário', confirmText: 'Entendi' });
         if (pin && pin.length < 4) return global.AloUiDialog?.notice('Use pelo menos 4 dígitos no PIN.', { title: 'PIN muito curto', confirmText: 'Entendi' });
         if (state.people.some(person => person.id !== id && comparableText(person.nome) === comparableText(name))) {
@@ -797,17 +863,18 @@
             ? document.getElementById('sharedPersonChecklistArea').value
             : '';
         person.permissions.compras.acesso = comprasAccess;
-        person.permissions.compras.receber = document.getElementById('sharedPersonComprasReceive').checked;
-        person.permissions.compras.comprar = document.getElementById('sharedPersonComprasBuy').checked;
-        person.permissions.compras.categoriasPedido = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
-        person.permissions.compras.categoriasCompras = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
+        person.permissions.compras.receber = comprasReceive;
+        person.permissions.compras.comprar = comprasBuy;
+        person.permissions.compras.categoriasPedido = categoriasPedido;
+        person.permissions.compras.categoriasCompras = categoriasCompras;
         const labelsConfig = document.getElementById('sharedPersonLabelsConfig').checked;
         const labelsAccess = Boolean(admin || pin || person.credentials.alternatives.length || labelsConfig);
         person.permissions.l42.acesso = labelsAccess;
         ['imprimir', 'estoque', 'darBaixa', 'movimentacao', 'relatorios'].forEach(key => { person.permissions.l42[key] = labelsAccess; });
         ['produtos', 'categorias', 'estilo', 'configuracoes', 'avancado'].forEach(key => { person.permissions.l42[key] = labelsConfig; });
         person.permissions.l42.operadores = false;
-        if (pin) person.credentials = { alternatives: [await createPinHash(pin)] };
+        if (document.getElementById('sharedPersonPinRemove').value === '1') person.credentials = { alternatives: [] };
+        else if (pin) person.credentials = { alternatives: [await createPinHash(pin)] };
         grantAdminPermissions(person);
         refreshDerivedAccess(person);
         person.atualizadoEm = Date.now();
@@ -918,8 +985,9 @@
         VERSION, SCHEMA_VERSION, L42_PERMISSION_KEYS, PERSON_EMOJIS,
         configure, registerAdapter, ensureReady, refreshSources, updateFromModule, describe, subscribe,
         listLoginPeople, authenticate, activateForModule, logoutModule,
-        openManager, closeManager, openPersonForm, selectPersonEmoji, togglePersonEmojiPicker, toggleComprasCategories,
-        updateComprasCategorySummary, toggleAccessFields, toggleEmployeeFields, backToManager,
+        openManager, closeManager, openPersonForm, selectPersonEmoji, togglePersonEmojiPicker, togglePersonPinPicker,
+        updatePersonPinDraft, removePersonPinDraft, confirmPersonPinDraft, toggleComprasCategories,
+        saveComprasCategories, cancelComprasCategories, updateComprasCategorySummary, toggleAccessFields, toggleEmployeeFields, backToManager,
         savePersonForm, toggleCurrentPersonActive, renderPeopleManager,
         getModuleData, getUnifiedData, getCatalogIndex,
         getBackup, getCloudData, applyCloudState, restoreBackup

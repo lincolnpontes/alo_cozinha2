@@ -28,7 +28,7 @@ function alterarModo(modo) {
 function renderizarFiltros() {
     const compras = db.configs.modo === 'compras';
     const todosAtivo = categoriaAtual === null && (!compras || (!filtroFornecedorComprasId && !agrupamentoCompradoAtivo));
-    let html = `<button id="btnTodosFiltros" class="chip ${todosAtivo ? 'active' : ''}" onclick="abrirMenuFerramentas(this)" aria-haspopup="menu" aria-expanded="false">TODOS</button>`;
+    let html = `<button id="btnTodosFiltros" class="chip compras-all-chip ${todosAtivo ? 'active' : ''}" onclick="abrirMenuFerramentas(this)" aria-haspopup="menu" aria-expanded="false">TODOS <span class="filter-menu-chevron" aria-hidden="true">⌄</span></button>`;
     html += `<button class="btn-busca-filtros ${buscaPedidoTexto ? 'ativo' : ''}" onclick="abrirBuscaPedido()" id="btnBuscaPedido" title="Buscar item" aria-label="Buscar item">🔎</button>`;
     html += `<button class="btn-cancelar-selecao-inline" onclick="cancelarSelecaoCompras()" id="btnCancelarSelecaoCompras" title="Cancelar seleção" aria-label="Cancelar seleção" style="display:${compras && modoSelecaoAtivo ? 'inline-flex' : 'none'}">✓</button>`;
     html += `<div id="boxBuscaPedido" class="busca-filtros-inline" style="display:${buscaPedidoTexto ? 'flex' : 'none'}"><input type="text" id="inputBuscaPedidoInline" value="${escaparHtml(buscaPedidoTexto)}" placeholder="Buscar item..." oninput="aplicarBuscaPedido()" onkeydown="if(event.key === 'Escape') limparBuscaPedido()"></div>`;

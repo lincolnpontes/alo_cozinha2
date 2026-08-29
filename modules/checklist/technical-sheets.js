@@ -7,6 +7,9 @@
     let formIngredients = [];
     let syncPromise = null;
     let pollTimer = null;
+    let pendingPhoto = '';
+    let removePhoto = false;
+    const photoCache = new Map();
 
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function id(prefix) { return `${prefix}_${global.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`; }
@@ -46,6 +49,7 @@
                 perda: Math.max(0, Math.min(95, Number(item.perda || 0)))
             })) : [],
             preparo: String(source.preparo || ''),
+            fotoReferencia: source.fotoReferencia === true,
             atualizadoEm: Number(source.atualizadoEm || Date.now()),
             revisao: Number(source.revisao || 1),
             excluida: source.excluida === true
@@ -202,6 +206,38 @@
         const cost = calculate(draftFromForm());
         target.innerHTML = `<div class="technical-cost-metric"><small>Custo do lote</small><strong>${money(cost.total)}</strong></div><div class="technical-cost-metric"><small>Custo por porção</small><strong>${money(cost.portionCost)}</strong></div><div class="technical-cost-metric"><small>CMV atual</small><strong>${cost.cmv ? `${cost.cmv.toFixed(1)}%` : '—'}</strong></div><div class="technical-cost-metric"><small>Preço sugerido</small><strong>${cost.suggested ? money(cost.suggested) : '—'}</strong></div>${cost.missing.length ? `<div class="technical-cost-warning">Custo incompleto: ${escapeHtml(cost.missing.join(', '))}. Cadastre preço e unidade em Lista de Compras.</div>` : ''}`;
     }
+    function photoKey(sheetId) { return `ficha_${sheetId}`; }
+    function showPhotoPreview(url) {
+        const image = document.getElementById('technicalSheetPhotoPreview');
+        const empty = document.getElementById('technicalSheetPhotoEmpty');
+        const remove = document.getElementById('technicalSheetPhotoRemove');
+        if (image) { image.src = url || ''; image.style.display = url ? 'block' : 'none'; }
+        if (empty) empty.style.display = url ? 'none' : 'grid';
+        if (remove) remove.style.display = url ? 'inline-flex' : 'none';
+    }
+    async function resolvePhoto(sheetId) {
+        if (photoCache.has(sheetId)) return photoCache.get(sheetId);
+        if (!deps.getUrl()) return '';
+        const response = await global.AloApi.getTaskPhoto(deps.getUrl(), photoKey(sheetId));
+        const url = response?.encontrada ? response.url : '';
+        if (url) photoCache.set(sheetId, url);
+        return url;
+    }
+    async function handlePhoto(input) {
+        try {
+            pendingPhoto = await global.AloTasks.compressPhoto(input?.files?.[0]);
+            removePhoto = false;
+            showPhotoPreview(pendingPhoto);
+        } catch (error) {
+            global.AloUiDialog?.notice(error.message || 'Não foi possível preparar a foto.', { title:'Foto não carregada', confirmText:'Entendi' });
+        } finally { if (input) input.value = ''; }
+    }
+    function removePhotoDraft() {
+        pendingPhoto = '';
+        removePhoto = true;
+        photoCache.delete(document.getElementById('technicalSheetId')?.value || '');
+        showPhotoPreview('');
+    }
     async function openForm(sheetId = '') {
         await refreshPurchaseProducts();
         const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida) || normalizeSheet({ id:id('ficha'), cmvDesejado:30, ingredientes:[] });
@@ -219,8 +255,12 @@
         document.getElementById('technicalSheetPreparation').value = sheet.preparo;
         document.getElementById('technicalSheetDelete').style.display = sheetId ? 'block' : 'none';
         formIngredients = clone(sheet.ingredientes);
+        pendingPhoto = '';
+        removePhoto = false;
+        showPhotoPreview('');
         renderIngredients(); previewCost();
         deps.openModalTop?.('modalTechnicalSheet') || (document.getElementById('modalTechnicalSheet').style.display = 'flex');
+        if (sheetId && sheet.fotoReferencia) resolvePhoto(sheet.id).then(showPhotoPreview).catch(() => showPhotoPreview(''));
     }
     function closeForm() { document.getElementById('modalTechnicalSheet').style.display = 'none'; }
     function addIngredient() { formIngredients = readIngredients(); formIngredients.push({ id:id('insumo'), produtoId:'', nome:'', quantidade:0, unidade:'g', perda:0 }); renderIngredients(); }
@@ -231,12 +271,27 @@
         saveState(); render(); setSyncStatus('syncing', 'Alterações aguardando envio');
         syncNow().catch(() => {});
     }
-    function saveForm() {
+    async function saveForm() {
         const draft = draftFromForm();
         if (!draft.nome || !draft.setorId) return global.AloUiDialog?.notice('Informe o nome e o setor da ficha.', { title:'Dados necessários', confirmText:'Entendi' });
         if (!draft.rendimento || !draft.porcao) return global.AloUiDialog?.notice('Informe o rendimento e o tamanho da porção.', { title:'Rendimento necessário', confirmText:'Entendi' });
         if (!draft.ingredientes.length) return global.AloUiDialog?.notice('Adicione pelo menos um ingrediente.', { title:'Ingrediente necessário', confirmText:'Entendi' });
         const current = state.sheets.find(item => item.id === draft.id);
+        draft.fotoReferencia = removePhoto ? false : Boolean(pendingPhoto || current?.fotoReferencia);
+        if (pendingPhoto || removePhoto) {
+            if (!deps.getUrl()) return global.AloUiDialog?.notice('Configure a nuvem antes de salvar uma foto.', { title:'Nuvem necessária', confirmText:'Entendi' });
+            try {
+                if (pendingPhoto) {
+                    await global.AloApi.uploadTaskPhoto(deps.getUrl(), photoKey(draft.id), pendingPhoto);
+                    photoCache.set(draft.id, pendingPhoto);
+                } else {
+                    await global.AloApi.deleteTaskPhoto(deps.getUrl(), photoKey(draft.id));
+                    photoCache.delete(draft.id);
+                }
+            } catch (error) {
+                return global.AloUiDialog?.notice('A foto não foi enviada. A ficha foi preservada para você tentar novamente.', { title:'Foto não enviada', confirmText:'Entendi' });
+            }
+        }
         draft.revisao = Number(current?.revisao || 0) + 1;
         draft.atualizadoEm = Date.now();
         queueSheet(draft); closeForm(); showView('sheets');
@@ -254,7 +309,8 @@
         if (!sheet) return;
         const cost = calculate(sheet);
         document.getElementById('technicalSheetDetailTitle').textContent = sheet.nome;
-        document.getElementById('technicalSheetDetailBody').innerHTML = `<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><ol class="technical-detail-list">${String(sheet.preparo || 'Preparo não informado.').split(/\r?\n/).filter(Boolean).map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
+        document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><ol class="technical-detail-list">${String(sheet.preparo || 'Preparo não informado.').split(/\r?\n/).filter(Boolean).map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
+        if (sheet.fotoReferencia) resolvePhoto(sheet.id).then(url => { const target = document.getElementById('technicalSheetDetailPhoto'); if (!target) return; if (!url) target.remove(); else target.innerHTML = `<img src="${escapeHtml(url)}" alt="Foto da ficha técnica">`; }).catch(() => document.getElementById('technicalSheetDetailPhoto')?.remove());
         document.getElementById('technicalSheetDetailEdit').onclick = () => { document.getElementById('modalTechnicalSheetDetail').style.display = 'none'; openForm(sheet.id); };
         deps.openModalTop?.('modalTechnicalSheetDetail') || (document.getElementById('modalTechnicalSheetDetail').style.display = 'flex');
     }
@@ -325,6 +381,6 @@
 
     global.AloTechnicalSheets = Object.freeze({
         configure, showView, openManager, render, openForm, closeForm, addIngredient, removeIngredient,
-        previewCost, saveForm, deleteCurrent, openDetail, syncNow, getBackup, restoreBackup, calculate
+        previewCost, saveForm, deleteCurrent, openDetail, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });
 })(window);

@@ -143,6 +143,7 @@
             const principal = programacoes[0];
             return {
                 ...task,
+                ativo: task.ativo !== false,
                 programacoes,
                 horario: principal.horario,
                 recorrencia: principal.recorrencia,
@@ -175,7 +176,7 @@
         return new Date(`${activity.data}T${activity.horario || '00:00'}:00`);
     }
     function appliesToday(task, schedule, date = new Date()) {
-        if (!task.ativo) return false;
+        if (task.ativo === false) return false;
         if (schedule.recorrencia === 'unica') return schedule.dataUnica === todayKey(date);
         if (schedule.recorrencia === 'mensal') return date.getDate() === Number(schedule.diaMes || 1);
         if (schedule.recorrencia === 'intervalo_meses') {
@@ -187,40 +188,30 @@
         const days = Array.isArray(schedule.dias) ? schedule.dias.map(Number) : [];
         return schedule.recorrencia === 'diaria' || days.includes(date.getDay());
     }
-    function generateToday() {
+    function materializeTaskToday(task) {
         const key = todayKey();
         const existing = new Set(activities.map(activity => activity.id));
-        db().tarefas.forEach(task => {
-            getTaskSchedules(task).forEach((schedule, index) => {
-                if (!appliesToday(task, schedule)) return;
-                const id = schedule.id === 'principal'
-                    ? `atividade_${task.id}_${key}`
-                    : `atividade_${task.id}_${schedule.id}_${key}`;
-                if (existing.has(id)) return;
-                const activity = normalizeActivity({
-                    id,
-                    tarefaId: task.id,
-                    programacaoId: schedule.id,
-                    nome: task.nome,
-                    setorId: task.setorId,
-                    funcionarioId: task.funcionarioId || '',
-                    data: key,
-                    horario: schedule.horario,
-                    prioridade: task.prioridade,
-                    tempoEsperadoMin: task.tempoEsperadoMin,
-                    permiteRemarcacao: Boolean(task.permiteRemarcacao),
-                    registroPop: Boolean(task.registroPop),
-                    procedimento: task.instrucoes || '',
-                    procedimentoFormato: hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato),
-                    alarmeStatus: schedule.alarme ? 'aguardando' : 'desativado',
-                    status: 'pendente',
-                    atualizadoEm: nowIso(),
-                    syncState: navigator.onLine ? 'queued' : 'offline'
-                });
-                queueActivity(activity, '', false);
-                existing.add(id);
-            });
+        getTaskSchedules(task).forEach(schedule => {
+            if (!appliesToday(task, schedule)) return;
+            const id = schedule.id === 'principal'
+                ? `atividade_${task.id}_${key}`
+                : `atividade_${task.id}_${schedule.id}_${key}`;
+            const current = activities.find(activity => activity.id === id);
+            if (current) {
+                if (current.status !== 'pendente') return;
+                const refreshed = normalizeActivity({ ...current, nome:task.nome, setorId:task.setorId, funcionarioId:task.funcionarioId || '', horario:schedule.horario, prioridade:task.prioridade, tempoEsperadoMin:task.tempoEsperadoMin, permiteRemarcacao:Boolean(task.permiteRemarcacao), registroPop:Boolean(task.registroPop), procedimento:task.instrucoes || '', procedimentoFormato:hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato), alarmeStatus:schedule.alarme ? current.alarmeStatus : 'desativado' });
+                const changed = ['nome','setorId','funcionarioId','horario','prioridade','tempoEsperadoMin','permiteRemarcacao','registroPop','procedimento','procedimentoFormato','alarmeStatus'].some(field => refreshed[field] !== current[field]);
+                if (changed) queueActivity(refreshed, 'pendente', false);
+                return;
+            }
+            const activity = normalizeActivity({ id, tarefaId:task.id, programacaoId:schedule.id, nome:task.nome, setorId:task.setorId, funcionarioId:task.funcionarioId || '', data:key, horario:schedule.horario, prioridade:task.prioridade, tempoEsperadoMin:task.tempoEsperadoMin, permiteRemarcacao:Boolean(task.permiteRemarcacao), registroPop:Boolean(task.registroPop), procedimento:task.instrucoes || '', procedimentoFormato:hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato), alarmeStatus:schedule.alarme ? 'aguardando' : 'desativado', status:'pendente', atualizadoEm:nowIso(), syncState:navigator.onLine ? 'queued' : 'offline' });
+            queueActivity(activity, '', false);
+            existing.add(id);
         });
+    }
+
+    function generateToday() {
+        db().tarefas.forEach(materializeTaskToday);
         saveRuntime();
     }
     function upsertActivity(activity) {
@@ -758,6 +749,7 @@
         if (!list) return;
         const groups = activityGroups();
         const allToday = activities.filter(item => item.data === todayKey() && (selectedArea === 'todos' || item.setorId === selectedArea));
+        renderDashboard(allToday);
         document.getElementById('taskTabTotalCount').innerText = `(${allToday.length})`;
         document.getElementById('taskTabPendingCount').innerText = `(${allToday.filter(item => item.status === 'pendente').length})`;
         document.getElementById('taskTabRunningCount').innerText = `(${allToday.filter(item => item.status === 'em_execucao').length})`;
@@ -791,6 +783,28 @@
             </article>`;
         };
         list.innerHTML = groups.map(group => `<li class="task-section ${group.className || ''}"><div class="task-section-title">${group.title}<span>${group.items.length}</span></div><div class="task-section-grid">${group.items.map(renderCard).join('')}</div></li>`).join('');
+    }
+
+    function renderDashboard(allToday) {
+        const dashboard = document.getElementById('tasksDashboard');
+        if (!dashboard) return;
+        const visible = selectedTab === 'total';
+        dashboard.classList.toggle('visible', visible);
+        if (!visible) { dashboard.innerHTML = ''; return; }
+        const now = new Date();
+        const done = allToday.filter(item => item.status === 'concluida');
+        const running = allToday.filter(item => item.status === 'em_execucao');
+        const late = allToday.filter(item => item.status === 'pendente' && scheduledDate(item) < now);
+        const pending = allToday.filter(item => item.status === 'pendente' && scheduledDate(item) >= now);
+        const total = allToday.length;
+        const percent = total ? Math.round((done.length / total) * 100) : 0;
+        const averageSeconds = done.length ? Math.round(done.reduce((sum, item) => sum + Number(item.duracaoSegundos || 0), 0) / done.length) : 0;
+        const registered = done.filter(item => {
+            const template = db().tarefas.find(task => task.id === item.tarefaId);
+            return item.registroPop || template?.registroPop || template?.fotoReferencia;
+        }).length;
+        const width = count => total ? `${Math.max(0, count / total * 100)}%` : '0%';
+        dashboard.innerHTML = `<div class="tasks-dashboard-main"><div class="tasks-dashboard-progress"><strong>${percent}%</strong><span>concluídas hoje</span></div><div class="tasks-dashboard-counts"><div class="tasks-dashboard-count"><b>${pending.length}</b><span>Pendentes</span></div><div class="tasks-dashboard-count running"><b>${running.length}</b><span>Em execução</span></div><div class="tasks-dashboard-count late"><b>${late.length}</b><span>Atrasadas</span></div><div class="tasks-dashboard-count done"><b>${done.length}</b><span>Concluídas</span></div></div></div><div class="tasks-dashboard-bar" aria-label="Distribuição das atividades"><span class="done" style="width:${width(done.length)}"></span><span class="running" style="width:${width(running.length)}"></span><span class="pending" style="width:${width(pending.length)}"></span><span class="late" style="width:${width(late.length)}"></span></div><div class="tasks-dashboard-foot"><span>Tempo médio: ${formatDuration(averageSeconds)}</span><span>POP/foto: ${registered}</span></div>`;
     }
 
     function employeesForActivity(activity) {
@@ -1219,6 +1233,7 @@
     }
     function openSettingsMenu() {
         closeAllSettings();
+        global.sincronizarSwitchesLogin?.();
         deps.openModalTop('modalConfigTasksMenu');
     }
     function backToControlPanel() {
@@ -1540,7 +1555,7 @@
                 <section class="task-schedule-section"><div class="task-form-section-title"><strong>Horários e frequência</strong><button type="button" class="task-add-schedule" onclick="AloTasks.openScheduleEditor()">＋ Cadastrar horário</button></div><div id="taskScheduleList" class="task-schedule-list"></div><div id="taskScheduleEditor" class="task-schedule-editor" style="display:none"></div></section>
                 <div class="task-form-grid"><div class="form-group"><label>Prioridade:</label><select id="taskPriority"><option value="normal" ${task.prioridade !== 'urgente' ? 'selected' : ''}>Normal</option><option value="urgente" ${task.prioridade === 'urgente' ? 'selected' : ''}>Urgente</option></select></div><div class="form-group"><label>Tempo esperado (min.):</label><input id="taskExpected" type="number" min="0" inputmode="numeric" value="${Number(task.tempoEsperadoMin || 0)}" onfocus="this.select()" onclick="this.select()"></div></div>
                 <div class="form-group"><label>Procedimento:</label>${richEditorMarkup('taskInstructions', task.instrucoes, task.procedimentoFormato, 'Escreva o procedimento', 1800)}</div>
-                <div class="task-photo-field"><div class="task-form-section-title"><strong>Foto de referência</strong><button type="button" class="task-photo-pick" onclick="document.getElementById('taskPhotoInput').click()">📷 Escolher foto</button></div><input id="taskPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="AloTasks.handleTaskPhoto(this)"><div class="task-photo-preview"><span id="taskPhotoPreviewEmpty">Nenhuma foto cadastrada</span><img id="taskPhotoPreviewImage" alt="Prévia da foto de referência" style="display:none"><button type="button" id="taskPhotoRemoveButton" onclick="AloTasks.removeTaskPhotoDraft()" style="display:none">Remover foto</button></div></div>
+                <div class="task-photo-field"><div class="task-form-section-title"><strong>Foto de referência</strong><div class="task-photo-actions"><button type="button" class="task-photo-pick" onclick="document.getElementById('taskCameraInput').click()">📷 Tirar foto</button><button type="button" class="task-photo-pick" onclick="document.getElementById('taskPhotoInput').click()">▣ Anexar</button></div></div><input id="taskCameraInput" type="file" accept="image/*" capture="environment" hidden onchange="AloTasks.handleTaskPhoto(this)"><input id="taskPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="AloTasks.handleTaskPhoto(this)"><div class="task-photo-preview"><span id="taskPhotoPreviewEmpty">Nenhuma foto cadastrada</span><img id="taskPhotoPreviewImage" alt="Prévia da foto de referência" style="display:none"><button type="button" id="taskPhotoRemoveButton" onclick="AloTasks.removeTaskPhotoDraft()" style="display:none">Remover foto</button></div></div>
                 <div class="task-option-grid"><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">📅</b><strong>Permitir remarcar</strong></span><span class="switch-moderno"><input id="taskAllowReschedule" type="checkbox" ${task.permiteRemarcacao ? 'checked' : ''}><span class="switch-trilho"></span></span></label><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">📋</b><strong>Exigir registro POP</strong></span><span class="switch-moderno"><input id="taskPopRequired" type="checkbox" ${task.registroPop ? 'checked' : ''}><span class="switch-trilho"></span></span></label><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">✓</b><strong>Tarefa ativa</strong></span><span class="switch-moderno"><input id="taskActive" type="checkbox" ${task.ativo !== false ? 'checked' : ''}><span class="switch-trilho"></span></span></label></div>`;
             renderTaskSchedules();
         }
@@ -1621,6 +1636,10 @@
                 }
             }
             if (index >= 0) db().tarefas[index] = value; else db().tarefas.push(value);
+            materializeTaskToday(value);
+            selectedArea = value.setorId;
+            selectedTab = 'total';
+            localStorage.setItem(STORAGE_SELECTED_AREA, selectedArea);
         }
         deps.markDatabaseChanged();
         document.getElementById('modalTaskForm').style.display = 'none';
@@ -1851,7 +1870,7 @@
         startTask, completeTask, markTaskNotDone, confirmEmployeeSelection,
         openTaskDetails, openFinishedTask, closeFinishedTask, undoFinishedTask, returnTaskToPending,
         toggleTaskStatusEditMenu, runTaskDetailAction,
-        openReschedule, cancelReschedule, confirmReschedule,
+        openReschedule, cancelReschedule, confirmReschedule, compressPhoto:compressTaskPhoto,
         cancelPopCompletion, confirmPopCompletion,
         openAlarmTask, startAlarmTask, completeAlarmTask, dismissAlarm,
         openSettingsMenu, backToControlPanel, backToSettingsMenu, backFromManager,

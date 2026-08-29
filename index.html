@@ -2,46 +2,46 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="icon.png?v=2.1.11">
-    <link rel="apple-touch-icon" href="icon.png?v=2.1.11">
+    <link rel="icon" href="icon.png?v=2.1.12">
+    <link rel="apple-touch-icon" href="icon.png?v=2.1.12">
     <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v2.1.11</title>
-    <link rel="stylesheet" href="styles.css?v=2.1.11">
-    <link rel="stylesheet" href="modules/checklist/styles.css?v=2.1.11">
+    <title>Alô Cozinha v2.1.12</title>
+    <link rel="stylesheet" href="styles.css?v=2.1.12">
+    <link rel="stylesheet" href="modules/checklist/styles.css?v=2.1.12">
 </head>
 <body class="theme-panelas" oncontextmenu="return false;">
 
 <div id="overlayInatividade"></div>
 
 <div id="splashScreen">
-    <img src="icon.png?v=2.1.11" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
+    <img src="icon.png?v=2.1.12" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v2.1.11</div>
+    <div class="splash-versao">v2.1.12</div>
 </div>
 
 <main id="moduleHome" class="module-home" aria-label="Escolher módulo">
     <div class="module-home-inner">
-        <img src="icon.png?v=2.1.11" alt="Alô Cozinha" class="module-home-logo">
+        <img src="icon.png?v=2.1.12" alt="Alô Cozinha" class="module-home-logo">
         <h1>Alô Cozinha</h1>
-        <div class="module-home-version">v2.1.11</div>
+        <div class="module-home-version">v2.1.12</div>
         <div class="module-choice-grid">
-            <button class="module-choice module-choice-kds" onclick="AloTasks.openModule('kds')">
-                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.11" alt="">
+            <button class="module-choice module-choice-kds" onclick="abrirModuloComLogin('kds')">
+                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.12" alt="">
                 <strong>KDS - Sistema de Pedidos</strong>
             </button>
-            <button class="module-choice module-choice-tasks" onclick="AloTasks.openModule('tasks')">
-                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.11" alt="">
+            <button class="module-choice module-choice-tasks" onclick="abrirModuloComLogin('checklist')">
+                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.12" alt="">
                 <strong>Checklist</strong>
             </button>
             <button class="module-choice module-choice-feira" onclick="abrirModuloCompras()">
-                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.11" alt="">
+                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.12" alt="">
                 <strong>Lista de Compras</strong>
             </button>
             <button class="module-choice module-choice-l42" onclick="abrirModuloL42()">
-                <img class="module-choice-icon" src="modules/l42/icon.png?v=2.1.11" alt="">
+                <img class="module-choice-icon" src="modules/l42/icon.png?v=2.1.12" alt="">
                 <strong>Etiquetas</strong>
             </button>
             <button class="module-choice module-choice-settings" onclick="abrirLoginAdmin('painel')">
@@ -53,7 +53,7 @@
 </main>
 
 <section id="publicTaskView" class="public-task-view" style="display:none" aria-label="Consulta da atividade">
-    <header><img src="icon.png?v=2.1.11" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
+    <header><img src="icon.png?v=2.1.12" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
     <main id="publicTaskContent"><div class="tasks-empty">Carregando atividade...</div></main>
 </section>
 
@@ -73,7 +73,7 @@
     <div class="header" id="mainHeader">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="KDS, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-kds.png?v=2.1.11" class="module-nav-icon" alt="">
+            <img src="assets/module-kds.png?v=2.1.12" class="module-nav-icon" alt="">
         </button>
         <div class="module-header-center">
             <div class="header-area-picker">
@@ -91,6 +91,7 @@
         </div>
 
         <div class="module-header-actions">
+            <button id="kdsOperatorChip" class="module-operator-chip" type="button" onclick="abrirLoginAdmin('trocar_kds')" aria-label="Trocar pessoa no KDS" style="display:none"><span>👤</span><strong></strong></button>
             <button id="indicadorConexao" class="app-sync-indicator offline" type="button" onclick="tentarSincronizarAgora()" aria-live="polite" aria-label="Sincronizar KDS" title="Aguardando sincronização"></button>
             <button id="kdsSettingsButton" class="module-settings-button" onclick="abrirLoginAdmin('kds')" aria-label="Configurações KDS" title="Configurações KDS">⚙️</button>
         </div>
@@ -194,13 +195,20 @@
         <div class="modal-title" id="tituloLoginOperador">Acesso às configurações</div>
         <div class="form-group">
             <label for="operadorAdmin">Pessoa:</label>
-            <select id="operadorAdmin" onchange="limparErroSenha('erroSenhaAdmin'); if(this.value) document.getElementById('senhaAdmin').focus();">
+            <select id="operadorAdmin" onchange="limparErroSenha('erroSenhaAdmin'); limparPinAdmin();">
                 <option value="">Carregando operadores...</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="senhaAdmin">PIN <span style="font-weight:400; color:#66747d;">(se houver)</span>:</label>
-            <input type="password" id="senhaAdmin" placeholder="PIN do operador" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="current-password" oninput="this.value = this.value.replace(/[^0-9]/g, ''); limparErroSenha('erroSenhaAdmin')" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); confirmarSenhaAdmin(); }">
+            <label for="senhaAdmin">PIN:</label>
+            <input type="password" id="senhaAdmin" placeholder="••••" readonly autocomplete="off" aria-label="PIN digitado">
+            <div class="pin-display-dots" id="pinAdminDots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="pin-keypad" aria-label="Teclado do PIN">
+                <button type="button" onclick="digitarPinAdmin('1')">1</button><button type="button" onclick="digitarPinAdmin('2')">2</button><button type="button" onclick="digitarPinAdmin('3')">3</button>
+                <button type="button" onclick="digitarPinAdmin('4')">4</button><button type="button" onclick="digitarPinAdmin('5')">5</button><button type="button" onclick="digitarPinAdmin('6')">6</button>
+                <button type="button" onclick="digitarPinAdmin('7')">7</button><button type="button" onclick="digitarPinAdmin('8')">8</button><button type="button" onclick="digitarPinAdmin('9')">9</button>
+                <button type="button" class="pin-key-clear" onclick="limparPinAdmin()">Limpar</button><button type="button" onclick="digitarPinAdmin('0')">0</button><button type="button" aria-label="Apagar último número" onclick="apagarPinAdmin()">⌫</button>
+            </div>
             <div id="erroSenhaAdmin" class="senha-feedback" role="alert"></div>
         </div>
         <div class="modal-actions">
@@ -227,7 +235,7 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.11</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.12</div>
 
         <button class="btn-outline" onclick="AloFeiraModule.openManager('restaurante', 'central')">🏢 Dados do Restaurante</button>
         <button class="btn-outline" onclick="abrirGerenciar('areas')">🗺️ Setores do Estabelecimento</button>
@@ -268,6 +276,16 @@
                     <div id="sharedPersonEmojiGrid" class="shared-person-emoji-grid" role="listbox" aria-labelledby="sharedPersonEmojiLabel"></div>
                 </div>
             </div>
+            <div class="shared-person-pin-field">
+                <label>Acesso:</label>
+                <button id="sharedPersonPinButton" class="shared-picker-button shared-pin-button" type="button" onclick="AloSharedData.togglePersonPinPicker()" aria-haspopup="dialog" aria-expanded="false">PIN de acesso</button>
+                <div id="sharedPersonPinPicker" class="shared-floating-picker shared-pin-picker" style="display:none">
+                    <strong id="sharedPersonPinTitle">Definir PIN</strong>
+                    <input id="sharedPersonPin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="Novo PIN" oninput="this.value=this.value.replace(/[^0-9]/g,'');AloSharedData.updatePersonPinDraft()">
+                    <input id="sharedPersonPinRemove" type="hidden" value="0">
+                    <div class="shared-pin-picker-actions"><button id="sharedPersonPinRemoveButton" class="btn-danger-soft" type="button" onclick="AloSharedData.removePersonPinDraft()">Remover PIN</button><button class="btn-action" type="button" onclick="AloSharedData.confirmPersonPinDraft()">Aplicar</button></div>
+                </div>
+            </div>
         </div>
         <div class="shared-switch-list">
             <label class="task-toggle-row"><span class="task-toggle-copy"><b>👤</b><strong>Funcionário</strong></span><span class="switch-moderno"><input id="sharedPersonEmployee" type="checkbox" onchange="AloSharedData.toggleEmployeeFields()"><span class="switch-trilho"></span></span></label>
@@ -275,23 +293,20 @@
             <label class="task-toggle-row shared-admin-toggle"><span class="task-toggle-copy"><b>★</b><strong>Administrador</strong></span><span class="switch-moderno"><input id="sharedPersonAdmin" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label>
         </div>
         <div class="shared-access-groups">
-            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-kds.png?v=2.1.11" alt=""><b>KDS</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações KDS</strong></span><span class="switch-moderno"><input id="sharedPersonKdsConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
-            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-checklist.png?v=2.1.11" alt=""><b>Checklist</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações Checklist</strong></span><span class="switch-moderno"><input id="sharedPersonChecklistConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
+            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-kds.png?v=2.1.12" alt=""><b>KDS</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações KDS</strong></span><span class="switch-moderno"><input id="sharedPersonKdsConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
+            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-checklist.png?v=2.1.12" alt=""><b>Checklist</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações Checklist</strong></span><span class="switch-moderno"><input id="sharedPersonChecklistConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
             <section class="shared-access-card">
-                <div class="shared-access-heading"><img src="assets/module-feira.png?v=2.1.11" alt=""><b>Lista de Compras</b><span class="switch-moderno"><input id="sharedPersonComprasAccess" type="checkbox" aria-label="Acessar Lista de Compras" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></div>
+                <div class="shared-access-heading"><img src="assets/module-feira.png?v=2.1.12" alt=""><b>Lista de Compras</b></div>
                 <div id="sharedPersonComprasFields" class="shared-access-details">
                     <label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Receber no modo Compras</strong></span><span class="switch-moderno"><input id="sharedPersonComprasReceive" type="checkbox"><span class="switch-trilho"></span></span></label>
                     <label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Comprar no modo Compras</strong></span><span class="switch-moderno"><input id="sharedPersonComprasBuy" type="checkbox"><span class="switch-trilho"></span></span></label>
-                    <div class="shared-access-child shared-category-picker-wrap"><button id="sharedPersonComprasCategoryButton" class="shared-category-picker-button" type="button" onclick="AloSharedData.toggleComprasCategories()" aria-haspopup="dialog" aria-expanded="false">Categorias permitidas <span>›</span></button><div id="sharedPersonComprasCategoryPicker" class="shared-floating-picker shared-category-picker" style="display:none"><div class="shared-category-title"><strong>Categorias permitidas</strong><span>Pedir</span><span>Comprar</span></div><div id="sharedPersonComprasCategories"></div></div></div>
+                    <div class="shared-access-child shared-category-picker-wrap"><button id="sharedPersonComprasCategoryButton" class="shared-category-picker-button" type="button" onclick="AloSharedData.toggleComprasCategories()" aria-haspopup="dialog" aria-expanded="false"><strong>Permissões por categoria</strong><small id="sharedPersonComprasCategorySummary"></small><span aria-hidden="true">›</span></button></div>
                 </div>
             </section>
             <section class="shared-access-card">
-                <div class="shared-access-heading"><img src="modules/l42/icon.png?v=2.1.11" alt=""><b>Etiquetas</b></div>
+                <div class="shared-access-heading"><img src="modules/l42/icon.png?v=2.1.12" alt=""><b>Etiquetas</b></div>
                 <div id="sharedPersonLabelsFields" class="shared-access-details"><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações Etiquetas</strong></span><span class="switch-moderno"><input id="sharedPersonLabelsConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></div>
             </section>
-        </div>
-        <div id="sharedPersonLoginFields" class="shared-login-fields">
-            <div class="form-group shared-pin-field"><label for="sharedPersonPin">PIN de acesso:</label><input id="sharedPersonPin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
         </div>
         <div class="modal-actions shared-person-actions">
             <button id="sharedPersonActiveAction" class="btn-danger" type="button" onclick="AloSharedData.toggleCurrentPersonActive()">Desativar</button>
@@ -301,9 +316,20 @@
     </div>
 </div>
 
+<div class="modal-overlay shared-category-modal" id="sharedPersonComprasCategoryPicker">
+    <div class="modal shared-category-dialog">
+        <div class="modal-title">Permissões por categoria</div>
+        <div class="shared-category-intro">Escolha o que esta pessoa pode pedir e comprar.</div>
+        <div class="shared-category-title"><strong>Categoria</strong><span>Pedir</span><span>Comprar</span></div>
+        <div id="sharedPersonComprasCategories" class="shared-category-list"></div>
+        <div class="modal-actions"><button class="btn-cancel" type="button" onclick="AloSharedData.cancelComprasCategories()">Cancelar</button><button class="btn-action" type="button" onclick="AloSharedData.saveComprasCategories()">Salvar e voltar</button></div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modalConfigCompras">
     <div class="modal">
         <div class="modal-title">Configurações Compras</div>
+        <label class="task-toggle-row module-login-setting"><span class="task-toggle-copy"><strong>Exigir login</strong></span><span class="switch-moderno"><input id="loginRequiredCompras" type="checkbox" onchange="salvarExigirLoginModulo('compras', this.checked)"><span class="switch-trilho"></span></span></label>
         <button class="btn-outline" onclick="AloFeiraModule.openManager('produtos')">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="AloFeiraModule.openManager('fornecedores')">🚚 Gerenciar Fornecedores</button>
         <div class="modal-actions"><button class="btn-cancel" onclick="voltarConfiguracoesCompras()">Voltar</button></div>
@@ -313,6 +339,7 @@
 <div class="modal-overlay" id="modalConfigEtiquetas">
     <div class="modal">
         <div class="modal-title">Configurações Etiquetas</div>
+        <label class="task-toggle-row module-login-setting"><span class="task-toggle-copy"><strong>Exigir login</strong></span><span class="switch-moderno"><input id="loginRequiredL42" type="checkbox" onchange="salvarExigirLoginModulo('l42', this.checked)"><span class="switch-trilho"></span></span></label>
         <button class="btn-outline" onclick="AloL42Module.openSettings('produtos')">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="AloL42Module.openSettings('categorias')">🏷️ Gerenciar Categorias</button>
         <button class="btn-outline" onclick="AloL42Module.openSettings('etiquetas')">🖨️ Impressão e Etiqueta</button>
@@ -324,6 +351,7 @@
 <div class="modal-overlay" id="modalConfigKds">
     <div class="modal">
         <div class="modal-title">Configurações KDS</div>
+        <label class="task-toggle-row module-login-setting"><span class="task-toggle-copy"><strong>Exigir login</strong></span><span class="switch-moderno"><input id="loginRequiredKds" type="checkbox" onchange="salvarExigirLoginModulo('kds', this.checked)"><span class="switch-trilho"></span></span></label>
         <button class="btn-outline" onclick="abrirMenuProdutos()">🍔 Gerenciar Produtos</button>
         <button class="btn-outline" onclick="abrirModalMetricas()" style="border-color:#2e7d32; color:#2e7d32;">📊 Relatórios por Item</button>
         <button class="btn-outline" onclick="abrirConfiguracoesBasicas()">⚙️ Configurações Básicas</button>
@@ -334,6 +362,7 @@
 <div class="modal-overlay" id="modalConfigTasksMenu">
     <div class="modal">
         <div class="modal-title">Configurações Tarefas</div>
+        <label class="task-toggle-row module-login-setting"><span class="task-toggle-copy"><strong>Exigir login</strong></span><span class="switch-moderno"><input id="loginRequiredChecklist" type="checkbox" onchange="salvarExigirLoginModulo('checklist', this.checked)"><span class="switch-trilho"></span></span></label>
         <button class="btn-outline" onclick="AloTasks.manageTemplates()">📋 Gerenciar Tarefas</button>
         <button class="btn-outline" onclick="AloTasks.openReports()" style="border-color:#00695c; color:#00695c;">📊 Relatórios por Tarefas</button>
         <button class="btn-outline" onclick="AloTechnicalSheets.openManager()" style="border-color:#7b3fb5; color:#6a329f;">🍽️ Fichas Técnicas</button>
@@ -487,7 +516,7 @@
     <header class="tasks-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Checklist, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-checklist.png?v=2.1.11" class="module-nav-icon" alt="">
+            <img src="assets/module-checklist.png?v=2.1.12" class="module-nav-icon" alt="">
         </button>
         <div class="module-header-center">
             <div class="header-area-picker tasks-area-picker">
@@ -501,6 +530,7 @@
             </div>
         </div>
         <div class="module-header-actions">
+            <button id="tasksOperatorChip" class="module-operator-chip" type="button" onclick="abrirLoginAdmin('trocar_checklist')" aria-label="Trocar pessoa no Checklist" style="display:none"><span>👤</span><strong></strong></button>
             <button id="tasksSyncIndicator" class="app-sync-indicator offline" onclick="AloTasks.syncNow()" aria-live="polite" aria-label="Sincronizar Checklist" title="Aguardando sincronização"></button>
             <button id="tasksSettingsButton" class="module-settings-button" onclick="abrirLoginAdmin('tasks')" aria-label="Configurações do Checklist" title="Configurações do Checklist">⚙️</button>
         </div>
@@ -511,13 +541,14 @@
     </div>
     <div class="tasks-toolbar">
         <div class="tasks-tabs" role="tablist">
-            <button class="active task-tab-total" data-task-tab="total" onclick="AloTasks.setTab('total')">Total <span id="taskTabTotalCount">(0)</span></button>
+            <button class="active task-tab-total" data-task-tab="total" onclick="AloTasks.setTab('total')">Geral <span id="taskTabTotalCount">(0)</span></button>
             <button class="task-tab-pending" data-task-tab="pendentes" onclick="AloTasks.setTab('pendentes')">Pendentes <span id="taskTabPendingCount">(0)</span></button>
             <button class="task-tab-running" data-task-tab="em_execucao" onclick="AloTasks.setTab('em_execucao')">Em execução <span id="taskTabRunningCount">(0)</span></button>
             <button class="task-tab-completed" data-task-tab="concluidas" onclick="AloTasks.setTab('concluidas')">Concluídas <span id="taskTabCompletedCount">(0)</span></button>
         </div>
     </div>
     <div class="tasks-scroll">
+        <section id="tasksDashboard" class="tasks-dashboard" aria-label="Panorama de hoje"></section>
         <ul id="tasksList" class="tasks-list"></ul>
     </div>
     <section id="technicalSheetsView" class="technical-sheets-view" style="display:none" aria-label="Fichas Técnicas">
@@ -534,7 +565,7 @@
         <section class="technical-form-section"><h3>1. Identificação</h3><div class="task-form-grid"><div class="form-group"><label for="technicalSheetName">Nome do preparo:</label><input id="technicalSheetName" type="text" placeholder="Ex: Molho de tomate"></div><div class="form-group"><label for="technicalSheetCategory">Categoria:</label><input id="technicalSheetCategory" type="text" placeholder="Ex: Molhos"></div></div><div class="form-group"><label for="technicalSheetArea">Setor:</label><select id="technicalSheetArea"></select></div></section>
         <section class="technical-form-section"><h3>2. Rendimento</h3><div class="technical-four-grid"><div class="form-group"><label for="technicalSheetYield">Rendimento:</label><input id="technicalSheetYield" type="number" min="0" step="0.01" inputmode="decimal"></div><div class="form-group"><label for="technicalSheetYieldUnit">Unidade:</label><select id="technicalSheetYieldUnit"><option>g</option><option>kg</option><option>ml</option><option>L</option><option>un</option><option>porções</option></select></div><div class="form-group"><label for="technicalSheetPortion">Porção:</label><input id="technicalSheetPortion" type="number" min="0" step="0.01" inputmode="decimal"></div><div class="form-group"><label for="technicalSheetPortionUnit">Unidade:</label><select id="technicalSheetPortionUnit"><option>g</option><option>ml</option><option>un</option><option>porção</option></select></div></div><div class="technical-four-grid"><div class="form-group"><label for="technicalSheetSalePrice">Preço de venda:</label><input id="technicalSheetSalePrice" type="number" min="0" step="0.01" inputmode="decimal"></div><div class="form-group"><label for="technicalSheetTargetCmv">CMV desejado (%):</label><input id="technicalSheetTargetCmv" type="number" min="1" max="100" step="0.1" inputmode="decimal" value="30"></div></div></section>
         <section class="technical-form-section"><div class="technical-section-heading"><h3>3. Ingredientes</h3><button type="button" onclick="AloTechnicalSheets.addIngredient()">＋ Ingrediente</button></div><div id="technicalSheetIngredients" class="technical-ingredients"></div></section>
-        <section class="technical-form-section"><h3>4. Preparo</h3><div class="form-group"><label for="technicalSheetPreparation">Etapas e montagem:</label><textarea id="technicalSheetPreparation" rows="6" placeholder="Descreva uma etapa por linha"></textarea></div><div id="technicalSheetCostPreview" class="technical-cost-preview"></div></section>
+        <section class="technical-form-section"><h3>4. Preparo</h3><div class="form-group"><label for="technicalSheetPreparation">Etapas e montagem:</label><textarea id="technicalSheetPreparation" rows="6" placeholder="Descreva uma etapa por linha"></textarea></div><div class="task-photo-field"><div class="task-form-section-title"><strong>Foto do prato ou montagem</strong><div class="task-photo-actions"><button type="button" class="task-photo-pick" onclick="document.getElementById('technicalSheetCameraInput').click()">📷 Tirar foto</button><button type="button" class="task-photo-pick" onclick="document.getElementById('technicalSheetPhotoInput').click()">▣ Anexar</button></div></div><input id="technicalSheetCameraInput" type="file" accept="image/*" capture="environment" hidden onchange="AloTechnicalSheets.handlePhoto(this)"><input id="technicalSheetPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="AloTechnicalSheets.handlePhoto(this)"><div class="task-photo-preview"><span id="technicalSheetPhotoEmpty">Nenhuma foto cadastrada</span><img id="technicalSheetPhotoPreview" alt="Prévia da ficha técnica" style="display:none"><button type="button" id="technicalSheetPhotoRemove" onclick="AloTechnicalSheets.removePhotoDraft()" style="display:none">Remover foto</button></div></div><div id="technicalSheetCostPreview" class="technical-cost-preview"></div></section>
         <div class="modal-actions"><button class="btn-cancel" type="button" onclick="AloTechnicalSheets.closeForm()">Cancelar</button><button class="btn-action" type="button" onclick="AloTechnicalSheets.saveForm()">Salvar</button></div>
         <button id="technicalSheetDelete" class="btn-remover-pedido-edicao" type="button" onclick="AloTechnicalSheets.deleteCurrent()" style="display:none">Excluir ficha</button>
     </div>
@@ -548,7 +579,7 @@
     <header class="feira-module-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Compras, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-feira.png?v=2.1.11" class="module-nav-icon" alt="">
+            <img src="assets/module-feira.png?v=2.1.12" class="module-nav-icon" alt="">
         </button>
         <div class="feira-mode-picker header-area-picker">
             <button type="button" id="feiraModeButton" class="header-area-button" onclick="AloFeiraModule.toggleModePicker()" aria-haspopup="listbox" aria-expanded="false" aria-label="Escolher operação de compras">
@@ -576,11 +607,11 @@
             <button id="feiraSettingsButton" class="module-settings-button" type="button" onclick="abrirLoginAdmin('compras')" aria-label="Configurações Compras" title="Configurações Compras">⚙️</button>
         </div>
     </header>
-    <iframe id="feiraFrame" class="feira-frame" title="Lista de Compras" data-src="modules/compras/index.html?embedded=1&amp;v=2.1.11-compras-r1"></iframe>
+    <iframe id="feiraFrame" class="feira-frame" title="Lista de Compras" data-src="modules/compras/index.html?embedded=1&amp;v=2.1.12-compras-r1"></iframe>
 </section>
 
 <section id="l42Module" class="l42-module" style="display:none;" aria-label="Etiquetas">
-    <iframe id="l42Frame" class="l42-frame" title="Etiquetas" allow="camera" data-src="modules/l42/index.html?embedded=1&amp;v=2.1.11"></iframe>
+    <iframe id="l42Frame" class="l42-frame" title="Etiquetas" allow="camera" data-src="modules/l42/index.html?embedded=1&amp;v=2.1.12"></iframe>
 </section>
 
 <div class="modal-overlay" id="modalMenuProdutos">
@@ -809,27 +840,27 @@
     </div>
 </div>
 
-<script defer src="core/module-host.js?v=2.1.11"></script>
-<script defer src="core/data-contracts.js?v=2.1.11"></script>
-<script defer src="core/shared-data.js?v=2.1.11"></script>
-<script defer src="modules/kds/module.js?v=2.1.11"></script>
-<script defer src="modules/checklist/module.js?v=2.1.11"></script>
-<script defer src="modules/compras/module.js?v=2.1.11"></script>
-<script defer src="modules/l42/module.js?v=2.1.11"></script>
-<script defer src="modules/kds/logic.js?v=2.1.11"></script>
-<script defer src="modules/kds/storage.js?v=2.1.11"></script>
-<script defer src="core/api.js?v=2.1.11"></script>
-<script defer src="modules/kds/audio.js?v=2.1.11"></script>
-<script defer src="modules/kds/sync.js?v=2.1.11"></script>
-<script defer src="core/catalog-sync.js?v=2.1.11"></script>
-<script defer src="core/ui-dialog.js?v=2.1.11"></script>
-<script defer src="modules/checklist/templates.js?v=2.1.11"></script>
-<script defer src="modules/checklist/vendor/qrcode.js?v=2.1.11"></script>
-<script defer src="modules/compras/host.js?v=2.1.11"></script>
-<script defer src="modules/l42/cloud.js?v=2.1.11"></script>
-<script defer src="modules/l42/host.js?v=2.1.11"></script>
-<script defer src="modules/checklist/app.js?v=2.1.11"></script>
-<script defer src="modules/checklist/technical-sheets.js?v=2.1.11"></script>
-<script defer src="modules/kds/app.js?v=2.1.11"></script>
+<script defer src="core/module-host.js?v=2.1.12"></script>
+<script defer src="core/data-contracts.js?v=2.1.12"></script>
+<script defer src="core/shared-data.js?v=2.1.12"></script>
+<script defer src="modules/kds/module.js?v=2.1.12"></script>
+<script defer src="modules/checklist/module.js?v=2.1.12"></script>
+<script defer src="modules/compras/module.js?v=2.1.12"></script>
+<script defer src="modules/l42/module.js?v=2.1.12"></script>
+<script defer src="modules/kds/logic.js?v=2.1.12"></script>
+<script defer src="modules/kds/storage.js?v=2.1.12"></script>
+<script defer src="core/api.js?v=2.1.12"></script>
+<script defer src="modules/kds/audio.js?v=2.1.12"></script>
+<script defer src="modules/kds/sync.js?v=2.1.12"></script>
+<script defer src="core/catalog-sync.js?v=2.1.12"></script>
+<script defer src="core/ui-dialog.js?v=2.1.12"></script>
+<script defer src="modules/checklist/templates.js?v=2.1.12"></script>
+<script defer src="modules/checklist/vendor/qrcode.js?v=2.1.12"></script>
+<script defer src="modules/compras/host.js?v=2.1.12"></script>
+<script defer src="modules/l42/cloud.js?v=2.1.12"></script>
+<script defer src="modules/l42/host.js?v=2.1.12"></script>
+<script defer src="modules/checklist/app.js?v=2.1.12"></script>
+<script defer src="modules/checklist/technical-sheets.js?v=2.1.12"></script>
+<script defer src="modules/kds/app.js?v=2.1.12"></script>
 </body>
 </html>

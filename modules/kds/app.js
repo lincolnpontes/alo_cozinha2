@@ -1744,11 +1744,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 AloFeiraModule.getBackup(),
                 AloL42Module.getBackup()
             ]);
+            await Promise.allSettled([AloTechnicalSheets.syncNow(), AloChecklistDocuments.syncNow()]);
             const dataToExport = {
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.15',
+                version: '2.1.16',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1760,6 +1761,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 compras,
                 l42,
                 fichasTecnicas: AloTechnicalSheets.getBackup(),
+                documentosChecklist: AloChecklistDocuments.getBackup(),
                 compartilhado: AloSharedData.getBackup()
             };
             const dataStr = JSON.stringify(dataToExport, null, 2);
@@ -1855,11 +1857,11 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function separarModulosDoBackup(importedData) {
         if (importedData?.format === 'backup_completo' && importedData?.app === 'alo_cozinha') {
-            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, fichasTecnicas: importedData.fichasTecnicas || null, compartilhado: importedData.compartilhado || null, completo: true };
+            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, fichasTecnicas: importedData.fichasTecnicas || null, documentosChecklist: importedData.documentosChecklist || null, compartilhado: importedData.compartilhado || null, completo: true };
         }
-        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, fichasTecnicas: null, compartilhado: null, completo: false };
-        if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, fichasTecnicas: null, compartilhado: null, completo: false };
-        return { kdsChecklist: importedData, compras: null, l42: null, fichasTecnicas: null, compartilhado: null, completo: false };
+        if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, fichasTecnicas: null, documentosChecklist:null, compartilhado: null, completo: false };
+        if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, fichasTecnicas: null, documentosChecklist:null, compartilhado: null, completo: false };
+        return { kdsChecklist: importedData, compras: null, l42: null, fichasTecnicas: null, documentosChecklist:null, compartilhado: null, completo: false };
     }
 
     async function importarDadosFisicos(event) {
@@ -1876,7 +1878,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             }
             const importedData = JSON.parse(await lerArquivoTexto(file));
             const modulos = separarModulosDoBackup(importedData);
-            if (!modulos.kdsChecklist && !modulos.compras && !modulos.l42 && !modulos.fichasTecnicas) throw new Error('O arquivo não contém dados reconhecidos.');
+            if (!modulos.kdsChecklist && !modulos.compras && !modulos.l42 && !modulos.fichasTecnicas && !modulos.documentosChecklist) throw new Error('O arquivo não contém dados reconhecidos.');
             const summary = modulos.kdsChecklist ? resumoBackup(modulos.kdsChecklist) : { produtos: 0, categorias: 0, areas: 0, pedidos: 0 };
             const atividades = Array.isArray(modulos.kdsChecklist?.atividades) ? modulos.kdsChecklist.atividades : [];
             const comprasSummary = modulos.compras ? {
@@ -1890,6 +1892,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             const l42Dados = modulos.l42?.formato === 'alo-etiqueta-backup-completo' ? modulos.l42.dados : modulos.l42;
             if (l42Dados) detalhes.push(`Etiquetas: ${Array.isArray(l42Dados.produtos) ? l42Dados.produtos.length : 0} produtos e ${Array.isArray(l42Dados.historico) ? l42Dados.historico.length : 0} registros`);
             if (modulos.fichasTecnicas) detalhes.push(`Fichas Técnicas: ${Array.isArray(modulos.fichasTecnicas.sheets) ? modulos.fichasTecnicas.sheets.length : 0} fichas`);
+            if (modulos.documentosChecklist) detalhes.push(`Documentos: ${Array.isArray(modulos.documentosChecklist.documents) ? modulos.documentosChecklist.documents.length : 0} cadastros`);
             const confirmed = await AloUiDialog.confirm(
                 `${detalhes.join('. ')}. A URL atual será preservada e registros repetidos não serão duplicados.`,
                 { title: modulos.completo ? 'Restaurar backup completo' : 'Restaurar backup', icon: '📥', confirmText: 'Restaurar na nuvem' }
@@ -1942,6 +1945,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 AloTechnicalSheets.restoreBackup(modulos.fichasTecnicas);
                 AloTechnicalSheets.syncNow().catch(() => {});
                 etapasConcluidas.push('Fichas Técnicas');
+            }
+
+            if (modulos.documentosChecklist) {
+                AloChecklistDocuments.restoreBackup(modulos.documentosChecklist);
+                AloChecklistDocuments.syncNow().catch(() => {});
+                etapasConcluidas.push('Documentos do Checklist');
             }
 
             if (modulos.compartilhado) {
@@ -2506,6 +2515,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let syncConfiavel = null;
     let bancoSyncTimer = null;
     let bancoSyncEmAndamento = false;
+    let bancoSyncErro = '';
 
     function atualizarIndicadorSincronizacao(estado) {
         estadoSyncPedidosAtual = estado || estadoSyncPedidosAtual;
@@ -2519,8 +2529,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             return;
         }
         if (db.configs.bancoPendente) {
-            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online ? 'sincronizando' : 'offline'}`;
-            indicador.title = estadoSyncPedidosAtual.online ? 'Publicando cardápio e configurações' : 'Alterações aguardando internet';
+            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online && !bancoSyncErro ? 'sincronizando' : 'offline'}`;
+            indicador.title = bancoSyncErro || (estadoSyncPedidosAtual.online ? 'Publicando cardápio e configurações' : 'Alterações aguardando internet');
             indicador.setAttribute('aria-label', indicador.title);
             return;
         }
@@ -2685,7 +2695,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         window.AloTechnicalSheets?.configure({
             getUrl: () => db.configs.url,
             getAreas: () => db.setoresTarefas || [],
-            openModalTop: abrirModalNoTopo
+            openModalTop: abrirModalNoTopo,
+            onSyncState: state => window.AloTasks?.setAuxiliarySyncState?.('sheets', state)
+        });
+        window.AloChecklistDocuments?.configure({
+            getUrl: () => db.configs.url,
+            openModalTop: abrirModalNoTopo,
+            onSyncState: state => window.AloTasks?.setAuxiliarySyncState?.('documents', state)
         });
         if (window.AloSharedData) {
             AloSharedData.registerAdapter('compras', {
@@ -2888,13 +2904,14 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const dadosEnviados = dadosBancoParaNuvem();
         const assinaturaEnviada = JSON.stringify(dadosEnviados);
         const resultado = await AloCatalogSync.publish({ api: AloApi, url: db.configs.url, data: dadosEnviados });
-        if(!resultado.confirmed) return;
+        if(!resultado.confirmed) throw new Error('O servidor ainda não confirmou as configurações. Tentando novamente.');
 
         const nenhumaEdicaoNova = JSON.stringify(dadosBancoParaNuvem()) === assinaturaEnviada;
         db.configs.dadosBaixados = true;
         db.configs.bancoPendente = !nenhumaEdicaoNova;
         db.configs.revisaoBanco = resultado.revision;
         db.configs.suporteDadosCompartilhados = Boolean(resultado.sharedSupported);
+        bancoSyncErro = '';
         salvarBancoLocal();
     }
 
@@ -2920,8 +2937,9 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                     iniciar();
                 }
             }
+            bancoSyncErro = '';
         } catch(error) {
-            // O banco permanece marcado e tenta novamente ao recuperar a conexão.
+            bancoSyncErro = error && error.message ? error.message : 'Não foi possível sincronizar as configurações.';
         } finally {
             bancoSyncEmAndamento = false;
             atualizarIndicadorSincronizacao(estadoSyncPedidosAtual);
@@ -2958,7 +2976,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.15').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.16').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

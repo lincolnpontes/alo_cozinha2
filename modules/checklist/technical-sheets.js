@@ -1,7 +1,7 @@
 (function (global) {
     const STORAGE_KEY = 'alo_checklist_technical_sheets_v1';
     const POLL_MS = 9000;
-    let deps = { getUrl: () => '', getAreas: () => [], openModalTop: null };
+    let deps = { getUrl: () => '', getAreas: () => [], openModalTop: null, onSyncState: null };
     let state = loadState();
     let purchaseProducts = [];
     let formIngredients = [];
@@ -10,6 +10,9 @@
     let pendingPhoto = '';
     let removePhoto = false;
     let ingredientSearchTargetId = '';
+    let selectedCategory = 'Todas';
+    let managerCategory = 'Todas';
+    let formReturnTarget = 'view';
     const photoCache = new Map();
 
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -63,9 +66,11 @@
     }
     function setSyncStatus(status, title) {
         const indicator = document.getElementById('technicalSheetSyncState');
-        if (!indicator) return;
-        indicator.className = `technical-sheet-sync-state ${status || ''}`;
-        indicator.title = title || '';
+        if (indicator) {
+            indicator.className = `technical-sheet-sync-state ${status || ''}`;
+            indicator.title = title || '';
+        }
+        deps.onSyncState?.({ status:status || '', title:title || '', pendingCount:state.outbox.length });
     }
 
     async function refreshPurchaseProducts() {
@@ -136,25 +141,53 @@
 
     function showView(view) {
         const sheets = view === 'sheets';
-        document.querySelector('#tasksModule .tasks-toolbar').style.display = sheets ? 'none' : '';
-        document.querySelector('#tasksModule .tasks-scroll').style.display = sheets ? 'none' : '';
+        const documents = view === 'documents';
+        const activities = !sheets && !documents;
+        document.querySelector('#tasksModule .tasks-toolbar').style.display = activities ? '' : 'none';
+        document.querySelector('#tasksModule .tasks-scroll').style.display = activities ? '' : 'none';
         document.getElementById('technicalSheetsView').style.display = sheets ? 'block' : 'none';
-        document.getElementById('checklistActivitiesTab').classList.toggle('active', !sheets);
-        document.getElementById('checklistSheetsTab').classList.toggle('active', sheets);
-        document.getElementById('checklistActivitiesTab').setAttribute('aria-selected', String(!sheets));
-        document.getElementById('checklistSheetsTab').setAttribute('aria-selected', String(sheets));
+        document.getElementById('checklistDocumentsView').style.display = documents ? 'block' : 'none';
+        [['checklistActivitiesTab', activities], ['checklistSheetsTab', sheets], ['checklistDocumentsTab', documents]].forEach(([id, active]) => {
+            const button = document.getElementById(id);
+            button?.classList.toggle('active', active);
+            button?.setAttribute('aria-selected', String(active));
+        });
         if (sheets) { refreshPurchaseProducts().then(render); syncNow().catch(() => {}); render(); }
+        if (documents) global.AloChecklistDocuments?.activate();
     }
     function openManager() {
         document.getElementById('modalConfigTasksMenu').style.display = 'none';
-        global.AloTasks?.openModule?.('tasks');
-        showView('sheets');
+        formReturnTarget = 'manager';
+        renderManager();
+        deps.openModalTop?.('modalTechnicalSheetsManager') || (document.getElementById('modalTechnicalSheetsManager').style.display = 'flex');
+    }
+    function closeManager() {
+        document.getElementById('modalTechnicalSheetsManager').style.display = 'none';
+        global.AloTasks?.openSettingsMenu?.();
+    }
+    function normalizedSearch(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+    function categories() {
+        return [...new Set(activeSheets().map(sheet => sheet.categoria.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right));
+    }
+    function categoryButtons(targetId, current, setter) {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const values = ['Todas', ...categories()];
+        target.innerHTML = values.map(category => {
+            const encoded = encodeURIComponent(category).replace(/'/g, '%27');
+            return `<button type="button" class="${category === current ? 'active' : ''}" onclick="AloTechnicalSheets.${setter}(decodeURIComponent('${encoded}'))">${escapeHtml(category)}</button>`;
+        }).join('');
+    }
+    function filteredSheets(query, category) {
+        const normalizedQuery = normalizedSearch(query);
+        return activeSheets().filter(sheet => (category === 'Todas' || sheet.categoria === category)
+            && (!normalizedQuery || normalizedSearch(`${sheet.nome} ${sheet.categoria} ${areaName(sheet.setorId)}`).includes(normalizedQuery)));
     }
     function render() {
         const list = document.getElementById('technicalSheetsList');
         if (!list) return;
-        const query = String(document.getElementById('technicalSheetsSearch')?.value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        const visible = activeSheets().filter(sheet => !query || `${sheet.nome} ${sheet.categoria} ${areaName(sheet.setorId)}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query));
+        categoryButtons('technicalSheetsCategories', selectedCategory, 'setCategory');
+        const visible = filteredSheets(document.getElementById('technicalSheetsSearch')?.value, selectedCategory);
         const incomplete = visible.filter(sheet => calculate(sheet).missing.length).length;
         document.getElementById('technicalSheetsSummary').textContent = `${visible.length} ${visible.length === 1 ? 'ficha' : 'fichas'}${incomplete ? ` · ${incomplete} com custo incompleto` : ''}`;
         list.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => {
@@ -162,12 +195,18 @@
             return `<button class="technical-sheet-card" type="button" onclick="AloTechnicalSheets.openDetail('${escapeHtml(sheet.id)}')"><span class="technical-sheet-card-icon">🍽️</span><span class="technical-sheet-card-copy"><strong>${escapeHtml(sheet.nome)}</strong><span>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</span><small>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)} · ${cost.portions ? `${cost.portions.toLocaleString('pt-BR', { maximumFractionDigits:1 })} porções` : 'rendimento cadastrado'}</small></span><span class="technical-sheet-card-cost ${cost.missing.length ? 'incomplete' : ''}">${cost.missing.length ? 'Custo incompleto' : money(cost.portionCost)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhuma ficha técnica cadastrada.</div>';
     }
+    function setCategory(category) { selectedCategory = category || 'Todas'; render(); }
+    function setManagerCategory(category) { managerCategory = category || 'Todas'; renderManager(); }
+    function renderManager() {
+        const target = document.getElementById('technicalSheetsManagerList');
+        if (!target) return;
+        categoryButtons('technicalSheetsManagerCategories', managerCategory, 'setManagerCategory');
+        const visible = filteredSheets(document.getElementById('technicalSheetsManagerSearch')?.value, managerCategory);
+        target.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => `<button type="button" class="technical-manager-item" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')"><span><strong>${escapeHtml(sheet.nome)}</strong><small>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</small></span><b aria-hidden="true">✎</b></button>`).join('') : '<div class="tasks-empty">Nenhuma ficha técnica encontrada.</div>';
+    }
 
     function areaOptions(selected) {
         return deps.getAreas().filter(area => area.ativo !== false).map(area => `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</option>`).join('');
-    }
-    function productOptions() {
-        return purchaseProducts.slice().sort((a, b) => String(a.nome).localeCompare(String(b.nome))).map(product => `<option value="${escapeHtml(product.nome)}"></option>`).join('');
     }
     function readIngredients(includeEmpty = false) {
         const ingredients = [...document.querySelectorAll('#technicalSheetIngredients .technical-ingredient-row')].map(row => {
@@ -185,7 +224,12 @@
     function renderIngredients() {
         const container = document.getElementById('technicalSheetIngredients');
         if (!formIngredients.length) formIngredients = [{ id:id('insumo'), produtoId:'', nome:'', quantidade:0, unidade:'g', perda:0 }];
-        container.innerHTML = `<datalist id="technicalProductOptions">${productOptions()}</datalist>` + formIngredients.map((ingredient, index) => `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}"><div class="technical-ingredient-heading"><strong>Ingrediente ${index + 1}</strong><button type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')" aria-label="Remover ingrediente ${index + 1}">×</button></div><div class="technical-ingredient-product"><label>Produto de Compras ou insumo</label><input data-ingredient-name list="technicalProductOptions" value="${escapeHtml(ingredient.nome)}" oninput="AloTechnicalSheets.previewCost()"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div><label>Quantidade</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div></div>`).join('');
+        container.innerHTML = formIngredients.map((ingredient, index) => {
+            const product = purchaseProducts.find(item => String(item.id) === String(ingredient.produtoId));
+            const price = latestPrice(product);
+            const priceText = price ? `Último preço: ${money(price.preco)} / ${price.unidade || 'un'}` : (ingredient.nome ? 'Preço não cadastrado em Lista de Compras' : 'Selecione um ingrediente para carregar o preço');
+            return `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}"><div class="technical-ingredient-heading"><strong>Ingrediente ${index + 1}</strong><button type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')" aria-label="Remover ingrediente ${index + 1}">×</button></div><div class="technical-ingredient-product"><input data-ingredient-name value="${escapeHtml(ingredient.nome)}" placeholder="Selecionar ingrediente" readonly onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')}" aria-label="Escolher ingrediente"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div class="technical-quantity"><label>Qtde.</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-price">${escapeHtml(priceText)}</div></div>`;
+        }).join('');
     }
     function openIngredientSearch(ingredientId) {
         formIngredients = readIngredients(true);
@@ -233,7 +277,7 @@
             porcaoUnidade: document.getElementById('technicalSheetPortionUnit').value,
             precoVenda: document.getElementById('technicalSheetSalePrice').value,
             cmvDesejado: document.getElementById('technicalSheetTargetCmv').value,
-            ingredientes: readIngredients(), preparo: document.getElementById('technicalSheetPreparation').value
+            ingredientes: readIngredients(), preparo: global.AloTasks?.sanitizeRichHtml?.(document.getElementById('technicalSheetPreparation').innerHTML) || document.getElementById('technicalSheetPreparation').innerHTML
         });
     }
     function previewCost() {
@@ -274,8 +318,9 @@
         photoCache.delete(document.getElementById('technicalSheetId')?.value || '');
         showPhotoPreview('');
     }
-    async function openForm(sheetId = '') {
+    async function openForm(sheetId = '', returnTarget = 'view') {
         await refreshPurchaseProducts();
+        formReturnTarget = returnTarget;
         const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida) || normalizeSheet({ id:id('ficha'), cmvDesejado:30, ingredientes:[] });
         document.getElementById('technicalSheetTitle').textContent = sheetId ? 'Editar Ficha Técnica' : 'Nova Ficha Técnica';
         document.getElementById('technicalSheetId').value = sheet.id;
@@ -288,7 +333,7 @@
         document.getElementById('technicalSheetPortionUnit').value = sheet.porcaoUnidade;
         document.getElementById('technicalSheetSalePrice').value = sheet.precoVenda || '';
         document.getElementById('technicalSheetTargetCmv').value = sheet.cmvDesejado || 30;
-        document.getElementById('technicalSheetPreparation').value = sheet.preparo;
+        document.getElementById('technicalSheetPreparation').innerHTML = global.AloTasks?.sanitizeRichHtml?.(sheet.preparo) || escapeHtml(sheet.preparo);
         document.getElementById('technicalSheetDelete').style.display = sheetId ? 'block' : 'none';
         formIngredients = clone(sheet.ingredientes);
         pendingPhoto = '';
@@ -298,7 +343,10 @@
         deps.openModalTop?.('modalTechnicalSheet') || (document.getElementById('modalTechnicalSheet').style.display = 'flex');
         if (sheetId && sheet.fotoReferencia) resolvePhoto(sheet.id).then(showPhotoPreview).catch(() => showPhotoPreview(''));
     }
-    function closeForm() { document.getElementById('modalTechnicalSheet').style.display = 'none'; }
+    function closeForm(reopen = true) {
+        document.getElementById('modalTechnicalSheet').style.display = 'none';
+        if (reopen && formReturnTarget === 'manager') openManager();
+    }
     function addIngredient() { formIngredients = readIngredients(true); formIngredients.push({ id:id('insumo'), produtoId:'', nome:'', quantidade:0, unidade:'g', perda:0 }); renderIngredients(); }
     function removeIngredient(ingredientId) { formIngredients = readIngredients(true).filter(item => item.id !== ingredientId); renderIngredients(); previewCost(); }
     function queueSheet(sheet) {
@@ -330,7 +378,10 @@
         }
         draft.revisao = Number(current?.revisao || 0) + 1;
         draft.atualizadoEm = Date.now();
-        queueSheet(draft); closeForm(); showView('sheets');
+        queueSheet(draft);
+        const returnTarget = formReturnTarget;
+        closeForm(false);
+        if (returnTarget === 'manager') openManager(); else showView('sheets');
     }
     async function deleteCurrent() {
         const current = state.sheets.find(item => item.id === document.getElementById('technicalSheetId').value);
@@ -338,14 +389,16 @@
         const confirmed = await global.AloUiDialog?.confirm(`Excluir a ficha “${current.nome}”?`, { title:'Excluir ficha', icon:'×', tone:'danger', confirmText:'Excluir' });
         if (!confirmed) return;
         queueSheet({ ...current, excluida:true, revisao:Number(current.revisao || 0) + 1, atualizadoEm:Date.now() });
-        closeForm();
+        closeForm(false);
+        if (formReturnTarget === 'manager') openManager(); else showView('sheets');
     }
     function openDetail(sheetId) {
         const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida);
         if (!sheet) return;
         const cost = calculate(sheet);
         document.getElementById('technicalSheetDetailTitle').textContent = sheet.nome;
-        document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><ol class="technical-detail-list">${String(sheet.preparo || 'Preparo não informado.').split(/\r?\n/).filter(Boolean).map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
+        const preparation = global.AloTasks?.sanitizeRichHtml?.(sheet.preparo || 'Preparo não informado.') || escapeHtml(sheet.preparo || 'Preparo não informado.');
+        document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><div class="task-procedure-content technical-preparation-content">${preparation}</div>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
         if (sheet.fotoReferencia) resolvePhoto(sheet.id).then(url => { const target = document.getElementById('technicalSheetDetailPhoto'); if (!target) return; if (!url) target.remove(); else target.innerHTML = `<img src="${escapeHtml(url)}" alt="Foto da ficha técnica">`; }).catch(() => document.getElementById('technicalSheetDetailPhoto')?.remove());
         document.getElementById('technicalSheetDetailEdit').onclick = () => { document.getElementById('modalTechnicalSheetDetail').style.display = 'none'; openForm(sheet.id); };
         deps.openModalTop?.('modalTechnicalSheetDetail') || (document.getElementById('modalTechnicalSheetDetail').style.display = 'flex');
@@ -407,6 +460,7 @@
             if (state.outbox.length || document.getElementById('technicalSheetsView')?.style.display !== 'none') syncNow().catch(() => {});
         }, POLL_MS);
         render();
+        setSyncStatus(state.outbox.length ? 'syncing' : (navigator.onLine ? 'ok' : 'error'), state.outbox.length ? 'Alterações aguardando confirmação' : 'Fichas técnicas sincronizadas');
     }
     function getBackup() { return { schemaVersion:1, ...clone(state) }; }
     function restoreBackup(backup) {
@@ -416,7 +470,7 @@
     }
 
     global.AloTechnicalSheets = Object.freeze({
-        configure, showView, openManager, render, openForm, closeForm, addIngredient, removeIngredient,
+        configure, showView, openManager, closeManager, render, renderManager, setCategory, setManagerCategory, openForm, closeForm, addIngredient, removeIngredient,
         openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch,
         previewCost, saveForm, deleteCurrent, openDetail, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });

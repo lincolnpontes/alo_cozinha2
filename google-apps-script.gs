@@ -2,6 +2,8 @@ const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_ATIVIDADES = 'Atividades';
 const SHEET_ETIQUETAS_BANCO = 'Etiquetas - Banco';
 const SHEET_FICHAS_TECNICAS = 'Checklist - Fichas Técnicas';
+const SHEET_DOCUMENTOS = 'Checklist - Documentos';
+const SHEET_ARQUIVOS_DOCUMENTOS = 'Checklist - Arquivos';
 const PROP_BANCO = 'kds_banco';
 const PROP_BANCO_REVISION = 'kds_banco_revision';
 const PROP_PEDIDOS_REVISION = 'kds_pedidos_revision';
@@ -14,9 +16,11 @@ const PROP_ETIQUETAS_ACTIVE_SLOT = 'kds_etiquetas_active_slot';
 const PROP_ETIQUETAS_REVISION = 'kds_etiquetas_revision';
 const PROP_ETIQUETAS_LAST_OPERATION = 'kds_etiquetas_last_operation';
 const PROP_FICHAS_TECNICAS_REVISION = 'kds_fichas_tecnicas_revision';
+const PROP_DOCUMENTOS_REVISION = 'kds_documentos_revision';
 const ETIQUETAS_CELL_LIMIT = 35000;
 const PEDIDOS_SHIFT_START_HOUR = 4;
 const PASTA_FOTOS_TAREFAS = 'Alô Cozinha - Fotos das Tarefas';
+const PASTA_DOCUMENTOS = 'Alô Cozinha - Documentos do Checklist';
 const NOME_PLANILHA_DADOS = 'Alô Cozinha - Banco de Dados';
 const CACHE_PEDIDOS_PREFIX = 'kds_pedidos_visiveis_';
 const BASE_HEADERS = ['ID', 'Produto', 'Status', 'Timestamp', 'FinalizadoEm', 'Motivo'];
@@ -478,7 +482,7 @@ function bancosComRevisao_() {
   const bancoStr = getProperties_().getProperty(PROP_BANCO);
   const banco = bancoStr ? JSON.parse(bancoStr) : {};
   banco._revision = Number(getProperties_().getProperty(PROP_BANCO_REVISION) || '0');
-  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true, dadosCompartilhados: true, etiquetasUnificadas: true, fichasTecnicas: true };
+  banco._capabilities = { backupCompleto: true, atividadesBackup: true, comprasUnificadas: true, dadosCompartilhados: true, etiquetasUnificadas: true, fichasTecnicas: true, documentosChecklist: true };
   return banco;
 }
 
@@ -833,6 +837,120 @@ function salvarFichasTecnicas_(operacoes) {
   const revision = Number(getProperties_().getProperty(PROP_FICHAS_TECNICAS_REVISION) || '0') + 1;
   getProperties_().setProperty(PROP_FICHAS_TECNICAS_REVISION, String(revision));
   return revision;
+}
+
+function getDocumentosSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(SHEET_DOCUMENTOS);
+  if (!sheet) sheet = spreadsheet.insertSheet(SHEET_DOCUMENTOS);
+  const headers = ['ID', 'AtualizadoEm', 'Revisao', 'Excluido', 'Dados'];
+  if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  return sheet;
+}
+
+function documentosChecklist_() {
+  const sheet = getDocumentosSheet_();
+  if (sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues().map(row => {
+    let documento = {};
+    try { documento = JSON.parse(String(row[4] || '{}')); } catch (error) {}
+    documento.id = String(row[0] || documento.id || '');
+    documento.atualizadoEm = Number(row[1] || documento.atualizadoEm || 0);
+    documento.revisao = Number(row[2] || documento.revisao || 0);
+    documento.excluido = row[3] === true || String(row[3]).toLowerCase() === 'true';
+    return documento;
+  }).filter(documento => documento.id);
+}
+
+function salvarDocumentosChecklist_(operacoes) {
+  const porId = {};
+  documentosChecklist_().forEach(documento => { porId[String(documento.id)] = documento; });
+  let mudou = false;
+  (Array.isArray(operacoes) ? operacoes : []).forEach(operacao => {
+    const documento = operacao && operacao.documento;
+    if (!documento || !documento.id) return;
+    const atual = porId[String(documento.id)];
+    const maisNovo = !atual || Number(documento.revisao || 0) > Number(atual.revisao || 0)
+      || (Number(documento.revisao || 0) === Number(atual.revisao || 0) && Number(documento.atualizadoEm || 0) > Number(atual.atualizadoEm || 0));
+    if (maisNovo) { porId[String(documento.id)] = documento; mudou = true; }
+  });
+  if (!mudou) return Number(getProperties_().getProperty(PROP_DOCUMENTOS_REVISION) || '0');
+  const todos = Object.keys(porId).map(id => porId[id]);
+  const rows = todos.map(documento => [String(documento.id), Number(documento.atualizadoEm || 0), Number(documento.revisao || 0), documento.excluido === true, JSON.stringify(documento)]);
+  const sheet = getDocumentosSheet_();
+  if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).clearContent();
+  if (rows.length) sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+  const revision = Number(getProperties_().getProperty(PROP_DOCUMENTOS_REVISION) || '0') + 1;
+  getProperties_().setProperty(PROP_DOCUMENTOS_REVISION, String(revision));
+  return revision;
+}
+
+function getArquivosDocumentosSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(SHEET_ARQUIVOS_DOCUMENTOS);
+  if (!sheet) sheet = spreadsheet.insertSheet(SHEET_ARQUIVOS_DOCUMENTOS);
+  const headers = ['DocumentoID', 'ArquivoID', 'Nome', 'Mime', 'Tamanho', 'AtualizadoEm'];
+  if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  return sheet;
+}
+
+function pastaDocumentos_() {
+  const folders = DriveApp.getFoldersByName(PASTA_DOCUMENTOS);
+  return folders.hasNext() ? folders.next() : DriveApp.createFolder(PASTA_DOCUMENTOS);
+}
+
+function arquivoDocumentoRecord_(documentoId) {
+  const id = String(documentoId || '').trim();
+  if (!id) return null;
+  const sheet = getArquivosDocumentosSheet_();
+  if (sheet.getLastRow() < 2) return null;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+  for (let index = 0; index < rows.length; index += 1) {
+    if (String(rows[index][0]) === id) return { row:index + 2, documentoId:id, fileId:String(rows[index][1] || ''), nome:String(rows[index][2] || ''), mime:String(rows[index][3] || ''), tamanho:Number(rows[index][4] || 0), atualizadoEm:String(rows[index][5] || '') };
+  }
+  return null;
+}
+
+function excluirArquivoDocumento_(documentoId) {
+  const record = arquivoDocumentoRecord_(documentoId);
+  if (!record) return;
+  if (record.fileId) {
+    try { DriveApp.getFileById(record.fileId).setTrashed(true); } catch (error) {}
+  }
+  getArquivosDocumentosSheet_().deleteRow(record.row);
+}
+
+function salvarArquivoDocumento_(documentoId, arquivo, nomeArquivo) {
+  const id = String(documentoId || '').trim();
+  const match = String(arquivo || '').match(/^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/);
+  if (!id || !match) throw new Error('Arquivo inválido. Use imagem ou PDF.');
+  if (match[2].length > 4400000) throw new Error('O arquivo ultrapassa o limite permitido.');
+  const anterior = arquivoDocumentoRecord_(id);
+  if (anterior && anterior.fileId) {
+    try { DriveApp.getFileById(anterior.fileId).setTrashed(true); } catch (error) {}
+  }
+  const mime = match[1];
+  const extension = mime === 'application/pdf' ? 'pdf' : (mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg'));
+  const nomeSeguro = String(nomeArquivo || ('documento.' + extension)).replace(/[\\/:*?"<>|]/g, '-').slice(0, 120);
+  const bytes = Utilities.base64Decode(match[2]);
+  const file = pastaDocumentos_().createFile(Utilities.newBlob(bytes, mime, nomeSeguro));
+  const atualizadoEm = new Date().toISOString();
+  const values = [id, file.getId(), nomeSeguro, mime, bytes.length, atualizadoEm];
+  const sheet = getArquivosDocumentosSheet_();
+  if (anterior) sheet.getRange(anterior.row, 1, 1, values.length).setValues([values]);
+  else sheet.appendRow(values);
+  return { nome:nomeSeguro, mime:mime, tamanho:bytes.length, atualizadoEm:atualizadoEm };
+}
+
+function arquivoDocumento_(documentoId, incluirDados) {
+  const record = arquivoDocumentoRecord_(documentoId);
+  if (!record || !record.fileId) return { status:'ok', encontrada:false };
+  const result = { status:'ok', encontrada:true, nome:record.nome, mime:record.mime, tamanho:record.tamanho, atualizadoEm:record.atualizadoEm };
+  if (incluirDados) {
+    const blob = DriveApp.getFileById(record.fileId).getBlob();
+    result.dataUrl = 'data:' + (record.mime || blob.getContentType()) + ';base64,' + Utilities.base64Encode(blob.getBytes());
+  }
+  return result;
 }
 
 function getEtiquetasSheet_() {
@@ -1355,6 +1473,19 @@ function doPost(e) {
       return json_({ status: 'ok', revision: salvarFichasTecnicas_(params.operacoes || []) });
     }
 
+    if (action === 'salvar_documentos_lote') {
+      return json_({ status: 'ok', revision: salvarDocumentosChecklist_(params.operacoes || []) });
+    }
+
+    if (action === 'salvar_arquivo_documento') {
+      return json_({ status: 'ok', arquivo: salvarArquivoDocumento_(params.documentoId, params.arquivo, params.nomeArquivo) });
+    }
+
+    if (action === 'excluir_arquivo_documento') {
+      excluirArquivoDocumento_(params.documentoId);
+      return json_({ status: 'ok' });
+    }
+
     if (action === 'salvar_etiquetas_banco') {
       return json_(salvarEtiquetasBanco_(params.dados, params.expectedRevision, params.operationId));
     }
@@ -1386,6 +1517,18 @@ function doGet(e) {
       return json_({ status:'ok', changed:false, revision:revision, serverTime:new Date().toISOString() });
     }
     return json_({ status:'ok', changed:true, revision:revision, fichas:fichasTecnicas_(), serverTime:new Date().toISOString() });
+  }
+
+  if (action === 'sincronizar_documentos') {
+    const revision = Number(getProperties_().getProperty(PROP_DOCUMENTOS_REVISION) || '0');
+    if (String(e.parameter.revision || '') === String(revision)) {
+      return json_({ status:'ok', changed:false, revision:revision, serverTime:new Date().toISOString() });
+    }
+    return json_({ status:'ok', changed:true, revision:revision, documentos:documentosChecklist_(), serverTime:new Date().toISOString() });
+  }
+
+  if (action === 'arquivo_documento') {
+    return json_(arquivoDocumento_(e.parameter.documentoId, String(e.parameter.dados || '') === '1'));
   }
 
   if (action === 'sincronizar_atividades') {

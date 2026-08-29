@@ -17,7 +17,7 @@ core/
 
 modules/
   kds/                 pedidos, fila, áudio, armazenamento e sincronização KDS
-  checklist/           atividades, POP, alarmes, relatórios e QR Code
+  checklist/           atividades, fichas técnicas, documentos, POP, alarmes, relatórios e QR Code
   compras/             pedidos de compra, compras, operadores e fornecedores
   l42/                 Etiquetas, estoque, câmera, impressão e adaptador do host
 
@@ -36,11 +36,11 @@ Cada módulo possui um `module.js` com identidade, tela, namespace, exigência d
 | --- | --- | --- | --- |
 | Restaurante, pessoas, acessos e índice de produtos | Core | `alo_core_shared_v2`, cópia compacta no Apps Script e adaptadores | `core_*` |
 | Pedidos e alertas KDS | KDS | IndexedDB, fila local e Apps Script | `kds_*` |
-| Atividades, POP e agenda | Checklist | localStorage, fila local e Apps Script | `checklist_*` |
+| Atividades, POP, agenda, fichas técnicas e documentos | Checklist | localStorage, filas locais, planilhas e Drive privado pelo Apps Script | `checklist_*` |
 | Catálogo, pedidos de compra e fornecedores | Compras | `alofeira_v1` e Apps Script | `compras_*` |
 | Etiquetas, estoque e impressão | Etiquetas | `etiquetadora_*`, fila local e Apps Script unificado | `l42_*` |
 
-As chaves existentes são um contrato de compatibilidade. A v2.1.15 não renomeia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local. As chaves antigas do Supabase ficam apenas para compatibilidade com instalações anteriores e não são usadas como fonte remota no módulo incorporado.
+As chaves existentes são um contrato de compatibilidade. A v2.1.16 não renomeia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local. As chaves antigas do Supabase ficam apenas para compatibilidade com instalações anteriores e não são usadas como fonte remota no módulo incorporado.
 
 ## Regras entre módulos
 

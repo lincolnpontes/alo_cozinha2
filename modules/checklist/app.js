@@ -18,6 +18,7 @@
     let activeModule = 'home';
     let syncRunning = false;
     let lastSyncState = navigator.onLine ? 'online' : 'offline';
+    const auxiliarySync = { sheets:{ status:'ok', pendingCount:0, title:'' }, documents:{ status:'ok', pendingCount:0, title:'' } };
     let syncTimer = null;
     let alarmTimer = null;
     let alarmAudio = null;
@@ -288,19 +289,26 @@
         const indicator = document.getElementById('tasksSyncIndicator');
         if (!indicator) return;
         if (state === 'online' || state === 'offline') lastSyncState = state;
-        if (count) {
+        const auxiliaryPending = Object.values(auxiliarySync).reduce((total, item) => total + Number(item.pendingCount || 0), 0);
+        const pending = Number(count || 0) + auxiliaryPending;
+        const auxiliaryError = Object.values(auxiliarySync).find(item => item.status === 'error');
+        if (pending) {
             indicator.className = `app-sync-indicator ${lastSyncState === 'offline' ? 'offline' : 'sincronizando'}`;
             indicator.title = lastSyncState === 'offline'
-                ? `${count} alteração(ões) aguardando internet`
-                : `${count} alteração(ões) aguardando confirmação`;
+                ? `${pending} alteração(ões) aguardando internet`
+                : `${pending} alteração(ões) aguardando confirmação`;
             indicator.setAttribute('aria-label', indicator.title);
             return;
         }
-        indicator.className = `app-sync-indicator ${syncRunning ? 'sincronizando' : (lastSyncState === 'offline' ? 'offline' : 'sincronizado')}`;
-        indicator.title = syncRunning
-            ? 'Sincronizando Checklist'
-            : (lastSyncState === 'offline' ? 'Sem conexão com o servidor' : 'Checklist sincronizado');
+        const unavailable = lastSyncState === 'offline' || auxiliaryError;
+        indicator.className = `app-sync-indicator ${unavailable ? 'offline' : 'sincronizado'}`;
+        indicator.title = unavailable ? (auxiliaryError?.title || 'Sem conexão com o servidor') : 'Checklist sincronizado';
         indicator.setAttribute('aria-label', indicator.title);
+    }
+    function setAuxiliarySyncState(moduleName, syncState) {
+        if (!Object.prototype.hasOwnProperty.call(auxiliarySync, moduleName)) return;
+        auxiliarySync[moduleName] = { ...auxiliarySync[moduleName], ...(syncState || {}) };
+        setSyncIndicator(lastSyncState);
     }
     async function syncNow(force = false) {
         if (syncRunning) return;
@@ -335,6 +343,14 @@
             setSyncIndicator(finalSyncState);
             scheduleSync();
         }
+    }
+    async function syncAll() {
+        await Promise.allSettled([
+            syncNow(true),
+            global.AloTechnicalSheets?.syncNow?.(),
+            global.AloChecklistDocuments?.syncNow?.()
+        ]);
+        setSyncIndicator(navigator.onLine ? 'online' : 'offline');
     }
     function scheduleSync(delay) {
         if (syncTimer) clearTimeout(syncTimer);
@@ -1891,7 +1907,7 @@
     }
 
     global.AloTasks = Object.freeze({
-        init, refreshDefinitions, clearHistoryLocal, getBackupData, showHome, openModule, setTab, setArea, toggleAreaPicker, syncNow,
+        init, refreshDefinitions, clearHistoryLocal, getBackupData, showHome, openModule, setTab, setArea, toggleAreaPicker, syncNow, syncAll, setAuxiliarySyncState,
         startTask, completeTask, markTaskNotDone, confirmEmployeeSelection,
         openTaskDetails, openFinishedTask, closeFinishedTask, undoFinishedTask, returnTaskToPending,
         toggleTaskStatusEditMenu, runTaskDetailAction,
@@ -1902,7 +1918,7 @@
         manageTaskAreas, manageEmployees, manageTemplates, editManagedItem,
         cancelForm, saveCurrentForm, toggleRecurrenceFields, refreshTaskEmployeeOptions,
         openScheduleEditor, saveScheduleDraft, cancelScheduleEditor, deleteScheduleDraft, toggleScheduleRecurrenceFields,
-        formatRichEditor, cycleRichEditorAlignment, limitRichEditor,
+        formatRichEditor, cycleRichEditorAlignment, limitRichEditor, sanitizeRichHtml,
         handleTaskPhoto, removeTaskPhotoDraft,
         openHygieneLibrary, closeHygieneLibrary, setHygieneGroup, useHygieneTemplate,
         openTaskQr, closeTaskQr, printTaskQr,

@@ -1,11 +1,12 @@
-# Alô Cozinha v2.1.15
+# Alô Cozinha v2.1.16
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
-- A v2.1.15 reúne os dados pessoais e os papéis em uma única caixa, posiciona melhor a alteração de PIN e centraliza verticalmente o login numérico.
-- A v2.1.15 reorganiza os filtros de Compras e compacta os cartões e detalhes das atividades do Checklist, preservando ações e informações relacionadas na mesma linha.
+- A v2.1.16 transforma Fichas Técnicas em um fluxo pesquisável por categoria, integra preços da Lista de Compras e usa no preparo o mesmo editor formatado das atividades.
+- A v2.1.16 adiciona Documentos ao Checklist com catálogo sanitário inicial, prazos, busca, categorias e anexos privados de imagem ou PDF.
+- A v2.1.16 deixa as bolinhas do KDS e Checklist refletirem confirmação, pendência e erro reais e compacta as ações no detalhe da atividade.
 - A v2.1.13 corrige a retenção das atividades após a sincronização com o Google Sheets, cria o painel Geral do Checklist por setor e melhora fichas técnicas, fotos e busca de ingredientes.
 - A v2.1.13 simplifica Funcionários e Acessos, torna o teclado de PIN mais responsivo, refina os filtros de KDS e Compras e melhora a edição visual de pedidos em andamento.
 - O APK v2.1.13 abre a câmera nativa para fotos das atividades e fichas técnicas e atualiza o ícone dos controles da etiquetadora.

@@ -1,5 +1,5 @@
 (function (global) {
-    const SUBMISSION_VERIFY_AFTER_MS = 15000;
+    const SUBMISSION_VERIFY_AFTER_MS = 2500;
 
     class SyncManager {
         constructor(options) {
@@ -548,10 +548,7 @@
         }
 
         async getPendingCount() {
-            const now = Date.now();
-            return (await global.AloStorage.getAllOperations())
-                .filter(operation => !operation.submittedAt || Number(operation.nextAttemptAt || 0) <= now)
-                .length;
+            return (await global.AloStorage.getAllOperations()).length;
         }
 
         async emit() {

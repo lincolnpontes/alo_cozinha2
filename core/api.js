@@ -62,6 +62,20 @@
         return response.json();
     }
 
+    async function uploadChecklistDocument(baseUrl, documentId, dataUrl, fileName) {
+        return post(baseUrl, { action: 'salvar_arquivo_documento', documentoId: documentId, arquivo: dataUrl, nomeArquivo: fileName });
+    }
+
+    async function deleteChecklistDocument(baseUrl, documentId) {
+        return post(baseUrl, { action: 'excluir_arquivo_documento', documentoId: documentId });
+    }
+
+    async function getChecklistDocumentFile(baseUrl, documentId, includeData = true) {
+        const response = await fetch(buildUrl(baseUrl, { action: 'arquivo_documento', documentoId: documentId, dados: includeData ? '1' : '0' }), { cache: 'no-store' });
+        if (!response.ok) throw new Error('Não foi possível carregar o documento.');
+        return response.json();
+    }
+
     async function getMigrationStatus(baseUrl, migrationId) {
         const response = await fetch(buildUrl(baseUrl, { action: 'status_migracao', migrationId }), { cache: 'no-store' });
         if (!response.ok) throw new Error('Não foi possível conferir a migração.');
@@ -78,5 +92,5 @@
         throw new Error('A migração demorou além do esperado. Tente conferir novamente.');
     }
 
-    global.AloApi = Object.freeze({ buildUrl, post, sync, getBank, getHistory, syncActivities, getActivityHistory, uploadTaskPhoto, deleteTaskPhoto, getTaskPhoto, getMigrationStatus, migrateBackup });
+    global.AloApi = Object.freeze({ buildUrl, post, sync, getBank, getHistory, syncActivities, getActivityHistory, uploadTaskPhoto, deleteTaskPhoto, getTaskPhoto, uploadChecklistDocument, deleteChecklistDocument, getChecklistDocumentFile, getMigrationStatus, migrateBackup });
 })(window);

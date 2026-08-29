@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.13';
+    const VERSION = '2.1.14';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -794,7 +794,7 @@
         document.getElementById('sharedPersonName').value = id ? person.nome : '';
         renderPersonEmojiGrid(person.emoji || '👤');
         document.getElementById('sharedPersonPin').value = '';
-        document.getElementById('sharedPersonPin').placeholder = 'Novo PIN';
+        document.getElementById('sharedPersonPin').placeholder = '';
         const pinHint = document.getElementById('sharedPersonPinHint');
         if (pinHint) pinHint.textContent = id && person.credentials.alternatives.length
             ? 'Deixe em branco para manter o PIN atual.'

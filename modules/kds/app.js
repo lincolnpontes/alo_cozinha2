@@ -1748,7 +1748,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.13',
+                version: '2.1.14',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2415,11 +2415,10 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         }
     }
 
-    let pinAdminDotsCache = null;
     function atualizarPinAdminVisual() {
         const value = document.getElementById('senhaAdmin')?.value || '';
-        if (!pinAdminDotsCache) pinAdminDotsCache = [...document.querySelectorAll('#pinAdminDots i')];
-        pinAdminDotsCache.forEach((dot, index) => dot.classList.toggle('filled', index < value.length));
+        const dots = document.getElementById('pinAdminDots');
+        if (dots) dots.innerHTML = '<i></i>'.repeat(value.length);
         limparErroSenha('erroSenhaAdmin');
     }
 
@@ -2959,7 +2958,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.13').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.14').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

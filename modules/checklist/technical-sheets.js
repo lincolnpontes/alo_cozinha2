@@ -524,7 +524,7 @@
         document.getElementById('technicalSheetSalePrice').value = sheet.precoVenda || '';
         document.getElementById('technicalSheetTargetCmv').value = sheet.cmvDesejado || 30;
         document.getElementById('technicalSheetPreparation').innerHTML = global.AloTasks?.sanitizeRichHtml?.(sheet.preparo) || escapeHtml(sheet.preparo);
-        document.getElementById('technicalSheetDelete').style.display = sheetId ? 'block' : 'none';
+        document.getElementById('technicalSheetDelete').style.display = sheetId ? 'inline-flex' : 'none';
         formIngredients = clone(sheet.ingredientes);
         pendingPhoto = '';
         removePhoto = false;

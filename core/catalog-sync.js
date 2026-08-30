@@ -44,6 +44,15 @@
         return JSON.stringify(canonical(remote)) === JSON.stringify(canonical(desired));
     }
 
+    function createChangeTracker() {
+        let revision = 0;
+        return Object.freeze({
+            mark() { revision += 1; return revision; },
+            snapshot() { return revision; },
+            unchangedSince(snapshot) { return revision === Number(snapshot); }
+        });
+    }
+
     async function publish({ api, url, data, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
         let sent = false;
         let sharedSupported = false;
@@ -78,5 +87,5 @@
         return { confirmed:false, revision:lastRevision, sent, sharedSupported };
     }
 
-    global.AloCatalogSync = Object.freeze({ isEqual, publish });
+    global.AloCatalogSync = Object.freeze({ isEqual, publish, createChangeTracker });
 })(window);

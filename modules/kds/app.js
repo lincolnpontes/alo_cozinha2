@@ -22,6 +22,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let filaRetentativaStatus = JSON.parse(localStorage.getItem('kds_fila_status') || '[]');
     let processandoFilaStatus = false;
     let bancoPublicacaoTimer = null;
+    const bancoAlteracoes = AloCatalogSync.createChangeTracker();
     let estadoSyncPedidosAtual = { pendingCount: 0, online: navigator.onLine };
 
     // CARREGAR HISTÓRICO SALVO LOCALMENTE (Evita perda de dados em reloads)
@@ -437,6 +438,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
     function salvarBancoLocal() { localStorage.setItem('kds_v1_db', JSON.stringify(db)); }
     function marcarBancoAlterado() {
+        bancoAlteracoes.mark();
         db.configs.bancoPendente = true;
         salvarBancoLocal();
         atualizarIndicadorSincronizacao(estadoSyncPedidosAtual);
@@ -1763,7 +1765,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.19',
+                version: '2.1.20',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2937,11 +2939,11 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     async function publicarBancoPendente() {
         const dadosEnviados = dadosBancoParaNuvem();
-        const assinaturaEnviada = JSON.stringify(dadosEnviados);
+        const alteracaoLocalEnviada = bancoAlteracoes.snapshot();
         const resultado = await AloCatalogSync.publish({ api: AloApi, url: db.configs.url, data: dadosEnviados });
         if(!resultado.confirmed) throw new Error('O servidor ainda não confirmou as configurações. Tentando novamente.');
 
-        const nenhumaEdicaoNova = JSON.stringify(dadosBancoParaNuvem()) === assinaturaEnviada;
+        const nenhumaEdicaoNova = bancoAlteracoes.unchangedSince(alteracaoLocalEnviada);
         db.configs.dadosBaixados = true;
         db.configs.bancoPendente = !nenhumaEdicaoNova;
         db.configs.revisaoBanco = resultado.revision;
@@ -3016,7 +3018,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.19').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.20').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

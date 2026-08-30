@@ -128,9 +128,10 @@
         target.innerHTML = documents.length ? documents.map(document => {
             const status = statusFor(document);
             const linkedTask = taskName(document.tarefaId);
-            const fileState = document.arquivo ? 'Documento cadastrado' : 'Documento ainda não cadastrado';
-            const icon = document.sensivel ? '🔒' : (isImageDocument(document) ? '▧' : '📄');
-            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openDetail('${escapeHtml(document.id)}')"><span class="document-card-icon" aria-hidden="true">${icon}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small class="${document.arquivo ? 'registered' : ''}">${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
+            const hasFile = Boolean(document.arquivo);
+            const fileState = hasFile ? 'Documento cadastrado' : 'Documento ainda não cadastrado';
+            const icon = hasFile ? (document.sensivel ? '🔒' : (isImageDocument(document) ? '▧' : '📄')) : '○';
+            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openDetail('${escapeHtml(document.id)}')"><span class="document-card-icon ${hasFile ? 'registered' : 'empty'}" aria-hidden="true">${icon}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small class="${hasFile ? 'registered' : ''}">${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
     }
     function activate() { render(); syncNow().catch(() => {}); }
@@ -191,7 +192,7 @@
         if (isImageDocument(record)) {
             const dataUrl = await loadFilePreview(record);
             const preview = document.getElementById('checklistDocumentDetailPreview');
-            if (preview) preview.innerHTML = dataUrl ? `<button type="button" class="document-detail-image-button" onclick="AloChecklistDocuments.openImageViewer('${escapeHtml(record.id)}')" aria-label="Ampliar documento"><img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(record.nome)}"><span>Toque para ampliar</span></button><button type="button" class="document-detail-share" onclick="AloChecklistDocuments.shareFile('${escapeHtml(record.id)}')">Compartilhar</button>` : '<span>Imagem indisponível.</span>';
+            if (preview) preview.innerHTML = dataUrl ? `<button type="button" class="document-detail-image-button" onclick="AloChecklistDocuments.openImageViewer('${escapeHtml(record.id)}')" aria-label="Ampliar documento"><img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(record.nome)}"><span>Toque para ampliar</span></button><button type="button" class="document-detail-share" onclick="AloChecklistDocuments.shareFile('${escapeHtml(record.id)}')" aria-label="Compartilhar documento" title="Compartilhar"><span aria-hidden="true">↗</span></button>` : '<span>Imagem indisponível.</span>';
         }
     }
     function closeDetail() { document.getElementById('modalChecklistDocumentDetail').style.display = 'none'; }
@@ -224,6 +225,15 @@
         viewerScale = Math.max(0.75, Math.min(4, Math.round((viewerScale + Number(delta || 0)) * 100) / 100));
         updateViewerScale();
     }
+    async function blobToBase64(blob) {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let index = 0; index < bytes.length; index += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(index, Math.min(index + chunkSize, bytes.length)));
+        }
+        return btoa(binary);
+    }
     async function shareFile(documentId = '') {
         const record = findDocument(documentId || viewerDocumentId);
         if (!record?.arquivo) return;
@@ -233,6 +243,16 @@
             if (!dataUrl) throw new Error('Arquivo não encontrado.');
             const blob = await (await fetch(dataUrl)).blob();
             const name = remote?.name || remote?.nome || record.arquivo.nome || 'documento';
+            if (global.AloNative && typeof global.AloNative.shareDocumentBase64 === 'function') {
+                const result = JSON.parse(global.AloNative.shareDocumentBase64(
+                    await blobToBase64(blob),
+                    blob.type || record.arquivo.mime || 'application/octet-stream',
+                    name,
+                    `Compartilhar ${record.nome}`
+                ));
+                if (!result?.ok) throw new Error(result?.error || 'Não foi possível abrir o compartilhamento.');
+                return;
+            }
             const file = new File([blob], name, { type:blob.type || record.arquivo.mime || 'application/octet-stream' });
             if (navigator.share && navigator.canShare?.({ files:[file] })) {
                 await navigator.share({ files:[file], title:record.nome });
@@ -242,7 +262,7 @@
             const anchor = document.createElement('a');
             anchor.href = blobUrl; anchor.download = name; anchor.click();
             setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-            global.AloUiDialog?.notice('O arquivo foi preparado para compartilhamento.', { title:'Documento', confirmText:'Entendi' });
+            global.AloUiDialog?.notice('Este navegador não oferece o menu de compartilhamento. O arquivo foi baixado.', { title:'Compartilhamento indisponível', confirmText:'Entendi' });
         } catch (error) {
             if (error?.name !== 'AbortError') global.AloUiDialog?.notice(error.message || 'Não foi possível compartilhar o documento.', { title:'Compartilhamento indisponível', confirmText:'Entendi' });
         }

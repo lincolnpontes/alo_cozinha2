@@ -1088,7 +1088,7 @@
 .document-card.vencendo { border-left-color: #d99a22; }
 .document-card.vencido { border-left-color: #ce3d3d; }
 .document-card-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 7px; background: #edf3f4; font-size: 22px; }
-.document-card-icon.empty { border: 1px dashed #b8c6c9; background: #f8fafb; color: #97a6aa; font-size: 30px; font-weight: 300; }
+.document-card-icon.empty { border: 1px dashed #c7a6b2; background: #fbf5f7; color: #7d1838; font-family: Arial, sans-serif; font-size: 31px; font-weight: 900; }
 .document-card-icon img { width: 100%; height: 100%; border-radius: 7px; object-fit: cover; }
 .document-card-copy { min-width: 0; }
 .document-card-copy strong, .document-card-copy span, .document-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1120,6 +1120,7 @@
 .document-detail-image-button img { display: block; width: 100%; max-height: 44vh; object-fit: contain; }
 .document-detail-image-button span { font-size: 10px; }
 .document-detail-share { width: 38px; height: 36px; position: absolute; top: 8px; right: 8px; display: grid; place-items: center; padding: 0; border: 1px solid #bad2cd; border-radius: 6px; background: rgba(255,255,255,.94); box-shadow: 0 2px 7px rgba(22,54,48,.12); color: #0b7466; font-size: 20px; font-weight: 900; cursor: pointer; }
+.document-share-icon { width: 21px; height: 21px; display: block; background: currentColor; -webkit-mask: url('../../assets/icons/share-2.svg') center / contain no-repeat; mask: url('../../assets/icons/share-2.svg') center / contain no-repeat; }
 .document-detail-file { min-height: 46px; padding: 0 14px; border: 1px solid #b9c9cc; border-radius: 7px; background: #fff; color: #285048; font-weight: 850; cursor: pointer; }
 .document-viewer-overlay { z-index: 12000; padding: 12px; background: rgba(9, 16, 19, .92); }
 .document-viewer-modal { width: min(940px, 100%); height: min(92vh, 900px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; border-radius: 8px; background: #11191c; color: #fff; }
@@ -1131,6 +1132,7 @@
 .document-viewer-controls { min-height: 58px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px; border-top: 1px solid #354247; }
 .document-viewer-controls output { width: 58px; text-align: center; font-size: 12px; font-weight: 900; }
 .document-viewer-controls .document-viewer-share { width: 40px; padding: 0; background: #0b7466; font-size: 21px; }
+.document-viewer-controls .document-viewer-share .document-share-icon { width: 22px; height: 22px; background: #fff; }
 @media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 48px 58px; } .technical-ingredient-cost-row { grid-template-columns: 48px minmax(145px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 9px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
 @media (max-width: 620px) {
     .tasks-dashboard-sector { grid-template-columns: minmax(62px, 1fr) minmax(48px, 1.2fr) auto; gap: 5px; padding: 7px 6px; }

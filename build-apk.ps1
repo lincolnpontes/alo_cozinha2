@@ -33,7 +33,7 @@ try {
 
 $source = Join-Path $android "app\build\outputs\apk\release\app-release.apk"
 $dist = Join-Path $root "dist"
-$target = Join-Path $dist "Alo-Cozinha-v2.1.20.apk"
+$target = Join-Path $dist "Alo-Cozinha-v2.1.21.apk"
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Copy-Item -LiteralPath $source -Destination $target -Force
 

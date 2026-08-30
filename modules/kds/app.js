@@ -1765,7 +1765,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.20',
+                version: '2.1.21',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2267,6 +2267,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function abrirFormArea(idx) {
         fecharModal('modalListagem');
+        prepararSeletorImagensArea();
         const grupo = idx >= 0 ? areasUnificadasAtuais[idx] : null;
         const kds = grupo?.kds || null;
         const checklist = grupo?.checklist || null;
@@ -2291,6 +2292,36 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const current = document.getElementById('areaImageCurrent');
         if (current) current.innerHTML = getEmojiAreaHtml(emoji);
         document.querySelectorAll('[data-area-image]').forEach(button => button.classList.toggle('selected', button.dataset.areaImage === emoji));
+        toggleSeletorImagemArea(false);
+    }
+
+    function prepararSeletorImagensArea() {
+        const target = document.getElementById('areaImageOptionsGrid');
+        if (target && !target.children.length) {
+            document.querySelectorAll('#modalFormArea .emoji-area-opcoes button').forEach(button => target.appendChild(button));
+        }
+        const current = document.getElementById('areaImageCurrent');
+        if (!current || current.dataset.pickerReady === '1') return;
+        current.dataset.pickerReady = '1';
+        current.setAttribute('role', 'button');
+        current.setAttribute('tabindex', '0');
+        current.setAttribute('aria-haspopup', 'dialog');
+        current.setAttribute('aria-label', 'Escolher imagem do setor');
+        current.addEventListener('click', () => toggleSeletorImagemArea());
+        current.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            toggleSeletorImagemArea();
+        });
+    }
+
+    function toggleSeletorImagemArea(requested) {
+        const picker = document.getElementById('modalAreaImagePicker');
+        const current = document.getElementById('areaImageCurrent');
+        if (!picker) return;
+        const open = requested === undefined ? picker.style.display !== 'flex' : Boolean(requested);
+        picker.style.display = open ? 'flex' : 'none';
+        if (current) current.setAttribute('aria-expanded', String(open));
     }
 
     function alternarCamposAreaModulo() {
@@ -2770,10 +2801,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             onOrders: aplicarPedidosSincronizados,
             onState: atualizarIndicadorSincronizacao
         });
-        await syncConfiavel.start();
+        // O catálogo e os pedidos usam canais independentes. Iniciá-los em paralelo
+        // evita que uma leitura mais lenta do histórico mantenha o catálogo amarelo.
+        const inicializacaoPedidos = syncConfiavel.start();
         await sincronizarBancoAutomaticamente();
         if(!bancoSyncTimer) bancoSyncTimer = setInterval(sincronizarBancoAutomaticamente, 5000);
         window.addEventListener('online', () => agendarSincronizacaoBanco(0));
+        await inicializacaoPedidos;
     }
 
     const abrirModalMetricasOriginal = abrirModalMetricas;
@@ -2943,6 +2977,9 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const resultado = await AloCatalogSync.publish({ api: AloApi, url: db.configs.url, data: dadosEnviados });
         if(!resultado.confirmed) throw new Error('O servidor ainda não confirmou as configurações. Tentando novamente.');
 
+        const tarefasMescladas = AloCatalogSync.mergeTaskDefinitions(db.tarefas, resultado.bank?.tarefas);
+        const tarefasAtualizadas = JSON.stringify(tarefasMescladas) !== JSON.stringify(db.tarefas);
+        if(tarefasAtualizadas) db.tarefas = tarefasMescladas;
         const nenhumaEdicaoNova = bancoAlteracoes.unchangedSince(alteracaoLocalEnviada);
         db.configs.dadosBaixados = true;
         db.configs.bancoPendente = !nenhumaEdicaoNova;
@@ -2951,6 +2988,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         bancoSyncErro = '';
         bancoSyncFalhas = 0;
         salvarBancoLocal();
+        if(tarefasAtualizadas && window.AloTasks) AloTasks.refreshDefinitions();
     }
 
     async function sincronizarBancoAutomaticamente() {
@@ -3018,7 +3056,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.20').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.21').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

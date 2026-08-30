@@ -130,7 +130,7 @@
             const linkedTask = taskName(document.tarefaId);
             const hasFile = Boolean(document.arquivo);
             const fileState = hasFile ? 'Documento cadastrado' : 'Documento ainda não cadastrado';
-            const icon = hasFile ? (document.sensivel ? '🔒' : (isImageDocument(document) ? '▧' : '📄')) : '○';
+            const icon = hasFile ? (isImageDocument(document) ? '▧' : '📄') : '∅';
             return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openDetail('${escapeHtml(document.id)}')"><span class="document-card-icon ${hasFile ? 'registered' : 'empty'}" aria-hidden="true">${icon}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small class="${hasFile ? 'registered' : ''}">${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
     }
@@ -192,7 +192,7 @@
         if (isImageDocument(record)) {
             const dataUrl = await loadFilePreview(record);
             const preview = document.getElementById('checklistDocumentDetailPreview');
-            if (preview) preview.innerHTML = dataUrl ? `<button type="button" class="document-detail-image-button" onclick="AloChecklistDocuments.openImageViewer('${escapeHtml(record.id)}')" aria-label="Ampliar documento"><img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(record.nome)}"><span>Toque para ampliar</span></button><button type="button" class="document-detail-share" onclick="AloChecklistDocuments.shareFile('${escapeHtml(record.id)}')" aria-label="Compartilhar documento" title="Compartilhar"><span aria-hidden="true">↗</span></button>` : '<span>Imagem indisponível.</span>';
+            if (preview) preview.innerHTML = dataUrl ? `<button type="button" class="document-detail-image-button" onclick="AloChecklistDocuments.openImageViewer('${escapeHtml(record.id)}')" aria-label="Ampliar documento"><img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(record.nome)}"><span>Toque para ampliar</span></button><button type="button" class="document-detail-share" onclick="AloChecklistDocuments.shareFile('${escapeHtml(record.id)}')" aria-label="Compartilhar documento" title="Compartilhar"><span class="document-share-icon" aria-hidden="true"></span></button>` : '<span>Imagem indisponível.</span>';
         }
     }
     function closeDetail() { document.getElementById('modalChecklistDocumentDetail').style.display = 'none'; }
@@ -315,7 +315,7 @@
                 if (file.size > MAX_PDF_BYTES) throw new Error('O PDF deve ter no máximo 3 MB. Reduza o arquivo antes de anexar.');
                 pendingFile = { dataUrl:await readAsDataUrl(file), name:file.name || 'documento.pdf', mime:file.type, size:file.size };
             } else if (file.type.startsWith('image/')) {
-                const dataUrl = await global.AloTasks.compressPhoto(file);
+                const dataUrl = await global.AloTasks.compressPhoto(file, { maxDimension:1920, quality:.74, maxDataUrl:4200000 });
                 pendingFile = { dataUrl, name:(file.name || 'documento.jpg').replace(/\.[^.]+$/, '.jpg'), mime:'image/jpeg', size:Math.round(dataUrl.length * .75) };
             } else throw new Error('Anexe uma imagem ou um arquivo PDF.');
             removeFile = false;

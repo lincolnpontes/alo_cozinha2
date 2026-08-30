@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.20';
+    const VERSION = '2.1.21';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -666,8 +666,16 @@
     }
 
     function togglePersonEmojiPicker(requested) {
-        toggleFloatingPicker('sharedPersonEmojiPicker', 'sharedPersonEmojiButton', requested);
-        if (requested !== false) toggleComprasCategories(false);
+        const picker = document.getElementById('sharedPersonEmojiPicker');
+        const button = document.getElementById('sharedPersonEmojiButton');
+        if (!picker || !button) return;
+        const open = requested === undefined ? picker.style.display !== 'flex' : Boolean(requested);
+        picker.style.display = open ? 'flex' : 'none';
+        button.setAttribute('aria-expanded', String(open));
+        if (open) {
+            togglePersonPinPicker(false);
+            toggleComprasCategories(false);
+        }
     }
 
     function updatePersonPinButton() {

@@ -30,13 +30,35 @@
         }, {});
     }
 
+    function taskVersion(task) {
+        const value = task?.revisaoDefinicao ?? task?.atualizadoEm ?? 0;
+        const numeric = Number(value);
+        if (Number.isFinite(numeric)) return numeric;
+        const timestamp = Date.parse(String(value || ''));
+        return Number.isFinite(timestamp) ? timestamp : 0;
+    }
+
+    function mergeTaskDefinitions(localTasks, remoteTasks) {
+        const merged = new Map((Array.isArray(localTasks) ? localTasks : []).filter(task => task?.id).map(task => [String(task.id), task]));
+        (Array.isArray(remoteTasks) ? remoteTasks : []).forEach(remote => {
+            if (!remote?.id) return;
+            const id = String(remote.id);
+            const local = merged.get(id);
+            if (!local || taskVersion(remote) > taskVersion(local)) merged.set(id, remote);
+        });
+        return [...merged.values()];
+    }
+
     function isEqual(bank, data) {
         const remote = comparable(bank);
         const desired = comparable(data);
-        const remoteTasks = new Map((Array.isArray(remote.tarefas) ? remote.tarefas : []).map(task => [String(task?.id || ''), canonical(task)]));
+        const remoteTasks = new Map((Array.isArray(remote.tarefas) ? remote.tarefas : []).map(task => [String(task?.id || ''), { value:canonical(task), version:taskVersion(task) }]));
         const desiredTasksConfirmed = (Array.isArray(desired.tarefas) ? desired.tarefas : []).every(task => {
             const confirmed = remoteTasks.get(String(task?.id || ''));
-            return confirmed && JSON.stringify(confirmed) === JSON.stringify(canonical(task));
+            return confirmed && (
+                JSON.stringify(confirmed.value) === JSON.stringify(canonical(task))
+                || confirmed.version > taskVersion(task)
+            );
         });
         if (!desiredTasksConfirmed) return false;
         remote.tarefas = [];
@@ -57,17 +79,19 @@
         let sent = false;
         let sharedSupported = false;
         let lastRevision = 0;
+        let lastBank = null;
         for (let publishAttempt = 0; publishAttempt < 2; publishAttempt += 1) {
             const current = await api.getBank(url);
             if (!current || Array.isArray(current) || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, '_revision')) {
                 throw new Error('Banco incompatível.');
             }
+            lastBank = current;
             lastRevision = Number(current._revision || 0);
             sharedSupported = Boolean(current._capabilities?.dadosCompartilhados);
             const dataForServer = sharedSupported ? data : { ...data };
             if (!sharedSupported) delete dataForServer.coreCompartilhado;
             if (isEqual(current, dataForServer)) {
-                return { confirmed:true, revision:lastRevision, sent, sharedSupported };
+                return { confirmed:true, revision:lastRevision, sent, sharedSupported, bank:current };
             }
             await api.post(url, {
                 action: 'salvar_banco',
@@ -78,14 +102,15 @@
             for (const delay of [250, 550, 900]) {
                 await wait(delay);
                 const confirmed = await api.getBank(url);
+                lastBank = confirmed;
                 lastRevision = Number(confirmed?._revision || lastRevision);
                 if (isEqual(confirmed, dataForServer)) {
-                    return { confirmed:true, revision:lastRevision, sent:true, sharedSupported };
+                    return { confirmed:true, revision:lastRevision, sent:true, sharedSupported, bank:confirmed };
                 }
             }
         }
-        return { confirmed:false, revision:lastRevision, sent, sharedSupported };
+        return { confirmed:false, revision:lastRevision, sent, sharedSupported, bank:lastBank };
     }
 
-    global.AloCatalogSync = Object.freeze({ isEqual, publish, createChangeTracker });
+    global.AloCatalogSync = Object.freeze({ isEqual, publish, createChangeTracker, mergeTaskDefinitions });
 })(window);

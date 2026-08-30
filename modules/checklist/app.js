@@ -748,20 +748,23 @@
         const editor = document.getElementById(editorId);
         return editor && editor.innerText.trim() ? sanitizeRichHtml(editor.innerHTML) : '';
     }
-    function compressTaskPhoto(file) {
+    function compressTaskPhoto(file, options = {}) {
         return new Promise((resolve, reject) => {
             if (!file || !String(file.type || '').startsWith('image/')) { reject(new Error('Escolha uma imagem.')); return; }
             const url = URL.createObjectURL(file);
             const image = new Image();
             image.onload = () => {
-                const scale = Math.min(1, 1280 / Math.max(image.width, image.height));
+                const maxDimension = Number(options.maxDimension || 1280);
+                const quality = Number(options.quality || .78);
+                const maxDataUrl = Number(options.maxDataUrl || 2400000);
+                const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
                 const canvas = document.createElement('canvas');
                 canvas.width = Math.max(1, Math.round(image.width * scale));
                 canvas.height = Math.max(1, Math.round(image.height * scale));
                 canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
                 URL.revokeObjectURL(url);
-                const dataUrl = canvas.toDataURL('image/jpeg', .78);
-                if (dataUrl.length > 2400000) reject(new Error('A foto ainda ficou muito grande. Escolha outra imagem.'));
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                if (dataUrl.length > maxDataUrl) reject(new Error('A foto ainda ficou muito grande. Escolha outra imagem.'));
                 else resolve(dataUrl);
             };
             image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível abrir esta imagem.')); };

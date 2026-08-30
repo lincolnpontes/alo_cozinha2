@@ -31,34 +31,51 @@
     }
 
     function isEqual(bank, data) {
-        return JSON.stringify(canonical(comparable(bank))) === JSON.stringify(canonical(comparable(data)));
+        const remote = comparable(bank);
+        const desired = comparable(data);
+        const remoteTasks = new Map((Array.isArray(remote.tarefas) ? remote.tarefas : []).map(task => [String(task?.id || ''), canonical(task)]));
+        const desiredTasksConfirmed = (Array.isArray(desired.tarefas) ? desired.tarefas : []).every(task => {
+            const confirmed = remoteTasks.get(String(task?.id || ''));
+            return confirmed && JSON.stringify(confirmed) === JSON.stringify(canonical(task));
+        });
+        if (!desiredTasksConfirmed) return false;
+        remote.tarefas = [];
+        desired.tarefas = [];
+        return JSON.stringify(canonical(remote)) === JSON.stringify(canonical(desired));
     }
 
     async function publish({ api, url, data, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
-        const current = await api.getBank(url);
-        if (!current || Array.isArray(current) || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, '_revision')) {
-            throw new Error('Banco incompativel.');
+        let sent = false;
+        let sharedSupported = false;
+        let lastRevision = 0;
+        for (let publishAttempt = 0; publishAttempt < 2; publishAttempt += 1) {
+            const current = await api.getBank(url);
+            if (!current || Array.isArray(current) || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, '_revision')) {
+                throw new Error('Banco incompatível.');
+            }
+            lastRevision = Number(current._revision || 0);
+            sharedSupported = Boolean(current._capabilities?.dadosCompartilhados);
+            const dataForServer = sharedSupported ? data : { ...data };
+            if (!sharedSupported) delete dataForServer.coreCompartilhado;
+            if (isEqual(current, dataForServer)) {
+                return { confirmed:true, revision:lastRevision, sent, sharedSupported };
+            }
+            await api.post(url, {
+                action: 'salvar_banco',
+                dados: dataForServer,
+                expectedRevision: lastRevision
+            });
+            sent = true;
+            for (const delay of [250, 550, 900]) {
+                await wait(delay);
+                const confirmed = await api.getBank(url);
+                lastRevision = Number(confirmed?._revision || lastRevision);
+                if (isEqual(confirmed, dataForServer)) {
+                    return { confirmed:true, revision:lastRevision, sent:true, sharedSupported };
+                }
+            }
         }
-        const sharedSupported = Boolean(current._capabilities?.dadosCompartilhados);
-        const dataForServer = sharedSupported ? data : { ...data };
-        if (!sharedSupported) delete dataForServer.coreCompartilhado;
-        if (isEqual(current, dataForServer)) {
-            return { confirmed: true, revision: Number(current._revision || 0), sent: false, sharedSupported };
-        }
-
-        await api.post(url, {
-            action: 'salvar_banco',
-            dados: dataForServer,
-            expectedRevision: Number(current._revision || 0)
-        });
-        await wait(650);
-        const confirmed = await api.getBank(url);
-        return {
-            confirmed: isEqual(confirmed, dataForServer),
-            revision: Number(confirmed && confirmed._revision || 0),
-            sent: true,
-            sharedSupported
-        };
+        return { confirmed:false, revision:lastRevision, sent, sharedSupported };
     }
 
     global.AloCatalogSync = Object.freeze({ isEqual, publish });

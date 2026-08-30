@@ -35,6 +35,8 @@
     let pendingFile = null;
     let removeFile = false;
     let formMode = 'view';
+    const filePreviewCache = new Map();
+    const filePreviewLoading = new Set();
 
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function id(prefix) { return `${prefix}_${global.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`; }
@@ -101,21 +103,38 @@
         const task = deps.getTasks().find(item => String(item.id) === String(taskId));
         return task?.nome || '';
     }
+    function isImageDocument(record) { return Boolean(record?.arquivo?.mime?.startsWith('image/')); }
+    async function loadFilePreview(record) {
+        if (!isImageDocument(record) || !deps.getUrl()) return '';
+        if (filePreviewCache.has(record.id)) return filePreviewCache.get(record.id);
+        if (filePreviewLoading.has(record.id)) return '';
+        filePreviewLoading.add(record.id);
+        try {
+            const file = await global.AloApi.getChecklistDocumentFile(deps.getUrl(), record.id, true);
+            const dataUrl = file?.dataUrl || file?.data || file?.arquivo || '';
+            if (dataUrl) filePreviewCache.set(record.id, dataUrl);
+            document.querySelectorAll(`[data-document-thumbnail="${CSS.escape(record.id)}"]`).forEach(target => {
+                if (dataUrl) target.innerHTML = `<img src="${escapeHtml(dataUrl)}" alt="Prévia de ${escapeHtml(record.nome)}">`;
+            });
+            return dataUrl;
+        } catch (error) { return ''; }
+        finally { filePreviewLoading.delete(record.id); }
+    }
     function render() {
         const target = document.getElementById('checklistDocumentsList');
         if (!target) return;
         const query = normalizeSearch(document.getElementById('checklistDocumentsSearch')?.value);
         const documents = visibleDocuments().filter(document => !query || normalizeSearch(`${document.nome} ${document.orgao} ${taskName(document.tarefaId)}`).includes(query))
             .sort((left, right) => left.nome.localeCompare(right.nome));
-        const statusCounts = documents.reduce((counts, document) => { const status = statusFor(document).key; counts[status] = (counts[status] || 0) + 1; return counts; }, {});
-        const summary = document.getElementById('checklistDocumentsSummary');
-        if (summary) summary.textContent = `${documents.length} documentos · ${statusCounts.vencido || 0} vencidos · ${statusCounts.vencendo || 0} vencendo`;
         target.innerHTML = documents.length ? documents.map(document => {
             const status = statusFor(document);
             const linkedTask = taskName(document.tarefaId);
             const fileState = document.arquivo ? (document.arquivo.nome || 'Arquivo anexado') : 'Documento ainda não cadastrado';
-            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openForm('${escapeHtml(document.id)}', 'view')"><span class="document-card-icon" aria-hidden="true">${document.sensivel ? '🔒' : '📄'}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small>${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
+            const cachedPreview = filePreviewCache.get(document.id);
+            const icon = cachedPreview ? `<img src="${escapeHtml(cachedPreview)}" alt="">` : (document.sensivel ? '🔒' : (isImageDocument(document) ? '▧' : '📄'));
+            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openDetail('${escapeHtml(document.id)}')"><span class="document-card-icon" data-document-thumbnail="${escapeHtml(document.id)}" aria-hidden="true">${icon}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small>${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
+        documents.filter(isImageDocument).forEach(document => { loadFilePreview(document).catch(() => {}); });
     }
     function activate() { render(); syncNow().catch(() => {}); }
     function findDocument(documentId) { return visibleDocuments().find(document => document.id === documentId); }
@@ -153,6 +172,32 @@
             return `<button type="button" class="technical-manager-item document-manager-item" onclick="AloChecklistDocuments.openForm('${escapeHtml(document.id)}', 'manager')"><span><strong>${escapeHtml(document.nome)}</strong><small>${linkedTask ? `Atividade: ${escapeHtml(linkedTask)}` : statusFor(document).label}</small></span><b aria-hidden="true">✎</b></button>`;
         }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
     }
+    function formatDate(value) {
+        if (!value) return 'Não informado';
+        const [year, month, day] = String(value).split('-');
+        return year && month && day ? `${day}/${month}/${year}` : String(value);
+    }
+    async function openDetail(documentId) {
+        const record = findDocument(documentId);
+        if (!record) return;
+        const linkedTask = taskName(record.tarefaId) || 'Sem atividade vinculada';
+        const status = statusFor(record);
+        const body = document.getElementById('checklistDocumentDetailBody');
+        document.getElementById('checklistDocumentDetailTitle').textContent = record.nome;
+        body.innerHTML = `<div class="document-detail-grid"><div class="document-detail-field"><small>Status</small><strong>${escapeHtml(status.label)}</strong></div><div class="document-detail-field"><small>Atividade relacionada</small><strong>${escapeHtml(linkedTask)}</strong></div><div class="document-detail-field"><small>Órgão ou responsável</small><strong>${escapeHtml(record.orgao || 'Não informado')}</strong></div><div class="document-detail-field"><small>Número</small><strong>${escapeHtml(record.numero || 'Não informado')}</strong></div><div class="document-detail-field"><small>Emissão</small><strong>${escapeHtml(formatDate(record.emitidoEm))}</strong></div><div class="document-detail-field"><small>Validade</small><strong>${escapeHtml(formatDate(record.venceEm))}</strong></div></div>${record.observacoes ? `<div class="document-detail-notes">${escapeHtml(record.observacoes)}</div>` : ''}${record.arquivo ? (isImageDocument(record) ? `<div id="checklistDocumentDetailPreview" class="document-detail-preview"><span>Carregando imagem...</span></div>` : `<button class="document-detail-file" type="button" onclick="AloChecklistDocuments.openFile('${escapeHtml(record.id)}')">Abrir ${escapeHtml(record.arquivo.nome || 'PDF')}</button>`) : '<div class="document-detail-notes">Nenhum arquivo anexado.</div>'}`;
+        const edit = document.getElementById('checklistDocumentDetailEdit');
+        edit.onclick = () => {
+            document.getElementById('modalChecklistDocumentDetail').style.display = 'none';
+            openForm(record.id, 'manager');
+        };
+        deps.openModalTop?.('modalChecklistDocumentDetail') || (document.getElementById('modalChecklistDocumentDetail').style.display = 'flex');
+        if (isImageDocument(record)) {
+            const dataUrl = await loadFilePreview(record);
+            const preview = document.getElementById('checklistDocumentDetailPreview');
+            if (preview) preview.innerHTML = dataUrl ? `<img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(record.nome)}">` : '<span>Imagem indisponível.</span>';
+        }
+    }
+    function closeDetail() { document.getElementById('modalChecklistDocumentDetail').style.display = 'none'; }
     function setFormReadOnly(readOnly) {
         ['checklistDocumentName','checklistDocumentTask','checklistDocumentIssuer','checklistDocumentNumber','checklistDocumentIssuedAt','checklistDocumentExpiresAt','checklistDocumentNotes'].forEach(id => {
             const field = document.getElementById(id);
@@ -235,9 +280,11 @@
             if (pendingFile) {
                 await global.AloApi.uploadChecklistDocument(deps.getUrl(), draft.id, pendingFile.dataUrl, pendingFile.name);
                 draft.arquivo = { nome:pendingFile.name, mime:pendingFile.mime, tamanho:pendingFile.size, atualizadoEm:Date.now() };
+                if (pendingFile.mime?.startsWith('image/')) filePreviewCache.set(draft.id, pendingFile.dataUrl);
             } else if (removeFile) {
                 await global.AloApi.deleteChecklistDocument(deps.getUrl(), draft.id);
                 draft.arquivo = null;
+                filePreviewCache.delete(draft.id);
             } else draft.arquivo = current?.arquivo || null;
         } catch (error) {
             return global.AloUiDialog?.notice('O arquivo não foi enviado. O cadastro permaneceu aberto.', { title:'Arquivo não enviado', confirmText:'Entendi' });
@@ -252,10 +299,11 @@
         const confirmed = await global.AloUiDialog?.confirm(`Excluir “${current.nome}”?`, { title:'Excluir documento', icon:'×', tone:'danger', confirmText:'Excluir' });
         if (!confirmed) return;
         if (current.arquivo && deps.getUrl()) global.AloApi.deleteChecklistDocument(deps.getUrl(), current.id).catch(() => {});
+        filePreviewCache.delete(current.id);
         queueDocument({ ...current, excluido:true, revisao:Number(current.revisao || 0) + 1, atualizadoEm:Date.now() }); closeForm(false); openManager();
     }
-    async function openFile() {
-        const current = findDocument(document.getElementById('checklistDocumentId').value);
+    async function openFile(documentId = '') {
+        const current = findDocument(documentId || document.getElementById('checklistDocumentId').value);
         try {
             const file = pendingFile || await global.AloApi.getChecklistDocumentFile(deps.getUrl(), current.id, true);
             const dataUrl = file.dataUrl || file.data || file.arquivo;
@@ -327,5 +375,5 @@
         saveState(); render(); return true;
     }
 
-    global.AloChecklistDocuments = Object.freeze({ configure, activate, render, openManager, closeManager, renderManager, openForm, closeForm, handleFile, removeFileDraft, saveForm, deleteCurrent, openFile, syncNow, getBackup, restoreBackup });
+    global.AloChecklistDocuments = Object.freeze({ configure, activate, render, openManager, closeManager, renderManager, openForm, closeForm, openDetail, closeDetail, handleFile, removeFileDraft, saveForm, deleteCurrent, openFile, syncNow, getBackup, restoreBackup });
 })(window);

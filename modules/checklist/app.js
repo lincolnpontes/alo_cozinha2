@@ -149,13 +149,18 @@
             data.setoresTarefas = [{ id: 'setor_cozinha', nome: 'Cozinha', emoji: '🧑‍🍳', ativo: true }];
         }
         if (!Array.isArray(data.funcionarios)) data.funcionarios = [];
-        data.funcionarios = data.funcionarios.map(employee => ({
-            id: employee.id,
-            nome: employee.nome || '',
-            setorId: employee.setorId || '',
-            ativo: employee.ativo !== false,
-            coreId: employee.coreId || ''
-        }));
+        data.funcionarios = data.funcionarios.map(employee => {
+            const setorIds = Array.isArray(employee.setorIds) ? employee.setorIds.map(String).filter(Boolean) : [];
+            if (!setorIds.length && employee.setorId) setorIds.push(String(employee.setorId));
+            return {
+                id: employee.id,
+                nome: employee.nome || '',
+                setorId: setorIds.length === 1 ? setorIds[0] : '',
+                setorIds: [...new Set(setorIds)],
+                ativo: employee.ativo !== false,
+                coreId: employee.coreId || ''
+            };
+        });
         if (!Array.isArray(data.tarefas)) data.tarefas = [];
         data.tarefas = data.tarefas.map(task => {
             const programacoes = getTaskSchedules(task);
@@ -190,6 +195,15 @@
     }
     function getEmployee(id) {
         return db().funcionarios.find(employee => employee.id === id) || null;
+    }
+    function employeeAreaIds(employee) {
+        const ids = Array.isArray(employee?.setorIds) ? employee.setorIds.map(String).filter(Boolean) : [];
+        if (!ids.length && employee?.setorId) ids.push(String(employee.setorId));
+        return [...new Set(ids)];
+    }
+    function employeeWorksInArea(employee, areaId) {
+        const ids = employeeAreaIds(employee);
+        return !ids.length || !areaId || ids.includes(String(areaId));
     }
     function scheduledDate(activity) {
         return new Date(`${activity.data}T${activity.horario || '00:00'}:00`);
@@ -267,14 +281,9 @@
         }));
         const pendingById = new Map(outbox.map(item => [item.activityId, item]));
 
-        outbox = outbox.filter(operation => {
-            const remote = remoteById.get(operation.activityId);
-            if (!remote) return true;
-            const payload = operation.payload;
-            const confirmed = remote.status === payload.status && remote.alarmeStatus === payload.alarmeStatus;
-            const superseded = payload.expectedStatus && remote.status !== payload.expectedStatus && remote.status !== payload.status;
-            return !(confirmed || superseded);
-        });
+        outbox = global.AloChecklistSync
+            ? global.AloChecklistSync.reconcileOperations(outbox, remoteActivities, nowIso())
+            : outbox;
 
         const stillPending = new Map(outbox.map(item => [item.activityId, item]));
         const localById = new Map(activities.map(item => [item.id, item]));
@@ -321,17 +330,34 @@
         setSyncIndicator(lastSyncState);
         let finalSyncState = 'online';
         try {
-            const sent = outbox.length > 0;
+            const batch = outbox.slice(0, 40);
+            const sentIds = new Set(batch.map(item => item.operationId));
+            const sent = batch.length > 0;
+            const hasUnconfirmedBatch = () => outbox.some(item => sentIds.has(item.operationId));
             if (sent) {
                 await global.AloApi.post(url, {
                     action: 'salvar_atividades_lote',
-                    atividades: outbox.slice(0, 40).map(item => item.payload)
+                    atividades: batch.map(item => item.payload)
                 });
             }
-            const response = await global.AloApi.syncActivities(url, sent || force ? '' : revision);
-            if (!response || response.status !== 'ok') throw new Error('Resposta inválida.');
-            if (response.changed) mergeRemote(Array.isArray(response.atividades) ? response.atividades : []);
-            if (response.revision !== undefined) revision = String(response.revision);
+            const confirmationDelays = sent ? [0, 250, 550, 900] : [0];
+            let reposted = false;
+            for (const delay of confirmationDelays) {
+                if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+                const response = await global.AloApi.syncActivities(url, sent || force ? '' : revision);
+                if (!response || response.status !== 'ok') throw new Error('Resposta inválida.');
+                if (response.changed) mergeRemote(Array.isArray(response.atividades) ? response.atividades : []);
+                if (response.revision !== undefined) revision = String(response.revision);
+                if (!sent || !hasUnconfirmedBatch()) break;
+                if (!reposted) {
+                    reposted = true;
+                    await global.AloApi.post(url, {
+                        action:'salvar_atividades_lote',
+                        atividades:outbox.filter(item => sentIds.has(item.operationId)).map(item => item.payload)
+                    });
+                }
+            }
+            if (sent && hasUnconfirmedBatch()) throw new Error('A nuvem ainda não confirmou as atividades.');
             saveRuntime();
             render();
             checkAlarms();
@@ -344,7 +370,7 @@
         } finally {
             syncRunning = false;
             setSyncIndicator(finalSyncState);
-            scheduleSync();
+            scheduleSync(outbox.length && navigator.onLine ? 0 : undefined);
         }
     }
     async function syncAll() {
@@ -852,7 +878,7 @@
     }
 
     function employeesForActivity(activity) {
-        return db().funcionarios.filter(employee => employee.ativo !== false && (!employee.setorId || employee.setorId === activity.setorId));
+        return db().funcionarios.filter(employee => employee.ativo !== false && employeeWorksInArea(employee, activity.setorId));
     }
     function requestEmployee(activity, action, direct) {
         const employees = employeesForActivity(activity);
@@ -1318,7 +1344,10 @@
             list.innerHTML = db().setoresTarefas.map((area, index) => managerItem(`${area.emoji} ${area.nome}`, area.ativo === false ? 'Inativo' : 'Ativo', index, area.ativo)).join('');
         } else if (type === 'employees') {
             title.innerText = 'Funcionários';
-            list.innerHTML = db().funcionarios.map((employee, index) => managerItem(employee.nome, employee.setorId ? getArea(employee.setorId).nome : 'Todos os setores', index, employee.ativo)).join('');
+            list.innerHTML = db().funcionarios.map((employee, index) => {
+                const areaNames = employeeAreaIds(employee).map(areaId => getArea(areaId).nome);
+                return managerItem(employee.nome, areaNames.length ? areaNames.join(', ') : 'Todos os setores', index, employee.ativo);
+            }).join('');
         } else {
             title.innerText = 'Tarefas Cadastradas';
             list.innerHTML = db().tarefas.map((task, index) => {
@@ -1343,7 +1372,7 @@
         ).join('');
     }
     function employeeOptions(selected, areaId) {
-        return '<option value="">Todos</option>' + db().funcionarios.filter(employee => employee.ativo !== false && (!areaId || !employee.setorId || employee.setorId === areaId)).map(employee =>
+        return '<option value="">Todos</option>' + db().funcionarios.filter(employee => employee.ativo !== false && employeeWorksInArea(employee, areaId)).map(employee =>
             `<option value="${escapeHtml(employee.id)}" ${employee.id === selected ? 'selected' : ''}>${escapeHtml(employee.nome)}</option>`
         ).join('');
     }
@@ -1579,11 +1608,12 @@
         if (type === 'areas') {
             const area = index >= 0 ? db().setoresTarefas[index] : { nome: '', emoji: '📍', ativo: true };
             title.innerText = index >= 0 ? 'Editar Setor' : 'Novo Setor';
-            body.innerHTML = `<div class="form-group"><label>Nome do setor:</label><input id="taskAreaName" value="${escapeHtml(area.nome)}" placeholder="Ex: Salão"></div><div class="form-group"><label>Emoji:</label><input id="taskAreaEmoji" value="${escapeHtml(area.emoji)}" maxlength="12"></div><label class="task-simple-switch"><input id="taskAreaActive" type="checkbox" ${area.ativo !== false ? 'checked' : ''}><span>Setor ativo</span></label>`;
+            body.innerHTML = `<div class="form-group"><label>Nome do setor:</label><input id="taskAreaName" value="${escapeHtml(area.nome)}" placeholder="Ex: Salão"></div><div class="form-group"><label>Imagem:</label><input id="taskAreaEmoji" value="${escapeHtml(area.emoji)}" maxlength="12"></div><label class="task-simple-switch"><input id="taskAreaActive" type="checkbox" ${area.ativo !== false ? 'checked' : ''}><span>Setor ativo</span></label>`;
         } else if (type === 'employees') {
-            const employee = index >= 0 ? db().funcionarios[index] : { nome: '', setorId: '', ativo: true };
+            const employee = index >= 0 ? db().funcionarios[index] : { nome: '', setorId: '', setorIds:[], ativo: true };
             title.innerText = index >= 0 ? 'Editar Funcionário' : 'Novo Funcionário';
-            body.innerHTML = `<div class="form-group"><label>Nome:</label><input id="taskEmployeeName" value="${escapeHtml(employee.nome)}" placeholder="Nome do funcionário"></div><div class="form-group"><label>Setor principal:</label><select id="taskEmployeeArea"><option value="">Trabalha em vários setores</option>${areaOptions(employee.setorId)}</select></div><label class="task-simple-switch"><input id="taskEmployeeActive" type="checkbox" ${employee.ativo !== false ? 'checked' : ''}><span>Funcionário ativo</span></label>`;
+            const selectedAreas = new Set(employeeAreaIds(employee));
+            body.innerHTML = `<div class="form-group"><label>Nome:</label><input id="taskEmployeeName" value="${escapeHtml(employee.nome)}" placeholder="Nome do funcionário"></div><div class="form-group"><label>Setores em que trabalha:</label><div id="taskEmployeeAreas" class="shared-area-choice-grid">${db().setoresTarefas.filter(area => area.ativo !== false || selectedAreas.has(area.id)).map(area => `<label class="shared-area-choice"><input type="checkbox" value="${escapeHtml(area.id)}" ${selectedAreas.has(area.id) ? 'checked' : ''}><span>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</span></label>`).join('')}</div></div><label class="task-simple-switch"><input id="taskEmployeeActive" type="checkbox" ${employee.ativo !== false ? 'checked' : ''}><span>Funcionário ativo</span></label>`;
         } else {
             const isNewTask = !preset && index < 0;
             const task = preset || (index >= 0 ? db().tarefas[index] : { id: createId('tarefa'), nome: '', setorId: db().setoresTarefas[0]?.id || '', funcionarioId: '', prioridade: 'normal', tempoEsperadoMin: 0, instrucoes: '', procedimentoFormato: 'rico', permiteRemarcacao: false, registroPop: false, ativo: true });
@@ -1630,7 +1660,8 @@
             const nome = document.getElementById('taskEmployeeName').value.trim();
             if (!nome) return alert('Informe o nome do funcionário.');
             const current = index >= 0 ? db().funcionarios[index] : null;
-            const value = { id: current?.id || createId('func'), nome, setorId: document.getElementById('taskEmployeeArea').value, ativo: document.getElementById('taskEmployeeActive').checked };
+            const setorIds = [...document.querySelectorAll('#taskEmployeeAreas input:checked')].map(input => String(input.value)).filter(Boolean);
+            const value = { id: current?.id || createId('func'), nome, setorId:setorIds.length === 1 ? setorIds[0] : '', setorIds, ativo: document.getElementById('taskEmployeeActive').checked };
             if (index >= 0) db().funcionarios[index] = value; else db().funcionarios.push(value);
         } else {
             const nome = document.getElementById('taskName').value.trim();
@@ -1849,13 +1880,16 @@
                 || employees.find(item => linkedId && item.id === linkedId)
                 || employees.find(item => sharedComparable(item.nome) === sharedComparable(person.nome));
             if (!employee) {
-                employee = { id: linkedId || createId('func'), nome: person.nome, setorId: '', ativo: true };
+                employee = { id: linkedId || createId('func'), nome: person.nome, setorId: '', setorIds:[], ativo: true };
                 employees.push(employee);
             }
             employee.coreId = person.id;
             employee.nome = person.nome;
             employee.ativo = true;
-            employee.setorId = String(person.permissions.checklist.setorId || employee.setorId || '');
+            const areaIds = Array.isArray(person.permissions.checklist.setorIds) ? person.permissions.checklist.setorIds.map(String).filter(Boolean) : [];
+            if (!areaIds.length && person.permissions.checklist.setorId) areaIds.push(String(person.permissions.checklist.setorId));
+            employee.setorIds = [...new Set(areaIds)];
+            employee.setorId = employee.setorIds.length === 1 ? employee.setorIds[0] : '';
             acceptedIds.add(person.id);
         });
 

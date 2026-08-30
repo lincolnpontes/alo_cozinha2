@@ -1749,7 +1749,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.17',
+                version: '2.1.18',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2335,7 +2335,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         if (grupo.kds && (grupo.kds.id === 'panelas' || grupo.kds.id === 'cozinha')) return alert('Panelas e Cozinha não podem ser excluídas. Você pode desativar apenas o Checklist ao editar.');
         if (grupo.kds && db.produtos.some(produto => getAreasOrigemProduto(produto).includes(grupo.kds.id) || produto.areaDestino === grupo.kds.id)) return alert('Este setor está ligado a produtos do KDS. Altere primeiro a rota desses produtos.');
         if (grupo.checklist && db.tarefas.some(tarefa => tarefa.setorId === grupo.checklist.id)) return alert('Este setor está ligado a tarefas. Desative-o no Checklist ou altere primeiro essas tarefas.');
-        if (grupo.checklist && db.funcionarios.some(funcionario => funcionario.setorId === grupo.checklist.id)) return alert('Este setor está ligado a funcionários. Altere primeiro o setor desses funcionários.');
+        if (grupo.checklist && db.funcionarios.some(funcionario => funcionario.setorId === grupo.checklist.id || (Array.isArray(funcionario.setorIds) && funcionario.setorIds.map(String).includes(String(grupo.checklist.id))))) return alert('Este setor está ligado a funcionários. Altere primeiro os setores desses funcionários.');
         const confirmed = await AloUiDialog.confirm(`Excluir o setor “${grupo.nome}” dos módulos?`, {
             title: 'Excluir setor', icon: '🗑️', tone: 'danger', confirmText: 'Excluir setor'
         });
@@ -2473,6 +2473,19 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             event.preventDefault();
             if (Date.now() - Number(button.dataset.lastPointerInput || 0) < 600) return;
             activate(button);
+        });
+    }
+
+    function instalarProtecaoRolagemModais() {
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            if (overlay.dataset.scrollGuard === '1') return;
+            overlay.dataset.scrollGuard = '1';
+            overlay.addEventListener('touchmove', event => {
+                if (event.target === overlay) event.preventDefault();
+            }, { passive:false });
+            overlay.addEventListener('wheel', event => {
+                if (event.target === overlay) event.preventDefault();
+            }, { passive:false });
         });
     }
 
@@ -2983,7 +2996,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.17').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.18').catch(() => {}));
     }
 
+    instalarProtecaoRolagemModais();
     iniciarComSyncConfiavel();

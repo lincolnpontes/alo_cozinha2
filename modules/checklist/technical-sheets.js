@@ -12,6 +12,7 @@
     let pendingPhoto = '';
     let removePhoto = false;
     let ingredientSearchTargetId = '';
+    let priceEditorTargetId = '';
     let selectedCategory = 'Todas';
     let managerCategory = 'Todas';
     let formReturnTarget = 'view';
@@ -57,6 +58,7 @@
                 unidade: String(item.unidade || 'g'),
                 perda: Math.max(0, Math.min(95, Number(item.perda || 0))),
                 precoInformado: Number(item.precoInformado || 0),
+                precoUnidade: String(item.precoUnidade || ''),
                 fornecedorId: String(item.fornecedorId || '')
             })) : [],
             preparo: String(source.preparo || ''),
@@ -133,7 +135,7 @@
             const product = purchaseProducts.find(item => String(item.id) === String(ingredient.produtoId));
             const savedPrice = latestPrice(product);
             const price = Number(ingredient.precoInformado || 0) > 0
-                ? { preco:Number(ingredient.precoInformado), unidade:ingredient.unidade, fornecedorId:ingredient.fornecedorId || '' }
+                ? { preco:Number(ingredient.precoInformado), unidade:ingredient.precoUnidade || ingredient.unidade, fornecedorId:ingredient.fornecedorId || '' }
                 : savedPrice;
             const gross = ingredient.quantidade / Math.max(.05, 1 - ingredient.perda / 100);
             if (!product || !price) {
@@ -301,6 +303,7 @@
                 unidade: row.querySelector('[data-ingredient-unit]').value || 'g',
                 perda: Number(row.querySelector('[data-ingredient-loss]').value || 0),
                 precoInformado: Number(row.querySelector('[data-ingredient-price]')?.value || 0),
+                precoUnidade: String(row.querySelector('[data-ingredient-price-unit]')?.value || ''),
                 fornecedorId: String(row.querySelector('[data-ingredient-supplier]')?.value || '')
             };
         });
@@ -317,7 +320,9 @@
             const price = latestPrice(product);
             const currentPrice = Number(ingredient.precoInformado || 0) || Number(price?.preco || 0);
             const currentSupplier = ingredient.fornecedorId || price?.fornecedorId || '';
-            return `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}" data-product-id="${escapeHtml(ingredient.produtoId)}"><div class="technical-ingredient-heading"><strong>Ingrediente ${index + 1}</strong></div><div class="technical-ingredient-main"><div class="technical-ingredient-product"><input data-ingredient-name value="${escapeHtml(ingredient.nome)}" placeholder="Selecionar ingrediente" readonly onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')}" aria-label="Escolher ingrediente"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div class="technical-quantity"><label>Qtde.</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div></div><div class="technical-ingredient-cost-row"><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-price-field"><label>Preço</label><input data-ingredient-price type="number" min="0" step="0.01" inputmode="decimal" value="${currentPrice || ''}" placeholder="R$" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-supplier"><label>Fornecedor</label><select data-ingredient-supplier>${supplierOptions(currentSupplier)}</select></div><button class="technical-ingredient-remove" type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')">Excluir ingrediente</button></div></div>`;
+            const priceUnit = price?.unidade || ingredient.unidade || 'un';
+            const priceLabel = currentPrice ? `${money(currentPrice)} / ${priceUnit}` : 'Informar preço';
+            return `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}" data-product-id="${escapeHtml(ingredient.produtoId)}"><div class="technical-ingredient-main"><div class="technical-ingredient-product"><label>Ingrediente ${index + 1}</label><input data-ingredient-name value="${escapeHtml(ingredient.nome)}" placeholder="Selecionar ingrediente" readonly onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')}" aria-label="Escolher ingrediente"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div class="technical-quantity"><label>Qtde.</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div></div><div class="technical-ingredient-cost-row"><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-price-field"><label>Preço</label><input data-ingredient-price type="hidden" value="${currentPrice || ''}"><input data-ingredient-price-unit type="hidden" value="${escapeHtml(ingredient.precoUnidade || priceUnit)}"><input data-ingredient-supplier type="hidden" value="${escapeHtml(currentSupplier)}"><button class="technical-ingredient-price-button" type="button" onclick="AloTechnicalSheets.openPriceEditor('${escapeHtml(ingredient.id)}')"><span>${escapeHtml(priceLabel)}</span><b aria-hidden="true">✎</b></button></div><button class="technical-ingredient-remove" type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')">Excluir ingrediente</button></div></div>`;
         }).join('');
     }
     function categoryOptions(selected) {
@@ -350,7 +355,7 @@
         const product = purchaseProducts.find(item => String(item.id) === String(productId));
         if (!product || !ingredientSearchTargetId) return;
         const price = latestPrice(product);
-        formIngredients = formIngredients.map(ingredient => ingredient.id === ingredientSearchTargetId ? { ...ingredient, produtoId:product.id, nome:product.nome, precoInformado:Number(price?.preco || 0), fornecedorId:String(price?.fornecedorId || '') } : ingredient);
+        formIngredients = formIngredients.map(ingredient => ingredient.id === ingredientSearchTargetId ? { ...ingredient, produtoId:product.id, nome:product.nome, precoInformado:Number(price?.preco || 0), precoUnidade:String(price?.unidade || ''), fornecedorId:String(price?.fornecedorId || '') } : ingredient);
         renderIngredients();
         previewCost();
         closeIngredientSearch();
@@ -359,6 +364,48 @@
         const modal = document.getElementById('modalTechnicalIngredientSearch');
         if (modal) modal.style.display = 'none';
         ingredientSearchTargetId = '';
+    }
+    function openPriceEditor(ingredientId) {
+        formIngredients = readIngredients(true);
+        const ingredient = formIngredients.find(item => item.id === ingredientId);
+        const product = purchaseProducts.find(item => String(item.id) === String(ingredient?.produtoId));
+        if (!ingredient || !product) {
+            return global.AloUiDialog?.notice('Escolha primeiro o ingrediente da Lista de Compras.', { title:'Ingrediente necessário', confirmText:'Entendi' });
+        }
+        priceEditorTargetId = ingredientId;
+        const price = latestPrice(product);
+        document.getElementById('technicalIngredientPriceProduct').innerHTML = `<strong>${escapeHtml(product.nome)}</strong><span>Cadastro vinculado à Lista de Compras</span>`;
+        document.getElementById('technicalIngredientPriceValue').value = Number(ingredient.precoInformado || 0) || Number(price?.preco || 0) || '';
+        document.getElementById('technicalIngredientPriceUnit').value = ingredient.precoUnidade || price?.unidade || ingredient.unidade || 'un';
+        document.getElementById('technicalIngredientPriceSupplier').innerHTML = supplierOptions(ingredient.fornecedorId || price?.fornecedorId || '');
+        const modal = document.getElementById('modalTechnicalIngredientPrice');
+        if (modal) modal.style.display = 'flex';
+        setTimeout(() => document.getElementById('technicalIngredientPriceValue')?.focus(), 30);
+    }
+    function closePriceEditor() {
+        const modal = document.getElementById('modalTechnicalIngredientPrice');
+        if (modal) modal.style.display = 'none';
+        priceEditorTargetId = '';
+    }
+    async function savePriceEditor() {
+        const ingredient = formIngredients.find(item => item.id === priceEditorTargetId);
+        const product = purchaseProducts.find(item => String(item.id) === String(ingredient?.produtoId));
+        const value = Number(document.getElementById('technicalIngredientPriceValue')?.value || 0);
+        const unit = document.getElementById('technicalIngredientPriceUnit')?.value || ingredient?.unidade || 'un';
+        const supplierId = document.getElementById('technicalIngredientPriceSupplier')?.value || '';
+        if (!ingredient || !product) return closePriceEditor();
+        if (!(value > 0)) return global.AloUiDialog?.notice('Informe um preço maior que zero.', { title:'Preço necessário', confirmText:'Entendi' });
+        try {
+            if (typeof global.AloFeiraModule?.registerProductPrice !== 'function') throw new Error('A Lista de Compras ainda não está pronta para receber preços.');
+            await global.AloFeiraModule.registerProductPrice(product.id, { preco:value, unidade:unit, fornecedorId:supplierId });
+            formIngredients = formIngredients.map(item => item.id === priceEditorTargetId ? { ...item, precoInformado:value, precoUnidade:unit, fornecedorId:supplierId } : item);
+            await refreshPurchaseProducts();
+            closePriceEditor();
+            renderIngredients();
+            previewCost();
+        } catch (error) {
+            global.AloUiDialog?.notice(error.message || 'Não foi possível registrar o preço na Lista de Compras.', { title:'Preço não salvo', confirmText:'Entendi' });
+        }
     }
     async function saveIngredientPrices(ingredients) {
         if (ingredients.some(ingredient => Number(ingredient.precoInformado || 0) > 0) && typeof global.AloFeiraModule?.registerProductPrice !== 'function') {
@@ -369,13 +416,14 @@
             const informed = Number(ingredient.precoInformado || 0);
             if (!product || !informed) continue;
             const current = latestPrice(product);
+            const informedUnit = ingredient.precoUnidade || ingredient.unidade;
             const samePrice = Math.abs(Number(current?.preco || 0) - informed) < .0001;
-            const sameUnit = String(current?.unidade || ingredient.unidade) === String(ingredient.unidade);
+            const sameUnit = String(current?.unidade || informedUnit) === String(informedUnit);
             const sameSupplier = String(current?.fornecedorId || '') === String(ingredient.fornecedorId || '');
             if (samePrice && sameUnit && sameSupplier) continue;
             await global.AloFeiraModule?.registerProductPrice?.(product.id, {
                 preco:informed,
-                unidade:ingredient.unidade,
+                unidade:informedUnit,
                 fornecedorId:ingredient.fornecedorId || ''
             });
         }
@@ -436,6 +484,7 @@
     async function openForm(sheetId = '', returnTarget = 'view') {
         await refreshPurchaseProducts();
         formReturnTarget = returnTarget;
+        if (returnTarget === 'manager') document.getElementById('modalTechnicalSheetsManager').style.display = 'none';
         const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida) || normalizeSheet({ id:id('ficha'), cmvDesejado:30, ingredientes:[] });
         document.getElementById('technicalSheetTitle').textContent = sheetId ? 'Editar Ficha Técnica' : 'Nova Ficha Técnica';
         document.getElementById('technicalSheetId').value = sheet.id;
@@ -478,7 +527,7 @@
         const current = state.sheets.find(item => item.id === draft.id);
         try {
             await saveIngredientPrices(draft.ingredientes);
-            draft.ingredientes = draft.ingredientes.map(({ precoInformado, fornecedorId, ...ingredient }) => ingredient);
+            draft.ingredientes = draft.ingredientes.map(({ precoInformado, precoUnidade, fornecedorId, ...ingredient }) => ingredient);
             await refreshPurchaseProducts();
         } catch (error) {
             return global.AloUiDialog?.notice(error.message || 'O preço não foi registrado na Lista de Compras.', { title:'Preço não salvo', confirmText:'Entendi' });
@@ -620,7 +669,7 @@
 
     global.AloTechnicalSheets = Object.freeze({
         configure, showView, openManager, closeManager, render, renderManager, setCategory, setManagerCategory, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, closeForm, addIngredient, removeIngredient,
-        openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch,
+        openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, openPriceEditor, closePriceEditor, savePriceEditor,
         previewCost, saveForm, deleteCurrent, openDetail, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });
 })(window);

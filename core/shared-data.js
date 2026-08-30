@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.17';
+    const VERSION = '2.1.18';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -70,7 +70,7 @@
     function defaultPermissions(admin = false) {
         return {
             kds: { configuracoes: admin },
-            checklist: { configuracoes: admin, funcionario: false, setorId: '' },
+            checklist: { configuracoes: admin, funcionario: false, setorId: '', setorIds: [] },
             compras: { acesso: false, receber: true, comprar: true, categoriasPedido: [], categoriasCompras: [] },
             l42: defaultL42Permissions(admin)
         };
@@ -122,6 +122,14 @@
             },
             atualizadoEm: Number(source.atualizadoEm || 0)
         };
+        const checklistAreaIds = Array.isArray(normalized.permissions.checklist.setorIds)
+            ? normalized.permissions.checklist.setorIds.map(String).filter(Boolean)
+            : [];
+        if (!checklistAreaIds.length && normalized.permissions.checklist.setorId) checklistAreaIds.push(String(normalized.permissions.checklist.setorId));
+        normalized.permissions.checklist.setorIds = [...new Set(checklistAreaIds)];
+        normalized.permissions.checklist.setorId = normalized.permissions.checklist.setorIds.length === 1
+            ? normalized.permissions.checklist.setorIds[0]
+            : '';
         if (permissions.compras?.acesso === undefined) normalized.permissions.compras.acesso = Boolean(links.comprasId);
         if (permissions.l42?.acesso === undefined) normalized.permissions.l42.acesso = Boolean(links.l42Nome);
         // Etiquetas é um módulo operacional protegido por PIN. O controle específico
@@ -319,7 +327,10 @@
             if (person.links.checklistId !== String(sourcePerson.id || '')) { person.links.checklistId = String(sourcePerson.id || ''); changed = true; }
             if (importSourceSettings) {
                 person.permissions.checklist.funcionario = true;
-                person.permissions.checklist.setorId = String(sourcePerson.setorId || '');
+                const sourceAreaIds = Array.isArray(sourcePerson.setorIds) ? sourcePerson.setorIds.map(String).filter(Boolean) : [];
+                if (!sourceAreaIds.length && sourcePerson.setorId) sourceAreaIds.push(String(sourcePerson.setorId));
+                person.permissions.checklist.setorIds = [...new Set(sourceAreaIds)];
+                person.permissions.checklist.setorId = person.permissions.checklist.setorIds.length === 1 ? person.permissions.checklist.setorIds[0] : '';
             }
         }
         const previousAccess = person.podeEntrar;
@@ -805,11 +816,11 @@
         updatePersonPinButton();
         setCheckbox('sharedPersonAdmin', person.isAdmin);
         setCheckbox('sharedPersonEmployee', person.permissions.checklist.funcionario);
-        const areaSelect = document.getElementById('sharedPersonChecklistArea');
-        if (areaSelect) {
-            const areas = (deps.getDatabase?.()?.setoresTarefas || []).filter(area => area.ativo !== false || area.id === person.permissions.checklist.setorId);
-            areaSelect.innerHTML = '<option value="">Todos os setores</option>' + areas.map(area => `<option value="${escapeHtml(area.id)}">${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</option>`).join('');
-            areaSelect.value = person.permissions.checklist.setorId || '';
+        const areaGrid = document.getElementById('sharedPersonChecklistAreas');
+        if (areaGrid) {
+            const selectedAreas = new Set(person.permissions.checklist.setorIds || (person.permissions.checklist.setorId ? [person.permissions.checklist.setorId] : []));
+            const areas = (deps.getDatabase?.()?.setoresTarefas || []).filter(area => area.ativo !== false || selectedAreas.has(area.id));
+            areaGrid.innerHTML = areas.length ? areas.map(area => `<label class="shared-area-choice"><input type="checkbox" value="${escapeHtml(area.id)}" ${selectedAreas.has(area.id) ? 'checked' : ''}><span>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</span></label>`).join('') : '<span class="shared-area-choice-empty">Nenhum setor cadastrado.</span>';
         }
         setCheckbox('sharedPersonKdsConfig', person.permissions.kds.configuracoes);
         setCheckbox('sharedPersonChecklistConfig', person.permissions.checklist.configuracoes);
@@ -878,8 +889,11 @@
         person.permissions.kds.configuracoes = kdsConfig;
         person.permissions.checklist.configuracoes = checklistConfig;
         person.permissions.checklist.funcionario = document.getElementById('sharedPersonEmployee').checked;
-        person.permissions.checklist.setorId = person.permissions.checklist.funcionario
-            ? document.getElementById('sharedPersonChecklistArea').value
+        person.permissions.checklist.setorIds = person.permissions.checklist.funcionario
+            ? [...document.querySelectorAll('#sharedPersonChecklistAreas input:checked')].map(input => String(input.value)).filter(Boolean)
+            : [];
+        person.permissions.checklist.setorId = person.permissions.checklist.setorIds.length === 1
+            ? person.permissions.checklist.setorIds[0]
             : '';
         person.permissions.compras.acesso = comprasAccess;
         person.permissions.compras.receber = comprasReceive;

@@ -702,6 +702,7 @@
 .task-rich-toolbar { min-height: 42px; display: flex; align-items: center; gap: 3px; overflow-x: auto; padding: 4px; border-bottom: 1px solid #d5dfe1; background: #eef3f3; }
 .task-rich-toolbar button { width: 36px; height: 34px; flex: 0 0 36px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 4px; background: #fff; color: #33474b; font-size: 17px; font-weight: 900; }
 .task-rich-toolbar button:active { border-color: var(--tasks-green); background: #dcefe9; color: var(--tasks-green-dark); }
+.task-rich-toolbar .task-load-template-button { width: 64px; height: 36px; flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; margin-left: 3px; border-color: #7b3fb5; background: #f4ecfb; color: #633092; font-size: 9px; line-height: 1.05; }
 .align-lines { width: 20px; display: grid; gap: 2.5px; }
 .align-lines i { height: 2px; display: block; border-radius: 3px; background: currentColor; }
 .align-left i:nth-child(1),
@@ -978,12 +979,14 @@
 .technical-sheet-search > span { color: #6a329f; font-size: 23px; text-align: center; }
 .technical-sheet-search input { min-width: 0; width: 100%; height: 38px; padding: 0 10px 0 0; border: 0; outline: 0; background: transparent; font-size: 15px; }
 .technical-sheets-tools button, .technical-section-heading button { min-height: 40px; padding: 0 13px; border: 0; border-radius: 7px; background: #6a329f; color: #fff; font-weight: 800; cursor: pointer; }
-.technical-sheets-filterbar { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: 8px; position: sticky; top: 0; z-index: 3; padding-bottom: 9px; background: #eef3f4; }
+.technical-sheets-filterbar { display: flex; align-items: flex-start; gap: 7px; position: sticky; top: 0; z-index: 3; padding-bottom: 9px; background: #eef3f4; }
 .technical-sheets-filterbar .technical-filter-row { min-height: 44px; margin: 0; }
 .technical-sheets-filterbar .technical-filter-row button { min-height: 44px; }
-.technical-sheets-filterbar .technical-sheet-search { height: 44px; }
-.technical-sheets-filterbar .technical-sheet-search input { height: 42px; }
-.technical-main-search { grid-template-columns: 46px 0; overflow: hidden; }
+.technical-sheets-filterbar .technical-filter-row { flex: 1 1 auto; min-width: 0; }
+.technical-search-toggle { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; padding: 0; border: 1px solid #b8c0c7; border-radius: 6px; background: #f8fafb; color: #263238; font-size: 19px; cursor: pointer; }
+.technical-search-toggle.active { border-color: #6a329f; background: #6a329f; color: #fff; }
+.technical-search-inline { width: clamp(104px, 28vw, 190px); min-width: 104px; height: 44px; flex: 0 1 auto; align-items: center; }
+.technical-search-inline input { width: 100%; height: 44px; padding: 0 10px; box-sizing: border-box; border: 1px solid #9aa5ad; border-radius: 6px; background: #fff; font-size: 14px; outline: 0; }
 .technical-main-search input { width: 0 !important; padding: 0 !important; }
 .technical-main-search:focus-within { position: absolute; left: 0; width: min(360px, 100%); grid-template-columns: 42px minmax(0, 1fr); z-index: 4; box-sizing: border-box; }
 .technical-main-search:focus-within input { width: 100% !important; padding-right: 10px !important; }
@@ -1010,9 +1013,10 @@
 .technical-section-heading button { min-height: 34px; }
 .technical-ingredients { display: grid; gap: 10px; }
 .technical-ingredient-row { display: grid; gap: 7px; padding: 10px; border: 1px solid #dce3e5; border-left: 4px solid #7b3fb5; border-radius: 7px; background: #fff; box-shadow: 0 2px 7px rgba(40, 50, 56, .05); }
-.technical-ingredient-main { display: grid; grid-template-columns: minmax(190px, 2.8fr) minmax(70px, .55fr) minmax(72px, .65fr); gap: 7px; align-items: end; }
-.technical-ingredient-cost-row { display: grid; grid-template-columns: 82px minmax(145px, 1fr) auto; gap: 7px; align-items: end; }
+.technical-ingredient-main { display: grid; grid-template-columns: minmax(260px, 4.2fr) 48px 64px; gap: 7px; align-items: end; }
+.technical-ingredient-cost-row { display: grid; grid-template-columns: 50px minmax(220px, 1fr) auto; gap: 7px; align-items: end; }
 .technical-ingredient-product { position: relative; }
+.technical-ingredient-product > label { color: #5f2f86; font-size: 14px; font-weight: 900; }
 .technical-ingredient-product input { padding-right: 41px; cursor: pointer; }
 .technical-ingredient-product .technical-ingredient-search-button { position: absolute; right: 3px; bottom: 3px; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 5px; background: #eee7f5; color: #67358d; font-size: 19px; cursor: pointer; }
 .technical-ingredient-row label { display: block; color: #65747a; font-size: 10px; font-weight: 800; }
@@ -1075,9 +1079,9 @@
 .technical-sheet-delete { width: 100%; min-height: 42px; margin-top: 9px; border: 1px solid #c92d2d !important; border-radius: 6px; background: #c92d2d !important; color: #fff !important; font-weight: 900; text-align: center; }
 
 .checklist-documents-view { min-height: 0; flex: 1; overflow-y: auto; padding: 10px; background: #eef3f4; }
-.documents-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; position: sticky; top: 0; z-index: 4; padding-bottom: 12px; background: #eef3f4; box-shadow: 0 6px 0 #eef3f4; }
+.documents-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; position: sticky; top: -10px; z-index: 20; margin: -10px -10px 10px; padding: 10px; border-bottom: 1px solid #dbe4e6; background: #eef3f4; box-shadow: 0 5px 8px rgba(38, 65, 72, .08); isolation: isolate; }
 .documents-tools > button { min-height: 40px; padding: 0 13px; border: 0; border-radius: 7px; background: #0b7466; color: #fff; font-weight: 800; cursor: pointer; }
-.documents-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; }
+.documents-list { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; }
 .document-card { min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 10px; border: 1px solid #d5dfe1; border-left: 4px solid #78909c; border-radius: 7px; background: #fff; text-align: left; cursor: pointer; }
 .document-card.em-dia { border-left-color: #1f9b69; }
 .document-card.vencendo { border-left-color: #d99a22; }
@@ -1089,6 +1093,7 @@
 .document-card-copy strong { color: #27363c; font-size: 14px; }
 .document-card-copy span { margin-top: 3px; color: #64757b; font-size: 11px; }
 .document-card-copy small { margin-top: 3px; color: #7a4a20; font-size: 10px; font-weight: 800; }
+.document-card-copy small.registered { color: #16704d; }
 .document-status { max-width: 84px; padding: 5px 7px; border-radius: 5px; background: #edf1f2; color: #54676e; font-size: 10px; font-weight: 900; text-align: center; }
 .document-status.em-dia { background: #dff3e9; color: #16704d; }
 .document-status.vencendo { background: #fff0d6; color: #8b5c08; }
@@ -1108,10 +1113,23 @@
 .document-detail-field small { color: #69797e; font-size: 10px; }
 .document-detail-field strong { margin-top: 3px; overflow-wrap: anywhere; color: #28383e; font-size: 13px; }
 .document-detail-notes { padding: 10px; border-left: 3px solid #0b7466; background: #edf6f4; color: #405d58; font-size: 12px; line-height: 1.45; }
-.document-detail-preview { min-height: 150px; display: grid; place-items: center; overflow: hidden; border: 1px solid #d7e0e2; border-radius: 7px; background: #f3f6f7; }
-.document-detail-preview img { display: block; width: 100%; max-height: 48vh; object-fit: contain; }
+.document-detail-preview { min-height: 150px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 7px; overflow: hidden; border: 1px solid #d7e0e2; border-radius: 7px; background: #f3f6f7; }
+.document-detail-image-button { min-width: 0; display: grid; place-items: center; gap: 5px; padding: 8px; border: 0; background: transparent; color: #52676e; font-weight: 800; cursor: zoom-in; }
+.document-detail-image-button img { display: block; width: 100%; max-height: 44vh; object-fit: contain; }
+.document-detail-image-button span { font-size: 10px; }
+.document-detail-share { min-width: 104px; padding: 0 12px; border: 0; border-left: 1px solid #d7e0e2; background: #fff; color: #0b7466; font-weight: 900; cursor: pointer; }
 .document-detail-file { min-height: 46px; padding: 0 14px; border: 1px solid #b9c9cc; border-radius: 7px; background: #fff; color: #285048; font-weight: 850; cursor: pointer; }
-@media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-main-search:focus-within { width: 100%; } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 68px 68px; } .technical-ingredient-cost-row { grid-template-columns: 70px minmax(105px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 8px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
+.document-viewer-overlay { z-index: 12000; padding: 12px; background: rgba(9, 16, 19, .92); }
+.document-viewer-modal { width: min(940px, 100%); height: min(92vh, 900px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; border-radius: 8px; background: #11191c; color: #fff; }
+.document-viewer-header { min-height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 10px 7px 15px; border-bottom: 1px solid #354247; }
+.document-viewer-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-viewer-header button, .document-viewer-controls button { min-width: 40px; height: 40px; border: 0; border-radius: 6px; background: #263438; color: #fff; font-size: 22px; font-weight: 900; cursor: pointer; }
+.document-viewer-stage { min-height: 0; display: grid; place-items: center; overflow: auto; padding: 24px; touch-action: pan-x pan-y; }
+.document-viewer-stage img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; transition: transform .12s ease; }
+.document-viewer-controls { min-height: 58px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px; border-top: 1px solid #354247; }
+.document-viewer-controls output { width: 58px; text-align: center; font-size: 12px; font-weight: 900; }
+.document-viewer-controls .document-viewer-share { width: auto; padding: 0 16px; background: #0b7466; font-size: 12px; }
+@media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 48px 58px; } .technical-ingredient-cost-row { grid-template-columns: 48px minmax(145px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 9px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
 @media (max-width: 620px) {
     .tasks-dashboard-sector { grid-template-columns: minmax(62px, 1fr) minmax(48px, 1.2fr) auto; gap: 5px; padding: 7px 6px; }
     .tasks-dashboard-sector strong { font-size: 11px; }

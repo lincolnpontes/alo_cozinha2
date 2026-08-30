@@ -97,6 +97,16 @@
         return child.restaurarBackupL42PeloHost(bank);
     }
 
+    async function clearHistory() {
+        const child = await waitForChild();
+        if (typeof child.limparHistoricoEtiquetasPeloHost !== 'function') throw new Error('Atualize Etiquetas antes de apagar o histórico.');
+        const result = child.limparHistoricoEtiquetasPeloHost();
+        global.AloEtiquetasCloud?.markDirty?.();
+        const synchronized = await global.AloEtiquetasCloud?.sync?.();
+        if (synchronized === false) throw new Error('A nuvem não confirmou a limpeza de Etiquetas.');
+        return result;
+    }
+
     async function mergeCloudData(bank) {
         const child = await waitForChild();
         if (typeof child.mesclarBancoEtiquetasPeloHost !== 'function') throw new Error('Atualize Etiquetas antes de sincronizar.');
@@ -155,7 +165,7 @@
     global.receberLinkAutenticacaoSupabase = (...args) => deliverNativeCallback('receberLinkAutenticacaoSupabase', args);
 
     global.AloL42Module = Object.freeze({
-        configure, open, getBackup, restoreBackup, mergeCloudData, setCloudStatus, openSettings, backToSettings,
+        configure, open, getBackup, restoreBackup, clearHistory, mergeCloudData, setCloudStatus, openSettings, backToSettings,
         getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson, logout,
         getFullData: getBackup
     });

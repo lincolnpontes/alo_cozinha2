@@ -215,6 +215,32 @@
             return `<button class="technical-sheet-card" type="button" onclick="AloTechnicalSheets.openDetail('${escapeHtml(sheet.id)}')"><span class="technical-sheet-card-icon">🍽️</span><span class="technical-sheet-card-copy"><strong>${escapeHtml(sheet.nome)}</strong><span>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</span><small>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)} · ${cost.portions ? `${cost.portions.toLocaleString('pt-BR', { maximumFractionDigits:1 })} porções` : 'rendimento cadastrado'}</small></span><span class="technical-sheet-card-cost ${cost.missing.length ? 'incomplete' : ''}">${cost.missing.length ? 'Custo incompleto' : money(cost.portionCost)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhuma ficha técnica cadastrada.</div>';
     }
+    function toggleMainSearch() {
+        const box = document.getElementById('technicalSheetsSearchBox');
+        const input = document.getElementById('technicalSheetsSearch');
+        const button = document.getElementById('technicalSheetsSearchButton');
+        if (!box || !input || !button) return;
+        const open = box.style.display === 'flex';
+        if (open || input.value) {
+            input.value = '';
+            box.style.display = 'none';
+            button.classList.remove('active');
+            render();
+            return;
+        }
+        box.style.display = 'flex';
+        button.classList.add('active');
+        setTimeout(() => input.focus({ preventScroll:true }), 60);
+    }
+    function clearMainSearch() {
+        const box = document.getElementById('technicalSheetsSearchBox');
+        const input = document.getElementById('technicalSheetsSearch');
+        const button = document.getElementById('technicalSheetsSearchButton');
+        if (input) input.value = '';
+        if (box) box.style.display = 'none';
+        button?.classList.remove('active');
+        render();
+    }
     function setCategory(category) { selectedCategory = category || 'Todas'; render(); }
     function setManagerCategory(category) { managerCategory = category || 'Todas'; renderManager(); }
     function renderManager() {
@@ -322,7 +348,7 @@
             const currentSupplier = ingredient.fornecedorId || price?.fornecedorId || '';
             const priceUnit = price?.unidade || ingredient.unidade || 'un';
             const priceLabel = currentPrice ? `${money(currentPrice)} / ${priceUnit}` : 'Informar preço';
-            return `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}" data-product-id="${escapeHtml(ingredient.produtoId)}"><div class="technical-ingredient-main"><div class="technical-ingredient-product"><label>Ingrediente ${index + 1}</label><input data-ingredient-name value="${escapeHtml(ingredient.nome)}" placeholder="Selecionar ingrediente" readonly onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')}" aria-label="Escolher ingrediente"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div class="technical-quantity"><label>Qtde.</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div></div><div class="technical-ingredient-cost-row"><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-price-field"><label>Preço</label><input data-ingredient-price type="hidden" value="${currentPrice || ''}"><input data-ingredient-price-unit type="hidden" value="${escapeHtml(ingredient.precoUnidade || priceUnit)}"><input data-ingredient-supplier type="hidden" value="${escapeHtml(currentSupplier)}"><button class="technical-ingredient-price-button" type="button" onclick="AloTechnicalSheets.openPriceEditor('${escapeHtml(ingredient.id)}')"><span>${escapeHtml(priceLabel)}</span><b aria-hidden="true">✎</b></button></div><button class="technical-ingredient-remove" type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')">Excluir ingrediente</button></div></div>`;
+            return `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}" data-product-id="${escapeHtml(ingredient.produtoId)}"><div class="technical-ingredient-main"><div class="technical-ingredient-product"><label>Ingrediente ${index + 1}</label><input data-ingredient-name value="${escapeHtml(ingredient.nome)}" placeholder="Selecionar ingrediente" readonly onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')}" aria-label="Escolher ingrediente"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div class="technical-quantity"><label>Qtde.</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div></div><div class="technical-ingredient-cost-row"><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-price-field"><label>Preço</label><input data-ingredient-price type="hidden" value="${currentPrice || ''}"><input data-ingredient-price-unit type="hidden" value="${escapeHtml(ingredient.precoUnidade || priceUnit)}"><input data-ingredient-supplier type="hidden" value="${escapeHtml(currentSupplier)}"><button class="technical-ingredient-price-button" type="button" onclick="AloTechnicalSheets.openPriceEditor('${escapeHtml(ingredient.id)}')"><span>${escapeHtml(priceLabel)}</span><b aria-hidden="true">✎</b></button></div><button class="technical-ingredient-remove" type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')">Excluir</button></div></div>`;
         }).join('');
     }
     function categoryOptions(selected) {
@@ -512,7 +538,17 @@
         if (reopen && formReturnTarget === 'manager') openManager();
     }
     function addIngredient() { formIngredients = readIngredients(true); formIngredients.push({ id:id('insumo'), produtoId:'', nome:'', quantidade:0, unidade:'g', perda:0 }); renderIngredients(); }
-    function removeIngredient(ingredientId) { formIngredients = readIngredients(true).filter(item => item.id !== ingredientId); renderIngredients(); previewCost(); }
+    async function removeIngredient(ingredientId) {
+        const ingredient = readIngredients(true).find(item => item.id === ingredientId);
+        const confirmed = await global.AloUiDialog?.confirm(
+            `Excluir ${ingredient?.nome ? `“${ingredient.nome}”` : 'este ingrediente'} da ficha técnica?`,
+            { title:'Excluir ingrediente', icon:'×', tone:'danger', confirmText:'Excluir' }
+        );
+        if (!confirmed) return;
+        formIngredients = readIngredients(true).filter(item => item.id !== ingredientId);
+        renderIngredients();
+        previewCost();
+    }
     function queueSheet(sheet) {
         state.sheets = state.sheets.filter(item => item.id !== sheet.id).concat(sheet);
         state.outbox = state.outbox.filter(item => item.ficha.id !== sheet.id).concat({ operationId:id('op'), ficha:clone(sheet) });
@@ -668,7 +704,7 @@
     }
 
     global.AloTechnicalSheets = Object.freeze({
-        configure, showView, openManager, closeManager, render, renderManager, setCategory, setManagerCategory, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, closeForm, addIngredient, removeIngredient,
+        configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, closeForm, addIngredient, removeIngredient,
         openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, openPriceEditor, closePriceEditor, savePriceEditor,
         previewCost, saveForm, deleteCurrent, openDetail, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });

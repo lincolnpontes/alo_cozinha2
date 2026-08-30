@@ -80,7 +80,16 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         return area ? area.nome : id;
     }
 
+    function isAreaImage(emoji) {
+        return /^assets\/areas\/[a-z0-9-]+\.svg$/.test(String(emoji || ''));
+    }
+
+    function getAreaEmojiText(emoji) {
+        return isAreaImage(emoji) ? '' : String(emoji || '');
+    }
+
     function getEmojiAreaHtml(emoji) {
+        if (isAreaImage(emoji)) return `<img class="area-visual-image" src="${emoji}" alt="">`;
         return emoji === '🥣' || emoji === '🏺'
             ? '<span class="emoji-panela-barro" role="img" aria-label="Panela de barro">🥣</span>'
             : emoji;
@@ -116,7 +125,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const seletor = document.getElementById('seletorModo');
         if (!seletor) return;
         seletor.innerHTML = db.areas.map(area =>
-            `<option value="${area.id}">${area.emoji} ${area.nome}</option>`
+            `<option value="${area.id}">${getAreaEmojiText(area.emoji)} ${area.nome}</option>`
         ).join('');
         seletor.value = db.configs.areaAtual;
         const areaAtual = getAreaAtual();
@@ -1545,9 +1554,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         await AloFeiraModule.clearHistory();
     }
 
+    async function limparHistoricoEtiquetas() {
+        await AloL42Module.clearHistory();
+    }
+
     async function excluirHistoricoModulo(modulo) {
-        const nomes = { kds: 'KDS', checklist: 'Checklist', compras: 'Compras', todos: 'todos os módulos' };
-        const alvos = modulo === 'todos' ? ['kds', 'checklist', 'compras'] : [modulo];
+        const nomes = { kds: 'KDS', checklist: 'Checklist', compras: 'Compras', l42: 'Etiquetas', todos: 'todos os módulos' };
+        const alvos = modulo === 'todos' ? ['kds', 'checklist', 'compras', 'l42'] : [modulo];
         if (!nomes[modulo] || !db.configs.url) {
             await AloUiDialog.notice('Configure e valide a URL da nuvem antes de apagar históricos.', {
                 title: 'Nuvem não configurada', icon: '!', tone: 'danger', confirmText: 'Entendi'
@@ -1563,7 +1576,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const handlers = {
             kds: limparHistoricoKds,
             checklist: limparHistoricoChecklist,
-            compras: limparHistoricoCompras
+            compras: limparHistoricoCompras,
+            l42: limparHistoricoEtiquetas
         };
         const falhas = [];
         for (const alvo of alvos) {
@@ -1749,7 +1763,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.18',
+                version: '2.1.19',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2200,7 +2214,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const combo = document.getElementById('prodCategoria'); combo.innerHTML = '';
         db.categorias.forEach(c => combo.innerHTML += `<option value="${c.nome}">${c.nome}</option>`);
         const comboDestino = document.getElementById('prodAreaDestino');
-        comboDestino.innerHTML = db.areas.filter(area => area.tipo === 'recebimento').map(area => `<option value="${area.id}">${area.emoji} ${area.nome}</option>`).join('');
+        comboDestino.innerHTML = db.areas.filter(area => area.tipo === 'recebimento').map(area => `<option value="${area.id}">${getAreaEmojiText(area.emoji)} ${area.nome}</option>`).join('');
         let origensSelecionadas = [];
         if(idx >= 0) {
             const p = db.produtos[idx];
@@ -2258,7 +2272,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         document.getElementById('areaKdsIdOriginal').value = kds?.id || '';
         document.getElementById('areaChecklistIdOriginal').value = checklist?.id || '';
         document.getElementById('areaNome').value = grupo?.nome || '';
-        document.getElementById('areaEmoji').value = grupo?.emoji || '🥘';
+        document.getElementById('areaEmoji').value = grupo?.emoji || 'assets/areas/kitchen.svg';
+        selecionarEmojiArea(document.getElementById('areaEmoji').value);
         document.getElementById('areaTipo').value = kds?.tipo || 'envio';
         const moduloKds = document.getElementById('areaModuloKds');
         moduloKds.checked = Boolean(kds);
@@ -2271,6 +2286,9 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function selecionarEmojiArea(emoji) {
         document.getElementById('areaEmoji').value = emoji;
+        const current = document.getElementById('areaImageCurrent');
+        if (current) current.innerHTML = getEmojiAreaHtml(emoji);
+        document.querySelectorAll('[data-area-image]').forEach(button => button.classList.toggle('selected', button.dataset.areaImage === emoji));
     }
 
     function alternarCamposAreaModulo() {
@@ -2287,7 +2305,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const kdsId = document.getElementById('areaKdsIdOriginal').value;
         const checklistId = document.getElementById('areaChecklistIdOriginal').value;
         if (!nome) return alert('Preencha o nome do setor.');
-        if (!emoji) return alert('Escolha ou digite um emoji para o setor.');
+        if (!emoji) return alert('Escolha uma imagem para o setor.');
         if (!usarKds && !usarChecklist) return alert('Ative o setor no KDS, no Checklist ou nos dois.');
         const duplicado = obterAreasUnificadas().some(grupo => grupo.chave === chaveNomeArea(nome)
             && grupo.kds?.id !== kdsId && grupo.checklist?.id !== checklistId);
@@ -2543,8 +2561,10 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             return;
         }
         if (db.configs.bancoPendente) {
-            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online && !bancoSyncErro ? 'sincronizando' : 'offline'}`;
-            indicador.title = bancoSyncErro || (estadoSyncPedidosAtual.online ? 'Publicando cardápio e configurações' : 'Alterações aguardando internet');
+            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online ? 'sincronizando' : 'offline'}`;
+            indicador.title = estadoSyncPedidosAtual.online
+                ? (bancoSyncErro ? 'Configurações aguardando nova tentativa; pedidos conectados' : 'Publicando cardápio e configurações')
+                : 'Alterações aguardando internet';
             indicador.setAttribute('aria-label', indicador.title);
             return;
         }
@@ -2996,7 +3016,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.18').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.19').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

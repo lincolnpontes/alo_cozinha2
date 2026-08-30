@@ -38,6 +38,7 @@
     let pendingTaskPhoto = '';
     let removeTaskPhoto = false;
     let hygieneGroupFilter = 'Todos';
+    let hygieneLibraryMode = 'create';
     const taskPhotoCache = new Map();
     let initialized = false;
 
@@ -69,6 +70,17 @@
     function parseJson(key, fallback) {
         try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
         catch (error) { return fallback; }
+    }
+    function isAreaImage(value) {
+        return /^assets\/areas\/[a-z0-9-]+\.svg$/.test(String(value || ''));
+    }
+    function areaVisualHtml(value) {
+        return isAreaImage(value)
+            ? `<img class="area-visual-image" src="${escapeHtml(value)}" alt="">`
+            : escapeHtml(value || '📍');
+    }
+    function areaVisualText(value) {
+        return isAreaImage(value) ? '' : String(value || '📍');
     }
     function normalizeDateKey(value) {
         if (!value) return todayKey();
@@ -394,7 +406,7 @@
         if (!select || !options || !button) return;
         const activeAreas = db().setoresTarefas.filter(area => area.ativo !== false);
         select.innerHTML = '<option value="todos">Geral</option>' + activeAreas.map(area =>
-            `<option value="${escapeHtml(area.id)}">${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</option>`
+            `<option value="${escapeHtml(area.id)}">${escapeHtml(areaVisualText(area.emoji))} ${escapeHtml(area.nome)}</option>`
         ).join('');
         if (!activeAreas.some(area => area.id === selectedArea)) {
             selectedArea = 'todos';
@@ -404,7 +416,7 @@
         const current = selectedArea === 'todos'
             ? { id: 'todos', nome: 'Geral', emoji: '📍' }
             : getArea(selectedArea);
-        document.getElementById('tasksAreaEmoji').textContent = current.emoji;
+        document.getElementById('tasksAreaEmoji').innerHTML = areaVisualHtml(current.emoji);
         const currentName = document.getElementById('tasksAreaName');
         currentName.textContent = current.nome;
         adjustHeaderAreaName(currentName, current.nome);
@@ -420,7 +432,7 @@
             choice.setAttribute('aria-selected', String(area.id === selectedArea));
             const emoji = document.createElement('span');
             emoji.className = 'header-area-option-emoji';
-            emoji.textContent = area.emoji;
+            emoji.innerHTML = areaVisualHtml(area.emoji);
             const copy = document.createElement('span');
             copy.className = 'header-area-option-copy';
             const name = document.createElement('strong');
@@ -616,6 +628,9 @@
     }
     function richEditorToolbar(editorId, label) {
         const commandButton = (command, title, content) => `<button type="button" onmousedown="event.preventDefault()" onclick="AloTasks.formatRichEditor('${editorId}','${command}')" aria-label="${title}" title="${title}">${content}</button>`;
+        const modelButton = editorId === 'taskInstructions'
+            ? `<button type="button" class="task-load-template-button" onclick="AloTasks.openHygieneLibrary('procedure')" aria-label="Carregar modelo sanitário" title="Carregar modelo sanitário"><span>Carregar</span><span>Modelo</span></button>`
+            : '';
         return `<div class="task-rich-toolbar" role="toolbar" aria-label="${label}">
             ${commandButton('bold', 'Negrito', '<b>B</b>')}
             ${commandButton('underline', 'Sublinhar', '<u>S</u>')}
@@ -623,6 +638,7 @@
             ${commandButton('insertOrderedList', 'Lista numerada', '1.')}
             ${commandButton('dashList', 'Lista com traços', '–')}
             <button type="button" class="task-alignment-button" data-alignment="justifyLeft" onmousedown="event.preventDefault()" onclick="AloTasks.cycleRichEditorAlignment('${editorId}',this)" aria-label="Alinhar à esquerda" title="Alinhar à esquerda"><span class="align-lines align-left" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>
+            ${modelButton}
         </div>`;
     }
     function richEditorMarkup(editorId, value, format, placeholder, maxLength) {
@@ -841,7 +857,7 @@
             return `<article class="task-card ${stateClass} details-clickable" id="task-${escapeHtml(activity.id)}"${detailsAction}>
                 <div class="task-card-main">
                     <div class="task-time">${formatTime(activity.horario)}</div>
-                    <div class="task-card-copy"><strong>${escapeHtml(activity.nome)}</strong><span>${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}${employee ? ` · ${escapeHtml(employee.nome)}` : ''}</span></div>
+                    <div class="task-card-copy"><strong>${escapeHtml(activity.nome)}</strong><span>${areaVisualHtml(area.emoji)} ${escapeHtml(area.nome)}${employee ? ` · ${escapeHtml(employee.nome)}` : ''}</span></div>
                     ${urgent || actions ? `<div class="task-card-side">${urgent}${actions ? `<div class="task-card-actions">${actions}</div>` : ''}</div>` : ''}
                 </div>
             </article>`;
@@ -872,7 +888,7 @@
             const areaItems = allToday.filter(item => item.setorId === area.id);
             const areaDone = areaItems.filter(item => item.status === 'concluida').length;
             const areaPercent = areaItems.length ? Math.round(areaDone / areaItems.length * 100) : 0;
-            return `<div class="tasks-dashboard-sector"><strong>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</strong><div class="tasks-dashboard-sector-bar" aria-label="${areaPercent}% concluído"><span style="width:${areaPercent}%"></span></div><small>${areaDone}/${areaItems.length} · ${areaPercent}%</small></div>`;
+            return `<div class="tasks-dashboard-sector"><strong>${areaVisualHtml(area.emoji)} ${escapeHtml(area.nome)}</strong><div class="tasks-dashboard-sector-bar" aria-label="${areaPercent}% concluído"><span style="width:${areaPercent}%"></span></div><small>${areaDone}/${areaItems.length} · ${areaPercent}%</small></div>`;
         }).join('');
         dashboard.innerHTML = `<div class="tasks-dashboard-overview"><div class="tasks-dashboard-progress"><strong>${percent}%</strong><span>concluídas hoje</span></div><div class="tasks-dashboard-sectors" aria-label="Resultado por setor">${sectors}</div></div><div class="tasks-dashboard-counts"><div class="tasks-dashboard-count"><b>${pending.length}</b><span>Pendentes</span></div><div class="tasks-dashboard-count running"><b>${running.length}</b><span>Em execução</span></div><div class="tasks-dashboard-count late"><b>${late.length}</b><span>Atrasadas</span></div><div class="tasks-dashboard-count done"><b>${done.length}</b><span>Concluídas</span></div></div><div class="tasks-dashboard-bar" aria-label="Distribuição das atividades"><span class="done" style="width:${width(done.length)}"></span><span class="running" style="width:${width(running.length)}"></span><span class="pending" style="width:${width(pending.length)}"></span><span class="late" style="width:${width(late.length)}"></span></div><div class="tasks-dashboard-foot"><span>Tempo médio: ${formatDuration(averageSeconds)}</span><span>POP/foto: ${registered}</span></div>`;
     }
@@ -1019,7 +1035,7 @@
         document.getElementById('taskFinishedContent').innerHTML = `
             <div class="task-finished-summary"><strong>${escapeHtml(activity.nome)}</strong><span class="task-detail-status ${statusClass}">${statusText}${editableStatus ? `<button type="button" class="task-status-edit-button" onclick="AloTasks.toggleTaskStatusEditMenu()" aria-label="Editar estado" title="Editar estado" aria-expanded="false">✎</button>` : ''}</span></div>
             <div class="task-detail-grid">
-                <div><small>Setor</small><strong>${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</strong></div>
+                <div><small>Setor</small><strong>${areaVisualHtml(area.emoji)} ${escapeHtml(area.nome)}</strong></div>
                 <div><small>Responsável</small><strong>${escapeHtml(activity.funcionarioNome || employee?.nome || 'Todos')}</strong></div>
                 <div><small>Data programada</small><strong>${escapeHtml(formatDateKey(activity.data))}</strong></div>
                 <div><small>Horário programado</small><strong>${escapeHtml(formatTime(activity.horario))}</strong></div>
@@ -1221,7 +1237,7 @@
         }
         currentAlarmId = activity.id;
         document.getElementById('globalTaskAlarmName').innerText = activity.nome;
-        document.getElementById('globalTaskAlarmMeta').innerText = `${area.emoji} ${area.nome}\u00a0·\u00a0${activity.horario}${due.length > 1 ? `\u00a0·\u00a0+${due.length - 1}` : ''}`;
+        document.getElementById('globalTaskAlarmMeta').innerText = `${areaVisualText(area.emoji)} ${area.nome}\u00a0·\u00a0${activity.horario}${due.length > 1 ? `\u00a0·\u00a0+${due.length - 1}` : ''}`;
         if (activeModule === 'tasks') {
             banner.style.display = hiddenAlarmId === activity.id ? 'none' : 'flex';
             if (!hiddenAlarmId && !alarmBannerTimer) {
@@ -1341,7 +1357,7 @@
         if (employeesButton) employeesButton.style.display = type === 'areas' ? 'block' : 'none';
         if (type === 'areas') {
             title.innerText = 'Setores do Estabelecimento';
-            list.innerHTML = db().setoresTarefas.map((area, index) => managerItem(`${area.emoji} ${area.nome}`, area.ativo === false ? 'Inativo' : 'Ativo', index, area.ativo)).join('');
+            list.innerHTML = db().setoresTarefas.map((area, index) => managerItem(`${areaVisualText(area.emoji)} ${area.nome}`, area.ativo === false ? 'Inativo' : 'Ativo', index, area.ativo)).join('');
         } else if (type === 'employees') {
             title.innerText = 'Funcionários';
             list.innerHTML = db().funcionarios.map((employee, index) => {
@@ -1368,7 +1384,7 @@
     function editManagedItem(index) { openForm(managerType, index); }
     function areaOptions(selected) {
         return db().setoresTarefas.filter(area => area.ativo !== false || area.id === selected).map(area =>
-            `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</option>`
+            `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(areaVisualText(area.emoji))} ${escapeHtml(area.nome)}</option>`
         ).join('');
     }
     function employeeOptions(selected, areaId) {
@@ -1471,9 +1487,11 @@
         cancelScheduleEditor();
         renderTaskSchedules();
     }
-    function openHygieneLibrary() {
+    function openHygieneLibrary(mode = 'create') {
+        hygieneLibraryMode = mode === 'procedure' ? 'procedure' : 'create';
         document.getElementById('modalConfigTasksMenu').style.display = 'none';
         document.getElementById('modalTasksManager').style.display = 'none';
+        if (hygieneLibraryMode === 'procedure') document.getElementById('modalTaskForm').style.display = 'none';
         hygieneGroupFilter = 'Todos';
         renderHygieneLibrary(true);
         deps.openModalTop('modalTaskHygieneLibrary');
@@ -1503,6 +1521,11 @@
     }
     function closeHygieneLibrary() {
         document.getElementById('modalTaskHygieneLibrary').style.display = 'none';
+        if (hygieneLibraryMode === 'procedure') {
+            hygieneLibraryMode = 'create';
+            deps.openModalTop('modalTaskForm');
+            return;
+        }
         openManager('templates');
     }
     function taskPublicUrl(taskId) {
@@ -1567,7 +1590,7 @@
                 try { const photo = await global.AloApi.getTaskPhoto(apiUrl, taskId); photoUrl = photo?.encontrada ? photo.url : ''; } catch (error) {}
             }
             content.innerHTML = `
-                <section class="public-task-summary"><span>${escapeHtml(area.emoji)}</span><div><small>${escapeHtml(area.nome)}</small><h1>${escapeHtml(task.nome)}</h1><p>Consulta do procedimento e das execuções registradas.</p></div></section>
+                <section class="public-task-summary"><span>${areaVisualHtml(area.emoji)}</span><div><small>${escapeHtml(area.nome)}</small><h1>${escapeHtml(task.nome)}</h1><p>Consulta do procedimento e das execuções registradas.</p></div></section>
                 ${photoUrl ? `<section class="public-task-panel"><h2>Foto de referência</h2><img class="public-task-photo" src="${escapeHtml(photoUrl)}" alt="Foto de referência da atividade"></section>` : ''}
                 <section class="public-task-panel"><h2>Procedimento</h2><div class="task-procedure-content">${procedureHtml(task.instrucoes || 'Procedimento não informado.', task.procedimentoFormato || 'rico')}</div></section>
                 <section class="public-task-panel"><h2>Últimas execuções</h2>${records.length ? `<div class="public-task-history">${records.map(record => `<article><strong>${escapeHtml(formatDateTime(record.finalizadoEm))}</strong><span>${escapeHtml(record.funcionarioNome || 'Responsável não informado')}</span>${record.observacao ? `<small>${sanitizeRichHtml(record.observacao)}</small>` : ''}</article>`).join('')}</div>` : '<div class="tasks-empty">Nenhuma execução encontrada no último ano.</div>'}</section>
@@ -1580,6 +1603,15 @@
     function useHygieneTemplate(id) {
         const template = (global.AloTaskTemplates?.templates || []).find(item => item.id === id);
         if (!template) return;
+        if (hygieneLibraryMode === 'procedure') {
+            const editor = document.getElementById('taskInstructions');
+            if (editor) editor.innerHTML = sanitizeRichHtml(template.procedure);
+            document.getElementById('modalTaskHygieneLibrary').style.display = 'none';
+            hygieneLibraryMode = 'create';
+            deps.openModalTop('modalTaskForm');
+            editor?.focus();
+            return;
+        }
         const hint = String(template.areaHint || '').toLocaleLowerCase('pt-BR');
         const area = db().setoresTarefas.find(item => String(item.nome || '').toLocaleLowerCase('pt-BR').includes(hint))
             || db().setoresTarefas.find(item => item.ativo !== false)
@@ -1750,7 +1782,7 @@
         if (!select) return;
         const areas = db().setoresTarefas;
         if (reportAreaId !== 'todos' && !areas.some(area => area.id === reportAreaId)) reportAreaId = 'todos';
-        select.innerHTML = '<option value="todos">Todas as áreas</option>' + areas.map(area => `<option value="${escapeHtml(area.id)}">${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</option>`).join('');
+        select.innerHTML = '<option value="todos">Todas as áreas</option>' + areas.map(area => `<option value="${escapeHtml(area.id)}">${escapeHtml(areaVisualText(area.emoji))} ${escapeHtml(area.nome)}</option>`).join('');
         select.value = reportAreaId;
     }
     async function openReports() {
@@ -1800,7 +1832,7 @@
         const areaSections = Array.from(byArea.entries()).sort((left, right) => getArea(left[0]).nome.localeCompare(getArea(right[0]).nome, 'pt-BR')).map(([areaId, byTask]) => {
             const area = getArea(areaId);
             const tasksHtml = Array.from(byTask.values()).sort((a,b) => b.count-a.count).map(item => `<button type="button" onclick="AloTasks.openTaskHistory('${escapeHtml(item.id)}')"><span><strong>${escapeHtml(item.nome)}</strong><small>${item.count} registro(s)${item.popCount ? ` · ${item.popCount} POP` : ''}</small></span><b>${item.measured ? formatDuration(Math.round(item.seconds / item.measured)) : 'sem medição'}</b></button>`).join('');
-            return `<section class="task-report-area-section"><h3>${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</h3><div class="task-report-list">${tasksHtml}</div></section>`;
+            return `<section class="task-report-area-section"><h3>${areaVisualHtml(area.emoji)} ${escapeHtml(area.nome)}</h3><div class="task-report-list">${tasksHtml}</div></section>`;
         }).join('');
         content.innerHTML = `<div class="task-report-summary"><div><strong>${completed.length}</strong><span>Concluídas</span></div><div><strong>${formatDuration(avg)}</strong><span>Tempo médio</span></div><div><strong>${late}</strong><span>Atrasadas</span></div><div><strong>${direct}</strong><span>Sem início</span></div></div>${areaSections || '<div class="tasks-empty">Nenhuma tarefa concluída no período e na área escolhida.</div>'}`;
     }
@@ -1816,7 +1848,7 @@
         document.getElementById('taskHistoryContent').innerHTML = records.length ? `<div class="task-history-list">${records.map(item => {
             const employee = item.funcionarioNome || getEmployee(item.funcionarioId)?.nome || 'Não informado';
             const area = getArea(item.setorId);
-            return `<article class="task-history-record"><header><strong>${escapeHtml(formatDateTime(item.finalizadoEm))}</strong><span>${item.iniciadoEm ? escapeHtml(formatDuration(item.duracaoSegundos)) : 'Sem medição'}</span></header><div class="task-history-worker"><span>${escapeHtml(area.emoji)} ${escapeHtml(area.nome)}</span><span>Realizada por: <strong>${escapeHtml(employee)}</strong>${item.registroPop ? '<b>POP</b>' : ''}</span></div>${item.observacao ? `<div class="task-history-observation"><strong>Observação</strong><div class="task-procedure-content">${sanitizeRichHtml(item.observacao)}</div></div>` : ''}</article>`;
+            return `<article class="task-history-record"><header><strong>${escapeHtml(formatDateTime(item.finalizadoEm))}</strong><span>${item.iniciadoEm ? escapeHtml(formatDuration(item.duracaoSegundos)) : 'Sem medição'}</span></header><div class="task-history-worker"><span>${areaVisualHtml(area.emoji)} ${escapeHtml(area.nome)}</span><span>Realizada por: <strong>${escapeHtml(employee)}</strong>${item.registroPop ? '<b>POP</b>' : ''}</span></div>${item.observacao ? `<div class="task-history-observation"><strong>Observação</strong><div class="task-procedure-content">${sanitizeRichHtml(item.observacao)}</div></div>` : ''}</article>`;
         }).join('')}</div>` : '<div class="tasks-empty">Nenhuma execução registrada neste período.</div>';
         deps.openModalTop('modalTaskHistory');
     }

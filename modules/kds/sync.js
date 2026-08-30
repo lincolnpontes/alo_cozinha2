@@ -1,5 +1,7 @@
 (function (global) {
     const SUBMISSION_VERIFY_AFTER_MS = 2500;
+    const MISSING_REMOTE_CONFIRM_AFTER_MS = 15000;
+    const LEGACY_MISSING_REMOTE_CONFIRM_AFTER_MS = 60000;
 
     class SyncManager {
         constructor(options) {
@@ -403,10 +405,20 @@
                 }
                 const remote = remoteById.get(String(operation.orderId));
                 if (!remote) {
-                    const staleMissingStatus = fullPull && operation.type === 'status' && operation.attempts > 0
+                    const isTerminalOperation = operation.type === 'status' || operation.type === 'acknowledgement';
+                    const successfulSubmissionAt = Number(operation.submittedAt || 0);
+                    const legacySubmissionAt = !operation.lastError && operation.attempts > 0
+                        ? Number(operation.lastAttemptAt || operation.createdAt || 0)
+                        : 0;
+                    const referenceTime = successfulSubmissionAt || legacySubmissionAt;
+                    const confirmationDelay = successfulSubmissionAt
+                        ? MISSING_REMOTE_CONFIRM_AFTER_MS
+                        : LEGACY_MISSING_REMOTE_CONFIRM_AFTER_MS;
+                    const operationNoLongerRelevant = fullPull && isTerminalOperation
                         && !createOrderIds.has(String(operation.orderId))
-                        && (Date.now() - Number(operation.createdAt || 0)) >= 60000;
-                    if (staleMissingStatus) confirmed.push(operation.operationId);
+                        && referenceTime > 0
+                        && (Date.now() - referenceTime) >= confirmationDelay;
+                    if (operationNoLongerRelevant) confirmed.push(operation.operationId);
                     return;
                 }
                 if (operation.type === 'create') {

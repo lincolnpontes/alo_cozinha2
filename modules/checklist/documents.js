@@ -130,7 +130,7 @@
             const linkedTask = taskName(document.tarefaId);
             const hasFile = Boolean(document.arquivo);
             const fileState = hasFile ? 'Documento cadastrado' : 'Documento ainda não cadastrado';
-            const icon = hasFile ? (isImageDocument(document) ? '▧' : '📄') : '∅';
+            const icon = hasFile ? '📄' : '∅';
             return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openDetail('${escapeHtml(document.id)}')"><span class="document-card-icon ${hasFile ? 'registered' : 'empty'}" aria-hidden="true">${icon}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small class="${hasFile ? 'registered' : ''}">${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
     }

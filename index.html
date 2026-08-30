@@ -2,46 +2,46 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="icon.png?v=2.1.21">
-    <link rel="apple-touch-icon" href="icon.png?v=2.1.21">
+    <link rel="icon" href="icon.png?v=2.1.22">
+    <link rel="apple-touch-icon" href="icon.png?v=2.1.22">
     <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
-    <title>Alô Cozinha v2.1.21</title>
-    <link rel="stylesheet" href="styles.css?v=2.1.21">
-    <link rel="stylesheet" href="modules/checklist/styles.css?v=2.1.21">
+    <title>Alô Cozinha v2.1.22</title>
+    <link rel="stylesheet" href="styles.css?v=2.1.22">
+    <link rel="stylesheet" href="modules/checklist/styles.css?v=2.1.22">
 </head>
 <body class="theme-panelas" oncontextmenu="return false;">
 
 <div id="overlayInatividade"></div>
 
 <div id="splashScreen">
-    <img src="icon.png?v=2.1.21" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
+    <img src="icon.png?v=2.1.22" alt="Logo" class="splash-icone" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'50\' font-size=\'40\'>🍲</text></svg>'">
     <div class="splash-titulo">Alô Cozinha</div>
-    <div class="splash-versao">v2.1.21</div>
+    <div class="splash-versao">v2.1.22</div>
 </div>
 
 <main id="moduleHome" class="module-home" aria-label="Escolher módulo">
     <div class="module-home-inner">
-        <img src="icon.png?v=2.1.21" alt="Alô Cozinha" class="module-home-logo">
+        <img src="icon.png?v=2.1.22" alt="Alô Cozinha" class="module-home-logo">
         <h1>Alô Cozinha</h1>
-        <div class="module-home-version">v2.1.21</div>
+        <div class="module-home-version">v2.1.22</div>
         <div class="module-choice-grid">
             <button class="module-choice module-choice-kds" onclick="abrirModuloComLogin('kds')">
-                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.21" alt="">
+                <img class="module-choice-icon" src="assets/module-kds.png?v=2.1.22" alt="">
                 <strong>KDS - Sistema de Pedidos</strong>
             </button>
             <button class="module-choice module-choice-tasks" onclick="abrirModuloComLogin('checklist')">
-                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.21" alt="">
+                <img class="module-choice-icon" src="assets/module-checklist.png?v=2.1.22" alt="">
                 <strong>Checklist</strong>
             </button>
             <button class="module-choice module-choice-feira" onclick="abrirModuloCompras()">
-                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.21" alt="">
+                <img class="module-choice-icon" src="assets/module-feira.png?v=2.1.22" alt="">
                 <strong>Lista de Compras</strong>
             </button>
             <button class="module-choice module-choice-l42" onclick="abrirModuloL42()">
-                <img class="module-choice-icon" src="modules/l42/icon.png?v=2.1.21" alt="">
+                <img class="module-choice-icon" src="modules/l42/icon.png?v=2.1.22" alt="">
                 <strong>Etiquetas</strong>
             </button>
             <button class="module-choice module-choice-settings" onclick="abrirLoginAdmin('painel')">
@@ -53,7 +53,7 @@
 </main>
 
 <section id="publicTaskView" class="public-task-view" style="display:none" aria-label="Consulta da atividade">
-    <header><img src="icon.png?v=2.1.21" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
+    <header><img src="icon.png?v=2.1.22" alt=""><span><strong>Alô Cozinha</strong><small>Registro de higienização</small></span></header>
     <main id="publicTaskContent"><div class="tasks-empty">Carregando atividade...</div></main>
 </section>
 
@@ -73,7 +73,7 @@
     <div class="header" id="mainHeader">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="KDS, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-kds.png?v=2.1.21" class="module-nav-icon" alt="">
+            <img src="assets/module-kds.png?v=2.1.22" class="module-nav-icon" alt="">
         </button>
         <div class="module-header-center">
             <div class="header-area-picker">
@@ -235,15 +235,15 @@
 
 <div class="modal-overlay" id="modalPainelUnificado">
     <div class="modal">
-        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.21</div>
+        <div style="text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-bottom: 20px;">Alô Cozinha - v2.1.22</div>
 
         <button class="btn-outline settings-entry shared-settings-entry" onclick="AloFeiraModule.openManager('restaurante', 'central')"><span class="settings-entry-icon" aria-hidden="true">🏢</span><span>Dados do Restaurante</span></button>
         <button class="btn-outline settings-entry shared-settings-entry" onclick="abrirGerenciar('areas')"><span class="settings-entry-icon" aria-hidden="true">🗺️</span><span>Setores do Estabelecimento</span></button>
         <button class="btn-outline settings-entry shared-settings-entry" onclick="AloSharedData.openManager()"><span class="settings-entry-icon" aria-hidden="true">👥</span><span>Funcionários e Acessos</span></button>
-        <button class="btn-outline module-settings-entry" onclick="abrirConfiguracoesKds()"><img src="assets/module-kds.png?v=2.1.21" alt=""><span>KDS - Configurações</span></button>
-        <button class="btn-outline module-settings-entry checklist" onclick="AloTasks.openSettingsMenu()"><img src="assets/module-checklist.png?v=2.1.21" alt=""><span>Checklist - Configurações</span></button>
-        <button class="btn-outline module-settings-entry compras" onclick="abrirConfiguracoesCompras()"><img src="assets/module-feira.png?v=2.1.21" alt=""><span>Lista de Compras - Configurações</span></button>
-        <button class="btn-outline module-settings-entry etiquetas" onclick="abrirConfiguracoesEtiquetas()"><img src="modules/l42/icon.png?v=2.1.21" alt=""><span>Etiquetas - Configurações</span></button>
+        <button class="btn-outline module-settings-entry" onclick="abrirConfiguracoesKds()"><img src="assets/module-kds.png?v=2.1.22" alt=""><span>KDS - Configurações</span></button>
+        <button class="btn-outline module-settings-entry checklist" onclick="AloTasks.openSettingsMenu()"><img src="assets/module-checklist.png?v=2.1.22" alt=""><span>Checklist - Configurações</span></button>
+        <button class="btn-outline module-settings-entry compras" onclick="abrirConfiguracoesCompras()"><img src="assets/module-feira.png?v=2.1.22" alt=""><span>Lista de Compras - Configurações</span></button>
+        <button class="btn-outline module-settings-entry etiquetas" onclick="abrirConfiguracoesEtiquetas()"><img src="modules/l42/icon.png?v=2.1.22" alt=""><span>Etiquetas - Configurações</span></button>
         <button class="btn-danger" onclick="solicitarAcessoAvancado()">⚠️ Configurações Avançadas</button>
 
         <div class="modal-actions">
@@ -292,10 +292,10 @@
             </div>
         </section>
         <div class="shared-access-groups">
-            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-kds.png?v=2.1.21" alt=""><b>KDS</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações KDS</strong></span><span class="switch-moderno"><input id="sharedPersonKdsConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
-            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-checklist.png?v=2.1.21" alt=""><b>Checklist</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações Checklist</strong></span><span class="switch-moderno"><input id="sharedPersonChecklistConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
+            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-kds.png?v=2.1.22" alt=""><b>KDS</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações KDS</strong></span><span class="switch-moderno"><input id="sharedPersonKdsConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
+            <section class="shared-access-card"><div class="shared-access-heading"><img src="assets/module-checklist.png?v=2.1.22" alt=""><b>Checklist</b></div><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações Checklist</strong></span><span class="switch-moderno"><input id="sharedPersonChecklistConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></section>
             <section class="shared-access-card">
-                <div class="shared-access-heading"><img src="assets/module-feira.png?v=2.1.21" alt=""><b>Lista de Compras</b></div>
+                <div class="shared-access-heading"><img src="assets/module-feira.png?v=2.1.22" alt=""><b>Lista de Compras</b></div>
                 <div id="sharedPersonComprasFields" class="shared-access-details">
                     <label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Receber no modo Compras</strong></span><span class="switch-moderno"><input id="sharedPersonComprasReceive" type="checkbox"><span class="switch-trilho"></span></span></label>
                     <label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Comprar no modo Compras</strong></span><span class="switch-moderno"><input id="sharedPersonComprasBuy" type="checkbox"><span class="switch-trilho"></span></span></label>
@@ -303,7 +303,7 @@
                 </div>
             </section>
             <section class="shared-access-card">
-                <div class="shared-access-heading"><img src="modules/l42/icon.png?v=2.1.21" alt=""><b>Etiquetas</b></div>
+                <div class="shared-access-heading"><img src="modules/l42/icon.png?v=2.1.22" alt=""><b>Etiquetas</b></div>
                 <div id="sharedPersonLabelsFields" class="shared-access-details"><label class="task-toggle-row shared-access-child"><span class="task-toggle-copy"><strong>Abrir Configurações Etiquetas</strong></span><span class="switch-moderno"><input id="sharedPersonLabelsConfig" type="checkbox" onchange="AloSharedData.toggleAccessFields()"><span class="switch-trilho"></span></span></label></div>
             </section>
         </div>
@@ -523,7 +523,7 @@
     <header class="tasks-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Checklist, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-checklist.png?v=2.1.21" class="module-nav-icon" alt="">
+            <img src="assets/module-checklist.png?v=2.1.22" class="module-nav-icon" alt="">
         </button>
         <div class="module-header-center">
             <div class="header-area-picker tasks-area-picker">
@@ -637,7 +637,7 @@
     <header class="feira-module-header">
         <button class="module-nav-button" onclick="AloTasks.showHome()" aria-label="Compras, voltar aos módulos" title="Voltar aos módulos">
             <span class="module-nav-back" aria-hidden="true">‹</span>
-            <img src="assets/module-feira.png?v=2.1.21" class="module-nav-icon" alt="">
+            <img src="assets/module-feira.png?v=2.1.22" class="module-nav-icon" alt="">
         </button>
         <div class="feira-mode-picker header-area-picker">
             <button type="button" id="feiraModeButton" class="header-area-button" onclick="AloFeiraModule.toggleModePicker()" aria-haspopup="listbox" aria-expanded="false" aria-label="Escolher operação de compras">
@@ -665,11 +665,11 @@
             <button id="feiraSettingsButton" class="module-settings-button" type="button" onclick="abrirLoginAdmin('compras')" aria-label="Configurações Compras" title="Configurações Compras">⚙️</button>
         </div>
     </header>
-    <iframe id="feiraFrame" class="feira-frame" title="Lista de Compras" data-src="modules/compras/index.html?embedded=1&amp;v=2.1.21-compras-r1"></iframe>
+    <iframe id="feiraFrame" class="feira-frame" title="Lista de Compras" data-src="modules/compras/index.html?embedded=1&amp;v=2.1.22-compras-r1"></iframe>
 </section>
 
 <section id="l42Module" class="l42-module" style="display:none;" aria-label="Etiquetas">
-    <iframe id="l42Frame" class="l42-frame" title="Etiquetas" allow="camera" data-src="modules/l42/index.html?embedded=1&amp;v=2.1.21"></iframe>
+    <iframe id="l42Frame" class="l42-frame" title="Etiquetas" allow="camera" data-src="modules/l42/index.html?embedded=1&amp;v=2.1.22"></iframe>
 </section>
 
 <div class="modal-overlay" id="modalMenuProdutos">
@@ -858,7 +858,7 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="modalListagem"><div class="modal"><div class="modal-title" id="tituloListagem">Gerenciar</div><button class="btn-outline" id="btnFuncionariosListagem" style="display:none" onclick="fecharModal('modalListagem'); AloTasks.manageEmployees()">👤 Funcionários</button><button class="btn-action" id="btnNovoListagem" style="width: 100%; margin-bottom: 15px;">+ Novo</button><div id="conteudoListagem" style="max-height: 50vh; overflow-y: auto; padding-right: 5px;"></div><div class="modal-actions"><button class="btn-cancel" onclick="voltarDaListagem()">Voltar</button></div></div></div>
+<div class="modal-overlay" id="modalListagem"><div class="modal"><div class="modal-title" id="tituloListagem">Gerenciar</div><button class="btn-action" id="btnNovoListagem" style="width: 100%; margin-bottom: 15px;">+ Novo</button><div id="conteudoListagem" style="max-height: 50vh; overflow-y: auto; padding-right: 5px;"></div><div class="modal-actions"><button class="btn-cancel" onclick="voltarDaListagem()">Voltar</button></div></div></div>
 <div class="modal-overlay" id="modalFormProduto"><div class="modal"><div class="modal-title">Produto</div><input type="hidden" id="prodIndexOriginal"><div class="form-group"><label>Nome do Produto:</label><input type="text" id="prodNome"></div><div class="form-group"><label>Categoria:</label><select id="prodCategoria"></select></div><div class="form-group"><label>Enviado por:</label><div id="prodAreasOrigem" class="area-checkbox-grid"></div></div><div class="form-group"><label>Recebido por:</label><select id="prodAreaDestino"></select></div><div class="form-group"><label>Observações Específicas <span style="font-size:11px; font-weight:normal;">(Separe por vírgula)</span>:</label><input type="text" id="prodObsEspec" placeholder="Ex: Ao ponto, Sem Gelo"></div><div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormProduto'); abrirGerenciar('produtos')">Cancelar</button><button class="btn-action" onclick="salvarProduto()">Salvar</button></div></div></div>
 <div class="modal-overlay" id="modalFormCategoria"><div class="modal"><div class="modal-title">Categoria</div><input type="hidden" id="catIndexOriginal"><div class="form-group"><label>Nome da Categoria:</label><input type="text" id="catNome"></div><div style="display: flex; gap: 10px;"><div class="form-group" style="flex: 1;"><label>Cor do Fundo:</label><input type="color" id="catCor" value="#1976D2"></div><div class="form-group" style="flex: 1;"><label>Cor do Texto:</label><input type="color" id="catCorTexto" value="#ffffff"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormCategoria'); abrirGerenciar('categorias')">Cancelar</button><button class="btn-action" onclick="salvarCategoria()">Salvar</button></div></div></div>
 <div class="modal-overlay" id="modalFormArea">
@@ -869,7 +869,21 @@
         <input type="hidden" id="areaChecklistIdOriginal">
         <div class="form-group"><label>Nome do setor:</label><input type="text" id="areaNome" placeholder="Ex: Bar"></div>
         <div class="form-group"><label>Imagem:</label><input type="hidden" id="areaEmoji"><div class="area-image-picker"><div id="areaImageCurrent" class="area-image-current" aria-live="polite"></div><div class="emoji-area-opcoes" aria-label="Imagens para o setor"><button type="button" data-area-image="assets/areas/kitchen.svg" onclick="selecionarEmojiArea('assets/areas/kitchen.svg')" title="Cozinha"><img src="assets/areas/kitchen.svg" alt=""></button><button type="button" data-area-image="assets/areas/production.svg" onclick="selecionarEmojiArea('assets/areas/production.svg')" title="Produção"><img src="assets/areas/production.svg" alt=""></button><button type="button" data-area-image="assets/areas/pans.svg" onclick="selecionarEmojiArea('assets/areas/pans.svg')" title="Panelas"><img src="assets/areas/pans.svg" alt=""></button><button type="button" data-area-image="assets/areas/grill.svg" onclick="selecionarEmojiArea('assets/areas/grill.svg')" title="Grelha"><img src="assets/areas/grill.svg" alt=""></button><button type="button" data-area-image="assets/areas/pastry.svg" onclick="selecionarEmojiArea('assets/areas/pastry.svg')" title="Padaria e confeitaria"><img src="assets/areas/pastry.svg" alt=""></button><button type="button" data-area-image="assets/areas/bar.svg" onclick="selecionarEmojiArea('assets/areas/bar.svg')" title="Bar"><img src="assets/areas/bar.svg" alt=""></button><button type="button" data-area-image="assets/areas/dining.svg" onclick="selecionarEmojiArea('assets/areas/dining.svg')" title="Salão"><img src="assets/areas/dining.svg" alt=""></button><button type="button" data-area-image="assets/areas/cleaning.svg" onclick="selecionarEmojiArea('assets/areas/cleaning.svg')" title="Higienização"><img src="assets/areas/cleaning.svg" alt=""></button><button type="button" data-area-image="assets/areas/restroom.svg" onclick="selecionarEmojiArea('assets/areas/restroom.svg')" title="Banheiros"><img src="assets/areas/restroom.svg" alt=""></button><button type="button" data-area-image="assets/areas/stock.svg" onclick="selecionarEmojiArea('assets/areas/stock.svg')" title="Estoque"><img src="assets/areas/stock.svg" alt=""></button><button type="button" data-area-image="assets/areas/cold-room.svg" onclick="selecionarEmojiArea('assets/areas/cold-room.svg')" title="Câmara fria"><img src="assets/areas/cold-room.svg" alt=""></button><button type="button" data-area-image="assets/areas/delivery.svg" onclick="selecionarEmojiArea('assets/areas/delivery.svg')" title="Delivery"><img src="assets/areas/delivery.svg" alt=""></button><button type="button" data-area-image="assets/areas/cashier.svg" onclick="selecionarEmojiArea('assets/areas/cashier.svg')" title="Caixa"><img src="assets/areas/cashier.svg" alt=""></button></div></div></div>
-        <div class="emoji-area-opcoes emoji-area-opcoes-classicas" aria-label="Emojis para o setor"><button type="button" data-area-image="🥘" onclick="selecionarEmojiArea('🥘')" title="Panelas">🥘</button><button type="button" data-area-image="☕" onclick="selecionarEmojiArea('☕')" title="Café">☕</button><button type="button" data-area-image="🧑‍🍳" onclick="selecionarEmojiArea('🧑‍🍳')" title="Cozinha">🧑‍🍳</button><button type="button" data-area-image="🍽️" onclick="selecionarEmojiArea('🍽️')" title="Salão">🍽️</button><button type="button" data-area-image="🍹" onclick="selecionarEmojiArea('🍹')" title="Bar">🍹</button><button type="button" data-area-image="🔥" onclick="selecionarEmojiArea('🔥')" title="Grelha">🔥</button><button type="button" data-area-image="🍳" onclick="selecionarEmojiArea('🍳')" title="Cocção">🍳</button><button type="button" data-area-image="🥗" onclick="selecionarEmojiArea('🥗')" title="Saladas">🥗</button><button type="button" data-area-image="🍞" onclick="selecionarEmojiArea('🍞')" title="Padaria">🍞</button><button type="button" data-area-image="🧁" onclick="selecionarEmojiArea('🧁')" title="Confeitaria">🧁</button><button type="button" data-area-image="🧼" onclick="selecionarEmojiArea('🧼')" title="Higienização">🧼</button><button type="button" data-area-image="📦" onclick="selecionarEmojiArea('📦')" title="Estoque">📦</button><button type="button" data-area-image="🧊" onclick="selecionarEmojiArea('🧊')" title="Câmara fria">🧊</button><button type="button" data-area-image="🚻" onclick="selecionarEmojiArea('🚻')" title="Banheiros">🚻</button><button type="button" data-area-image="🧾" onclick="selecionarEmojiArea('🧾')" title="Caixa">🧾</button></div>
+        <div class="emoji-area-opcoes emoji-area-opcoes-classicas" aria-label="Emojis para o setor">
+            <button type="button" data-area-image="🥘" onclick="selecionarEmojiArea('🥘')" title="Panelas">🥘</button>
+            <button type="button" data-area-image="☕" onclick="selecionarEmojiArea('☕')" title="Café">☕</button>
+            <button type="button" data-area-image="🧑‍🍳" onclick="selecionarEmojiArea('🧑‍🍳')" title="Cozinha">🧑‍🍳</button>
+            <button type="button" data-area-image="🍽️" onclick="selecionarEmojiArea('🍽️')" title="Salão">🍽️</button>
+            <button type="button" data-area-image="🍹" onclick="selecionarEmojiArea('🍹')" title="Bar">🍹</button>
+            <button type="button" data-area-image="🍳" onclick="selecionarEmojiArea('🍳')" title="Cocção">🍳</button>
+            <button type="button" data-area-image="🥗" onclick="selecionarEmojiArea('🥗')" title="Saladas">🥗</button>
+            <button type="button" data-area-image="🍞" onclick="selecionarEmojiArea('🍞')" title="Padaria">🍞</button>
+            <button type="button" data-area-image="🧁" onclick="selecionarEmojiArea('🧁')" title="Confeitaria">🧁</button>
+            <button type="button" data-area-image="🧼" onclick="selecionarEmojiArea('🧼')" title="Higienização">🧼</button>
+            <button type="button" data-area-image="🚻" onclick="selecionarEmojiArea('🚻')" title="Banheiros">🚻</button>
+            <button type="button" data-area-image="🧾" onclick="selecionarEmojiArea('🧾')" title="Caixa">🧾</button>
+        </div>
+        <div class="emoji-area-opcoes emoji-area-opcoes-classicas" aria-label="Imagens adicionais para o setor"><button type="button" data-area-image="🥣" onclick="selecionarEmojiArea('🥣')" title="Panelinha"><span class="emoji-panela-barro">🥣</span></button></div>
         <div class="form-group">
             <label>Usado em:</label>
             <div class="area-module-switch-grid">
@@ -908,29 +922,29 @@
     </div>
 </div>
 
-<script defer src="core/module-host.js?v=2.1.21"></script>
-<script defer src="core/data-contracts.js?v=2.1.21"></script>
-<script defer src="core/shared-data.js?v=2.1.21"></script>
-<script defer src="modules/kds/module.js?v=2.1.21"></script>
-<script defer src="modules/checklist/module.js?v=2.1.21"></script>
-<script defer src="modules/compras/module.js?v=2.1.21"></script>
-<script defer src="modules/l42/module.js?v=2.1.21"></script>
-<script defer src="modules/kds/logic.js?v=2.1.21"></script>
-<script defer src="modules/kds/storage.js?v=2.1.21"></script>
-<script defer src="core/api.js?v=2.1.21"></script>
-<script defer src="modules/kds/audio.js?v=2.1.21"></script>
-<script defer src="modules/kds/sync.js?v=2.1.21"></script>
-<script defer src="core/catalog-sync.js?v=2.1.21"></script>
-<script defer src="core/checklist-sync.js?v=2.1.21"></script>
-<script defer src="core/ui-dialog.js?v=2.1.21"></script>
-<script defer src="modules/checklist/templates.js?v=2.1.21"></script>
-<script defer src="modules/checklist/vendor/qrcode.js?v=2.1.21"></script>
-<script defer src="modules/compras/host.js?v=2.1.21"></script>
-<script defer src="modules/l42/cloud.js?v=2.1.21"></script>
-<script defer src="modules/l42/host.js?v=2.1.21"></script>
-<script defer src="modules/checklist/app.js?v=2.1.21"></script>
-<script defer src="modules/checklist/technical-sheets.js?v=2.1.21"></script>
-<script defer src="modules/checklist/documents.js?v=2.1.21"></script>
-<script defer src="modules/kds/app.js?v=2.1.21"></script>
+<script defer src="core/module-host.js?v=2.1.22"></script>
+<script defer src="core/data-contracts.js?v=2.1.22"></script>
+<script defer src="core/shared-data.js?v=2.1.22"></script>
+<script defer src="modules/kds/module.js?v=2.1.22"></script>
+<script defer src="modules/checklist/module.js?v=2.1.22"></script>
+<script defer src="modules/compras/module.js?v=2.1.22"></script>
+<script defer src="modules/l42/module.js?v=2.1.22"></script>
+<script defer src="modules/kds/logic.js?v=2.1.22"></script>
+<script defer src="modules/kds/storage.js?v=2.1.22"></script>
+<script defer src="core/api.js?v=2.1.22"></script>
+<script defer src="modules/kds/audio.js?v=2.1.22"></script>
+<script defer src="modules/kds/sync.js?v=2.1.22"></script>
+<script defer src="core/catalog-sync.js?v=2.1.22"></script>
+<script defer src="core/checklist-sync.js?v=2.1.22"></script>
+<script defer src="core/ui-dialog.js?v=2.1.22"></script>
+<script defer src="modules/checklist/templates.js?v=2.1.22"></script>
+<script defer src="modules/checklist/vendor/qrcode.js?v=2.1.22"></script>
+<script defer src="modules/compras/host.js?v=2.1.22"></script>
+<script defer src="modules/l42/cloud.js?v=2.1.22"></script>
+<script defer src="modules/l42/host.js?v=2.1.22"></script>
+<script defer src="modules/checklist/app.js?v=2.1.22"></script>
+<script defer src="modules/checklist/technical-sheets.js?v=2.1.22"></script>
+<script defer src="modules/checklist/documents.js?v=2.1.22"></script>
+<script defer src="modules/kds/app.js?v=2.1.22"></script>
 </body>
 </html>

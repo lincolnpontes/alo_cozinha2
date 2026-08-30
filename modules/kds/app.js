@@ -22,7 +22,6 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let filaRetentativaStatus = JSON.parse(localStorage.getItem('kds_fila_status') || '[]');
     let processandoFilaStatus = false;
     let bancoPublicacaoTimer = null;
-    const bancoAlteracoes = AloCatalogSync.createChangeTracker();
     let estadoSyncPedidosAtual = { pendingCount: 0, online: navigator.onLine };
 
     // CARREGAR HISTÓRICO SALVO LOCALMENTE (Evita perda de dados em reloads)
@@ -438,7 +437,6 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
     function salvarBancoLocal() { localStorage.setItem('kds_v1_db', JSON.stringify(db)); }
     function marcarBancoAlterado() {
-        bancoAlteracoes.mark();
         db.configs.bancoPendente = true;
         salvarBancoLocal();
         atualizarIndicadorSincronizacao(estadoSyncPedidosAtual);
@@ -1765,7 +1763,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.21',
+                version: '2.1.22',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2177,7 +2175,6 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         tipoGerenciamentoAtual = tipo;
         fecharModal('modalPainelUnificado'); fecharModal('modalConfigKds'); fecharModal('modalMenuProdutos'); fecharModal('modalFormProduto'); fecharModal('modalFormCategoria'); fecharModal('modalFormArea');
         const lista = document.getElementById('conteudoListagem'); const btnNovo = document.getElementById('btnNovoListagem'); const titulo = document.getElementById('tituloListagem'); lista.innerHTML = '';
-        document.getElementById('btnFuncionariosListagem').style.display = tipo === 'areas' ? 'block' : 'none';
         if (tipo === 'areas') {
             titulo.innerText = 'Setores do Estabelecimento';
             btnNovo.onclick = () => abrirFormArea(-1);
@@ -2587,6 +2584,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const indicador = document.getElementById('indicadorConexao');
         if (!indicador) return;
         const pendingPedidos = Number(estadoSyncPedidosAtual.pendingCount || 0);
+        if (!db.configs.url) {
+            indicador.className = 'app-sync-indicator offline';
+            indicador.title = 'Nuvem não configurada';
+            indicador.setAttribute('aria-label', indicador.title);
+            return;
+        }
         if (pendingPedidos > 0) {
             indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online ? 'sincronizando' : 'offline'}`;
             indicador.title = estadoSyncPedidosAtual.online ? `${pendingPedidos} operação(ões) aguardando confirmação` : `${pendingPedidos} operação(ões) aguardando internet`;
@@ -2594,7 +2597,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             return;
         }
         if (db.configs.bancoPendente) {
-            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online ? 'sincronizando' : 'offline'}`;
+            const publicacaoComErro = Boolean(bancoSyncErro);
+            indicador.className = `app-sync-indicator ${estadoSyncPedidosAtual.online && !publicacaoComErro ? 'sincronizando' : 'offline'}`;
             indicador.title = estadoSyncPedidosAtual.online
                 ? (bancoSyncErro ? 'Configurações aguardando nova tentativa; pedidos conectados' : 'Publicando cardápio e configurações')
                 : 'Alterações aguardando internet';
@@ -2607,6 +2611,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     async function tentarSincronizarAgora() {
+        if (!db.configs.url) {
+            await AloUiDialog.notice('Configure a URL da nuvem nas Configurações Avançadas.', {
+                title:'Nuvem não configurada', icon:'!', confirmText:'Entendi'
+            });
+            return;
+        }
         if (syncConfiavel) await syncConfiavel.retryNow();
         await sincronizarBancoAutomaticamente();
     }
@@ -2745,6 +2755,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     async function iniciarComSyncConfiavel() {
         document.addEventListener('touchstart', () => AloAudio.unlock(), { once: true });
         document.addEventListener('click', () => AloAudio.unlock(), { once: true });
+        let dadosCompartilhadosProntos = Promise.resolve();
         iniciar();
         window.AloFeiraModule?.configure({ getServerUrl: () => db.configs.url });
         window.AloEtiquetasCloud?.configure({
@@ -2794,7 +2805,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 markDatabaseChanged: marcarBancoAlterado,
                 openModalTop: abrirModalNoTopo
             });
-            AloSharedData.refreshSources().catch(error => console.warn('Integração dos dados:', error));
+            dadosCompartilhadosProntos = AloSharedData.refreshSources()
+                .catch(error => console.warn('Integração dos dados:', error));
         }
         syncConfiavel = new AloSync({
             getUrl: () => db.configs.url,
@@ -2804,6 +2816,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         // O catálogo e os pedidos usam canais independentes. Iniciá-los em paralelo
         // evita que uma leitura mais lenta do histórico mantenha o catálogo amarelo.
         const inicializacaoPedidos = syncConfiavel.start();
+        await dadosCompartilhadosProntos;
         await sincronizarBancoAutomaticamente();
         if(!bancoSyncTimer) bancoSyncTimer = setInterval(sincronizarBancoAutomaticamente, 5000);
         window.addEventListener('online', () => agendarSincronizacaoBanco(0));
@@ -2973,14 +2986,16 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     async function publicarBancoPendente() {
         const dadosEnviados = dadosBancoParaNuvem();
-        const alteracaoLocalEnviada = bancoAlteracoes.snapshot();
+        const assinaturaEnviada = JSON.stringify(dadosEnviados);
         const resultado = await AloCatalogSync.publish({ api: AloApi, url: db.configs.url, data: dadosEnviados });
         if(!resultado.confirmed) throw new Error('O servidor ainda não confirmou as configurações. Tentando novamente.');
 
+        // A versão original confiável comparava o conteúdo real após o envio.
+        // Isso evita manter o amarelo por notificações internas sem mudança de dados.
+        const nenhumaEdicaoNova = JSON.stringify(dadosBancoParaNuvem()) === assinaturaEnviada;
         const tarefasMescladas = AloCatalogSync.mergeTaskDefinitions(db.tarefas, resultado.bank?.tarefas);
         const tarefasAtualizadas = JSON.stringify(tarefasMescladas) !== JSON.stringify(db.tarefas);
         if(tarefasAtualizadas) db.tarefas = tarefasMescladas;
-        const nenhumaEdicaoNova = bancoAlteracoes.unchangedSince(alteracaoLocalEnviada);
         db.configs.dadosBaixados = true;
         db.configs.bancoPendente = !nenhumaEdicaoNova;
         db.configs.revisaoBanco = resultado.revision;
@@ -3056,7 +3071,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.21').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.22').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

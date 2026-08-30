@@ -1131,8 +1131,8 @@
 .document-viewer-stage img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; transition: transform .12s ease; }
 .document-viewer-controls { min-height: 58px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px; border-top: 1px solid #354247; }
 .document-viewer-controls output { width: 58px; text-align: center; font-size: 12px; font-weight: 900; }
-.document-viewer-controls .document-viewer-share { width: 40px; padding: 0; background: #0b7466; font-size: 21px; }
-.document-viewer-controls .document-viewer-share .document-share-icon { width: 22px; height: 22px; background: #fff; }
+.document-viewer-controls .document-viewer-share { width: 40px; padding: 0; border: 1px solid #536267; background: #253135; color: #f3f7f8; font-size: 21px; }
+.document-viewer-controls .document-viewer-share .document-share-icon { width: 22px; height: 22px; background: currentColor; }
 @media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 48px 58px; } .technical-ingredient-cost-row { grid-template-columns: 48px minmax(145px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 9px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
 @media (max-width: 620px) {
     .tasks-dashboard-sector { grid-template-columns: minmax(62px, 1fr) minmax(48px, 1.2fr) auto; gap: 5px; padding: 7px 6px; }

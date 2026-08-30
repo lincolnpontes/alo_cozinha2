@@ -194,6 +194,14 @@
         return child.listarCategoriasComprasPeloHost();
     }
 
+    async function registerProductPrice(productId, price) {
+        const child = await waitForChild();
+        if (typeof child.registrarPrecoProdutoComprasPeloHost !== 'function') {
+            throw new Error('Atualize o módulo Compras para registrar preços pela ficha técnica.');
+        }
+        return child.registrarPrecoProdutoComprasPeloHost(productId, price);
+    }
+
     async function applySharedPeople(people) {
         const child = await waitForChild();
         if (typeof child.aplicarPessoasCompartilhadasComprasPeloHost !== 'function') throw new Error('Compras ainda não aceita pessoas compartilhadas.');
@@ -252,6 +260,6 @@
         configure, open, syncServerUrl, toggleModePicker, closeModePicker, setMode,
         updateHeader, refreshHeader, openProfile, openManager, prepareLogin, authenticateOperator,
         logout, getBackup, restoreBackup, getSharedSnapshot, getCategories, applySharedPeople, applySharedRestaurant, activateSharedPerson,
-        syncNow, clearHistory, backToSettings
+        registerProductPrice, syncNow, clearHistory, backToSettings
     });
 })(window);

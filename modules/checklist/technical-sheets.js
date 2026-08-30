@@ -1,9 +1,11 @@
 (function (global) {
     const STORAGE_KEY = 'alo_checklist_technical_sheets_v1';
+    const CATEGORY_RECORD_ID = '__categorias_fichas_tecnicas__';
     const POLL_MS = 9000;
     let deps = { getUrl: () => '', getAreas: () => [], openModalTop: null, onSyncState: null };
     let state = loadState();
     let purchaseProducts = [];
+    let purchaseSuppliers = [];
     let formIngredients = [];
     let syncPromise = null;
     let pollTimer = null;
@@ -26,9 +28,12 @@
             return {
                 sheets: Array.isArray(saved.sheets) ? saved.sheets.map(normalizeSheet) : [],
                 outbox: Array.isArray(saved.outbox) ? saved.outbox : [],
-                revision: Number(saved.revision || 0)
+                revision: Number(saved.revision || 0),
+                categories: Array.isArray(saved.categories) ? saved.categories.map(String).filter(Boolean) : [],
+                categoriesRevision: Number(saved.categoriesRevision || 0),
+                categoriesUpdatedAt: Number(saved.categoriesUpdatedAt || 0)
             };
-        } catch (error) { return { sheets: [], outbox: [], revision: 0 }; }
+        } catch (error) { return { sheets: [], outbox: [], revision: 0, categories:[], categoriesRevision:0, categoriesUpdatedAt:0 }; }
     }
     function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     function normalizeSheet(sheet) {
@@ -50,7 +55,9 @@
                 nome: String(item.nome || ''),
                 quantidade: Number(item.quantidade || 0),
                 unidade: String(item.unidade || 'g'),
-                perda: Math.max(0, Math.min(95, Number(item.perda || 0)))
+                perda: Math.max(0, Math.min(95, Number(item.perda || 0))),
+                precoInformado: Number(item.precoInformado || 0),
+                fornecedorId: String(item.fornecedorId || '')
             })) : [],
             preparo: String(source.preparo || ''),
             fotoReferencia: source.fotoReferencia === true,
@@ -76,9 +83,18 @@
     async function refreshPurchaseProducts() {
         try {
             const data = await global.AloSharedData?.getModuleData?.('compras');
-            const bank = data?.dados || data || {};
-            purchaseProducts = (Array.isArray(bank.produtos) ? bank.produtos : []).filter(product => product && product.ativo !== false);
-        } catch (error) { purchaseProducts = purchaseProducts || []; }
+            const bank = data?.app_id === 'alofeira' ? data : (data?.dados || data || {});
+            const categoriesById = new Map((Array.isArray(bank.categorias) ? bank.categorias : []).map(category => [String(category.id), String(category.nome || '')]));
+            purchaseProducts = (Array.isArray(bank.produtos) ? bank.produtos : [])
+                .filter(product => product && product.ativo !== false && product.id && product.nome)
+                .map(product => ({ ...product, categoriaNome:categoriesById.get(String(product.categoria)) || '' }));
+            purchaseSuppliers = (Array.isArray(bank.fornecedores) ? bank.fornecedores : [])
+                .filter(supplier => supplier && supplier.ativo !== false && supplier.id && supplier.nome)
+                .sort((left, right) => String(left.nome).localeCompare(String(right.nome)));
+        } catch (error) {
+            purchaseProducts = purchaseProducts || [];
+            purchaseSuppliers = purchaseSuppliers || [];
+        }
         return purchaseProducts;
     }
     function priceTimestamp(record) {
@@ -115,7 +131,10 @@
         const missing = [];
         const details = sheet.ingredientes.map(ingredient => {
             const product = purchaseProducts.find(item => String(item.id) === String(ingredient.produtoId));
-            const price = latestPrice(product);
+            const savedPrice = latestPrice(product);
+            const price = Number(ingredient.precoInformado || 0) > 0
+                ? { preco:Number(ingredient.precoInformado), unidade:ingredient.unidade, fornecedorId:ingredient.fornecedorId || '' }
+                : savedPrice;
             const gross = ingredient.quantidade / Math.max(.05, 1 - ingredient.perda / 100);
             if (!product || !price) {
                 missing.push(ingredient.nome || 'Insumo sem nome');
@@ -167,7 +186,8 @@
     }
     function normalizedSearch(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
     function categories() {
-        return [...new Set(activeSheets().map(sheet => sheet.categoria.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right));
+        return [...new Set([...(state.categories || []), ...activeSheets().map(sheet => sheet.categoria.trim())].filter(Boolean))]
+            .sort((left, right) => left.localeCompare(right));
     }
     function categoryButtons(targetId, current, setter) {
         const target = document.getElementById(targetId);
@@ -188,8 +208,6 @@
         if (!list) return;
         categoryButtons('technicalSheetsCategories', selectedCategory, 'setCategory');
         const visible = filteredSheets(document.getElementById('technicalSheetsSearch')?.value, selectedCategory);
-        const incomplete = visible.filter(sheet => calculate(sheet).missing.length).length;
-        document.getElementById('technicalSheetsSummary').textContent = `${visible.length} ${visible.length === 1 ? 'ficha' : 'fichas'}${incomplete ? ` · ${incomplete} com custo incompleto` : ''}`;
         list.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => {
             const cost = calculate(sheet);
             return `<button class="technical-sheet-card" type="button" onclick="AloTechnicalSheets.openDetail('${escapeHtml(sheet.id)}')"><span class="technical-sheet-card-icon">🍽️</span><span class="technical-sheet-card-copy"><strong>${escapeHtml(sheet.nome)}</strong><span>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</span><small>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)} · ${cost.portions ? `${cost.portions.toLocaleString('pt-BR', { maximumFractionDigits:1 })} porções` : 'rendimento cadastrado'}</small></span><span class="technical-sheet-card-cost ${cost.missing.length ? 'incomplete' : ''}">${cost.missing.length ? 'Custo incompleto' : money(cost.portionCost)}</span></button>`;
@@ -205,21 +223,91 @@
         target.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => `<button type="button" class="technical-manager-item" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')"><span><strong>${escapeHtml(sheet.nome)}</strong><small>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</small></span><b aria-hidden="true">✎</b></button>`).join('') : '<div class="tasks-empty">Nenhuma ficha técnica encontrada.</div>';
     }
 
+    function renderCategoryManager() {
+        const target = document.getElementById('technicalSheetCategoryManagerList');
+        if (!target) return;
+        const values = categories();
+        target.innerHTML = values.length ? values.map(category => {
+            const encoded = encodeURIComponent(category).replace(/'/g, '%27');
+            const inUse = activeSheets().some(sheet => sheet.categoria === category);
+            return `<div class="technical-category-item"><strong>${escapeHtml(category)}</strong><div><button type="button" onclick="AloTechnicalSheets.renameCategory(decodeURIComponent('${encoded}'))" aria-label="Editar ${escapeHtml(category)}">✎</button><button type="button" onclick="AloTechnicalSheets.deleteCategory(decodeURIComponent('${encoded}'))" aria-label="Excluir ${escapeHtml(category)}" ${inUse ? 'disabled title="Categoria em uso"' : ''}>🗑️</button></div></div>`;
+        }).join('') : '<div class="tasks-empty">Nenhuma categoria cadastrada.</div>';
+    }
+    function openCategoryManager() {
+        document.getElementById('modalTechnicalSheetsManager').style.display = 'none';
+        renderCategoryManager();
+        deps.openModalTop?.('modalTechnicalSheetCategories') || (document.getElementById('modalTechnicalSheetCategories').style.display = 'flex');
+    }
+    function closeCategoryManager() {
+        document.getElementById('modalTechnicalSheetCategories').style.display = 'none';
+        openManager();
+    }
+    function categoryRecord() {
+        return {
+            id:CATEGORY_RECORD_ID,
+            tipo:'categorias',
+            categorias:[...(state.categories || [])],
+            revisao:Number(state.categoriesRevision || 0),
+            atualizadoEm:Number(state.categoriesUpdatedAt || 0),
+            excluida:false
+        };
+    }
+    function queueCategories(values) {
+        state.categories = [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
+        state.categoriesRevision = Number(state.categoriesRevision || 0) + 1;
+        state.categoriesUpdatedAt = Date.now();
+        const record = categoryRecord();
+        state.outbox = state.outbox.filter(item => item.ficha?.id !== CATEGORY_RECORD_ID).concat({ operationId:id('op'), ficha:record });
+        saveState();
+        render(); renderManager(); renderCategoryManager();
+        setSyncStatus('syncing', 'Categorias aguardando envio');
+        syncNow().catch(() => {});
+    }
+    async function createCategory() {
+        const name = await global.AloUiDialog?.prompt('', { title:'Nova categoria', inputLabel:'Nome', placeholder:'Ex: Molhos', confirmText:'Criar' });
+        if (!name) return;
+        if (categories().some(category => normalizedSearch(category) === normalizedSearch(name))) {
+            return global.AloUiDialog?.notice('Essa categoria já existe.', { title:'Categoria existente', confirmText:'Entendi' });
+        }
+        queueCategories([...(state.categories || []), name]);
+    }
+    async function renameCategory(current) {
+        const name = await global.AloUiDialog?.prompt('', { title:'Editar categoria', inputLabel:'Nome', defaultValue:current, confirmText:'Salvar' });
+        if (!name || name === current) return;
+        if (categories().some(category => category !== current && normalizedSearch(category) === normalizedSearch(name))) {
+            return global.AloUiDialog?.notice('Essa categoria já existe.', { title:'Categoria existente', confirmText:'Entendi' });
+        }
+        state.sheets = state.sheets.map(sheet => sheet.categoria === current ? { ...sheet, categoria:name } : sheet);
+        queueCategories((state.categories || []).map(category => category === current ? name : category).concat(name));
+        state.sheets.filter(sheet => sheet.categoria === name).forEach(sheet => queueSheet({ ...sheet, revisao:Number(sheet.revisao || 0) + 1, atualizadoEm:Date.now() }));
+    }
+    async function deleteCategory(category) {
+        if (activeSheets().some(sheet => sheet.categoria === category)) return;
+        const confirmed = await global.AloUiDialog?.confirm(`Excluir a categoria “${category}”?`, { title:'Excluir categoria', icon:'×', tone:'danger', confirmText:'Excluir' });
+        if (confirmed) queueCategories((state.categories || []).filter(item => item !== category));
+    }
+
     function areaOptions(selected) {
         return deps.getAreas().filter(area => area.ativo !== false).map(area => `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</option>`).join('');
     }
     function readIngredients(includeEmpty = false) {
         const ingredients = [...document.querySelectorAll('#technicalSheetIngredients .technical-ingredient-row')].map(row => {
             const name = row.querySelector('[data-ingredient-name]').value.trim();
-            const product = purchaseProducts.find(item => String(item.nome).toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'));
+            const product = purchaseProducts.find(item => String(item.id) === String(row.dataset.productId))
+                || purchaseProducts.find(item => String(item.nome).toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'));
             return {
                 id: row.dataset.ingredientId || id('insumo'), produtoId: product?.id || '', nome: product?.nome || name,
                 quantidade: Number(row.querySelector('[data-ingredient-quantity]').value || 0),
                 unidade: row.querySelector('[data-ingredient-unit]').value || 'g',
-                perda: Number(row.querySelector('[data-ingredient-loss]').value || 0)
+                perda: Number(row.querySelector('[data-ingredient-loss]').value || 0),
+                precoInformado: Number(row.querySelector('[data-ingredient-price]')?.value || 0),
+                fornecedorId: String(row.querySelector('[data-ingredient-supplier]')?.value || '')
             };
         });
         return includeEmpty ? ingredients : ingredients.filter(item => item.nome || item.quantidade);
+    }
+    function supplierOptions(selected) {
+        return `<option value="">Fornecedor</option>${purchaseSuppliers.map(supplier => `<option value="${escapeHtml(supplier.id)}" ${String(supplier.id) === String(selected) ? 'selected' : ''}>${escapeHtml(supplier.nome)}</option>`).join('')}`;
     }
     function renderIngredients() {
         const container = document.getElementById('technicalSheetIngredients');
@@ -227,9 +315,15 @@
         container.innerHTML = formIngredients.map((ingredient, index) => {
             const product = purchaseProducts.find(item => String(item.id) === String(ingredient.produtoId));
             const price = latestPrice(product);
-            const priceText = price ? `Último preço: ${money(price.preco)} / ${price.unidade || 'un'}` : (ingredient.nome ? 'Preço não cadastrado em Lista de Compras' : 'Selecione um ingrediente para carregar o preço');
-            return `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}"><div class="technical-ingredient-heading"><strong>Ingrediente ${index + 1}</strong><button type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')" aria-label="Remover ingrediente ${index + 1}">×</button></div><div class="technical-ingredient-product"><input data-ingredient-name value="${escapeHtml(ingredient.nome)}" placeholder="Selecionar ingrediente" readonly onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')}" aria-label="Escolher ingrediente"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div class="technical-quantity"><label>Qtde.</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-price">${escapeHtml(priceText)}</div></div>`;
+            const currentPrice = Number(ingredient.precoInformado || 0) || Number(price?.preco || 0);
+            const currentSupplier = ingredient.fornecedorId || price?.fornecedorId || '';
+            return `<div class="technical-ingredient-row" data-ingredient-id="${escapeHtml(ingredient.id)}" data-product-id="${escapeHtml(ingredient.produtoId)}"><div class="technical-ingredient-heading"><strong>Ingrediente ${index + 1}</strong></div><div class="technical-ingredient-main"><div class="technical-ingredient-product"><input data-ingredient-name value="${escapeHtml(ingredient.nome)}" placeholder="Selecionar ingrediente" readonly onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')}" aria-label="Escolher ingrediente"><button class="technical-ingredient-search-button" type="button" onclick="AloTechnicalSheets.openIngredientSearch('${escapeHtml(ingredient.id)}')" aria-label="Procurar ingrediente" title="Procurar ingrediente">🔍</button></div><div class="technical-quantity"><label>Qtde.</label><input data-ingredient-quantity type="number" min="0" step="0.01" inputmode="decimal" value="${ingredient.quantidade || ''}" oninput="AloTechnicalSheets.previewCost()"></div><div><label>Unidade</label><select data-ingredient-unit onchange="AloTechnicalSheets.previewCost()">${['g','kg','ml','L','un'].map(unit => `<option ${ingredient.unidade === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></div></div><div class="technical-ingredient-cost-row"><div class="technical-loss"><label>Perda %</label><input data-ingredient-loss type="number" min="0" max="95" step="1" value="${ingredient.perda || 0}" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-price-field"><label>Preço</label><input data-ingredient-price type="number" min="0" step="0.01" inputmode="decimal" value="${currentPrice || ''}" placeholder="R$" oninput="AloTechnicalSheets.previewCost()"></div><div class="technical-ingredient-supplier"><label>Fornecedor</label><select data-ingredient-supplier>${supplierOptions(currentSupplier)}</select></div><button class="technical-ingredient-remove" type="button" onclick="AloTechnicalSheets.removeIngredient('${escapeHtml(ingredient.id)}')">Excluir ingrediente</button></div></div>`;
         }).join('');
+    }
+    function categoryOptions(selected) {
+        const values = categories();
+        if (selected && !values.includes(selected)) values.push(selected);
+        return `<option value="">Selecione</option>${values.sort((left, right) => left.localeCompare(right)).map(category => `<option value="${escapeHtml(category)}" ${category === selected ? 'selected' : ''}>${escapeHtml(category)}</option>`).join('')}`;
     }
     function openIngredientSearch(ingredientId) {
         formIngredients = readIngredients(true);
@@ -248,14 +342,15 @@
         const products = purchaseProducts.filter(product => !query || `${product.nome || ''} ${product.categoria || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query)).sort((left, right) => String(left.nome).localeCompare(String(right.nome))).slice(0, 80);
         target.innerHTML = products.length ? products.map(product => {
             const price = latestPrice(product);
-            const detail = price ? `${money(price.preco)} / ${price.unidade || 'un'}` : (product.categoriaNome || product.categoria || 'Sem preço cadastrado');
-            return `<button type="button" onclick="AloTechnicalSheets.selectIngredientProduct('${escapeHtml(product.id)}')"><strong>${escapeHtml(product.nome || 'Produto')}</strong><small>${escapeHtml(detail)}</small></button>`;
+            const detail = price ? `${money(price.preco)} / ${price.unidade || 'un'}` : '';
+            return `<button type="button" onclick="AloTechnicalSheets.selectIngredientProduct('${escapeHtml(product.id)}')"><strong>${escapeHtml(product.nome || 'Produto')}</strong>${detail ? `<small>${escapeHtml(detail)}</small>` : ''}</button>`;
         }).join('') : '<div class="tasks-empty">Nenhum ingrediente encontrado.</div>';
     }
     function selectIngredientProduct(productId) {
         const product = purchaseProducts.find(item => String(item.id) === String(productId));
         if (!product || !ingredientSearchTargetId) return;
-        formIngredients = formIngredients.map(ingredient => ingredient.id === ingredientSearchTargetId ? { ...ingredient, produtoId:product.id, nome:product.nome } : ingredient);
+        const price = latestPrice(product);
+        formIngredients = formIngredients.map(ingredient => ingredient.id === ingredientSearchTargetId ? { ...ingredient, produtoId:product.id, nome:product.nome, precoInformado:Number(price?.preco || 0), fornecedorId:String(price?.fornecedorId || '') } : ingredient);
         renderIngredients();
         previewCost();
         closeIngredientSearch();
@@ -264,6 +359,26 @@
         const modal = document.getElementById('modalTechnicalIngredientSearch');
         if (modal) modal.style.display = 'none';
         ingredientSearchTargetId = '';
+    }
+    async function saveIngredientPrices(ingredients) {
+        if (ingredients.some(ingredient => Number(ingredient.precoInformado || 0) > 0) && typeof global.AloFeiraModule?.registerProductPrice !== 'function') {
+            throw new Error('A Lista de Compras ainda não está pronta para receber preços.');
+        }
+        for (const ingredient of ingredients) {
+            const product = purchaseProducts.find(item => String(item.id) === String(ingredient.produtoId));
+            const informed = Number(ingredient.precoInformado || 0);
+            if (!product || !informed) continue;
+            const current = latestPrice(product);
+            const samePrice = Math.abs(Number(current?.preco || 0) - informed) < .0001;
+            const sameUnit = String(current?.unidade || ingredient.unidade) === String(ingredient.unidade);
+            const sameSupplier = String(current?.fornecedorId || '') === String(ingredient.fornecedorId || '');
+            if (samePrice && sameUnit && sameSupplier) continue;
+            await global.AloFeiraModule?.registerProductPrice?.(product.id, {
+                preco:informed,
+                unidade:ingredient.unidade,
+                fornecedorId:ingredient.fornecedorId || ''
+            });
+        }
     }
     function draftFromForm() {
         return normalizeSheet({
@@ -325,7 +440,7 @@
         document.getElementById('technicalSheetTitle').textContent = sheetId ? 'Editar Ficha Técnica' : 'Nova Ficha Técnica';
         document.getElementById('technicalSheetId').value = sheet.id;
         document.getElementById('technicalSheetName').value = sheet.nome;
-        document.getElementById('technicalSheetCategory').value = sheet.categoria;
+        document.getElementById('technicalSheetCategory').innerHTML = categoryOptions(sheet.categoria);
         document.getElementById('technicalSheetArea').innerHTML = areaOptions(sheet.setorId);
         document.getElementById('technicalSheetYield').value = sheet.rendimento || '';
         document.getElementById('technicalSheetYieldUnit').value = sheet.rendimentoUnidade;
@@ -361,6 +476,13 @@
         if (!draft.rendimento || !draft.porcao) return global.AloUiDialog?.notice('Informe o rendimento e o tamanho da porção.', { title:'Rendimento necessário', confirmText:'Entendi' });
         if (!draft.ingredientes.length) return global.AloUiDialog?.notice('Adicione pelo menos um ingrediente.', { title:'Ingrediente necessário', confirmText:'Entendi' });
         const current = state.sheets.find(item => item.id === draft.id);
+        try {
+            await saveIngredientPrices(draft.ingredientes);
+            draft.ingredientes = draft.ingredientes.map(({ precoInformado, fornecedorId, ...ingredient }) => ingredient);
+            await refreshPurchaseProducts();
+        } catch (error) {
+            return global.AloUiDialog?.notice(error.message || 'O preço não foi registrado na Lista de Compras.', { title:'Preço não salvo', confirmText:'Entendi' });
+        }
         draft.fotoReferencia = removePhoto ? false : Boolean(pendingPhoto || current?.fotoReferencia);
         if (pendingPhoto || removePhoto) {
             if (!deps.getUrl()) return global.AloUiDialog?.notice('Configure a nuvem antes de salvar uma foto.', { title:'Nuvem necessária', confirmText:'Entendi' });
@@ -405,7 +527,21 @@
     }
 
     function mergeRemote(remote) {
-        const remoteById = new Map((Array.isArray(remote) ? remote : []).map(normalizeSheet).map(sheet => [sheet.id, sheet]));
+        const records = Array.isArray(remote) ? remote : [];
+        const remoteCategoryRecord = records.find(record => String(record?.id) === CATEGORY_RECORD_ID);
+        if (remoteCategoryRecord) {
+            const remoteRevision = Number(remoteCategoryRecord.revisao || 0);
+            const remoteUpdatedAt = Number(remoteCategoryRecord.atualizadoEm || 0);
+            const hasNewerCategories = remoteRevision > Number(state.categoriesRevision || 0)
+                || (remoteRevision === Number(state.categoriesRevision || 0) && remoteUpdatedAt > Number(state.categoriesUpdatedAt || 0));
+            const categoriesPending = state.outbox.some(item => item.ficha?.id === CATEGORY_RECORD_ID && Number(item.ficha.revisao || 0) > remoteRevision);
+            if (hasNewerCategories && !categoriesPending) {
+                state.categories = Array.isArray(remoteCategoryRecord.categorias) ? remoteCategoryRecord.categorias.map(String).filter(Boolean) : [];
+                state.categoriesRevision = remoteRevision;
+                state.categoriesUpdatedAt = remoteUpdatedAt;
+            }
+        }
+        const remoteById = new Map(records.filter(record => String(record?.id) !== CATEGORY_RECORD_ID).map(normalizeSheet).map(sheet => [sheet.id, sheet]));
         const local = new Map(state.sheets.map(sheet => [sheet.id, sheet]));
         remoteById.forEach(sheet => {
             const current = local.get(sheet.id);
@@ -414,6 +550,9 @@
         });
         state.sheets = [...local.values()];
         state.outbox = state.outbox.filter(operation => {
+            if (operation.ficha?.id === CATEGORY_RECORD_ID) {
+                return !remoteCategoryRecord || Number(remoteCategoryRecord.revisao || 0) < Number(operation.ficha.revisao || 0);
+            }
             const confirmed = remoteById.get(operation.ficha.id);
             return !confirmed || Number(confirmed.revisao) < Number(operation.ficha.revisao);
         });
@@ -437,12 +576,15 @@
             for (let attempt = 0; attempt < 5 && state.outbox.length; attempt += 1) {
                 await new Promise(resolve => setTimeout(resolve, 500 + (attempt * 250)));
                 const confirmation = await getRemote('');
-                mergeRemote(confirmation.fichas || []);
+                if (!Array.isArray(confirmation.fichas)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar fichas técnicas.');
+                mergeRemote(confirmation.fichas);
                 state.revision = Number(confirmation.revision || state.revision);
             }
+            if (state.outbox.length) throw new Error('A nuvem não confirmou as alterações das fichas técnicas.');
         }
         const result = await getRemote(state.revision);
-        if (result.changed) mergeRemote(result.fichas || []);
+        if (result.changed && !Array.isArray(result.fichas)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar fichas técnicas.');
+        if (result.changed) mergeRemote(result.fichas);
         state.revision = Number(result.revision || state.revision);
         saveState(); render();
         setSyncStatus(state.outbox.length ? 'syncing' : 'ok', state.outbox.length ? 'Alterações aguardando confirmação' : 'Fichas técnicas sincronizadas');
@@ -465,12 +607,19 @@
     function getBackup() { return { schemaVersion:1, ...clone(state) }; }
     function restoreBackup(backup) {
         if (!backup || !Array.isArray(backup.sheets)) return false;
-        state = { sheets:backup.sheets.map(normalizeSheet), outbox:Array.isArray(backup.outbox) ? backup.outbox : [], revision:Number(backup.revision || 0) };
+        state = {
+            sheets:backup.sheets.map(normalizeSheet),
+            outbox:Array.isArray(backup.outbox) ? backup.outbox : [],
+            revision:Number(backup.revision || 0),
+            categories:Array.isArray(backup.categories) ? backup.categories.map(String).filter(Boolean) : [],
+            categoriesRevision:Number(backup.categoriesRevision || 0),
+            categoriesUpdatedAt:Number(backup.categoriesUpdatedAt || 0)
+        };
         saveState(); render(); return true;
     }
 
     global.AloTechnicalSheets = Object.freeze({
-        configure, showView, openManager, closeManager, render, renderManager, setCategory, setManagerCategory, openForm, closeForm, addIngredient, removeIngredient,
+        configure, showView, openManager, closeManager, render, renderManager, setCategory, setManagerCategory, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, closeForm, addIngredient, removeIngredient,
         openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch,
         previewCost, saveForm, deleteCurrent, openDetail, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });

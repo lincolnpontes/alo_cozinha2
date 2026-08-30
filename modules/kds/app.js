@@ -1749,7 +1749,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.16',
+                version: '2.1.17',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2516,6 +2516,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let bancoSyncTimer = null;
     let bancoSyncEmAndamento = false;
     let bancoSyncErro = '';
+    let bancoSyncFalhas = 0;
 
     function atualizarIndicadorSincronizacao(estado) {
         estadoSyncPedidosAtual = estado || estadoSyncPedidosAtual;
@@ -2700,6 +2701,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         });
         window.AloChecklistDocuments?.configure({
             getUrl: () => db.configs.url,
+            getTasks: () => db.tarefas || [],
             openModalTop: abrirModalNoTopo,
             onSyncState: state => window.AloTasks?.setAuxiliarySyncState?.('documents', state)
         });
@@ -2912,6 +2914,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         db.configs.revisaoBanco = resultado.revision;
         db.configs.suporteDadosCompartilhados = Boolean(resultado.sharedSupported);
         bancoSyncErro = '';
+        bancoSyncFalhas = 0;
         salvarBancoLocal();
     }
 
@@ -2938,8 +2941,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 }
             }
             bancoSyncErro = '';
+            bancoSyncFalhas = 0;
         } catch(error) {
-            bancoSyncErro = error && error.message ? error.message : 'Não foi possível sincronizar as configurações.';
+            bancoSyncFalhas += 1;
+            bancoSyncErro = bancoSyncFalhas >= 3
+                ? (error && error.message ? error.message : 'Não foi possível sincronizar as configurações.')
+                : '';
         } finally {
             bancoSyncEmAndamento = false;
             atualizarIndicadorSincronizacao(estadoSyncPedidosAtual);
@@ -2976,7 +2983,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.16').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.17').catch(() => {}));
     }
 
     iniciarComSyncConfiavel();

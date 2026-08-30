@@ -292,17 +292,20 @@
         const auxiliaryPending = Object.values(auxiliarySync).reduce((total, item) => total + Number(item.pendingCount || 0), 0);
         const pending = Number(count || 0) + auxiliaryPending;
         const auxiliaryError = Object.values(auxiliarySync).find(item => item.status === 'error');
-        if (pending) {
-            indicator.className = `app-sync-indicator ${lastSyncState === 'offline' ? 'offline' : 'sincronizando'}`;
-            indicator.title = lastSyncState === 'offline'
-                ? `${pending} alteração(ões) aguardando internet`
-                : `${pending} alteração(ões) aguardando confirmação`;
+        if (lastSyncState === 'offline' || auxiliaryError) {
+            indicator.className = 'app-sync-indicator offline';
+            indicator.title = auxiliaryError?.title || (pending ? `${pending} alteração(ões) aguardando internet` : 'Sem conexão com o servidor');
             indicator.setAttribute('aria-label', indicator.title);
             return;
         }
-        const unavailable = lastSyncState === 'offline' || auxiliaryError;
-        indicator.className = `app-sync-indicator ${unavailable ? 'offline' : 'sincronizado'}`;
-        indicator.title = unavailable ? (auxiliaryError?.title || 'Sem conexão com o servidor') : 'Checklist sincronizado';
+        if (pending) {
+            indicator.className = 'app-sync-indicator sincronizando';
+            indicator.title = `${pending} alteração(ões) aguardando confirmação`;
+            indicator.setAttribute('aria-label', indicator.title);
+            return;
+        }
+        indicator.className = 'app-sync-indicator sincronizado';
+        indicator.title = 'Checklist sincronizado';
         indicator.setAttribute('aria-label', indicator.title);
     }
     function setAuxiliarySyncState(moduleName, syncState) {

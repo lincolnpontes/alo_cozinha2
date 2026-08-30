@@ -28,13 +28,13 @@
         ['responsavel-manipulacao', 'Responsável pela manipulação', 'Pessoas', 'Federal', 'Identifique o proprietário ou funcionário designado e comprovadamente capacitado.', 'https://bvsms.saude.gov.br/bvs/saudelegis/anvisa/2004/res0216_15_09_2004.html']
     ].map(([templateId, nome, categoria, alcance, orientacao, fonte, sensivel = false]) => ({ templateId, nome, categoria, alcance, orientacao, fonte, sensivel }));
 
-    let deps = { getUrl: () => '', openModalTop: null, onSyncState: null };
+    let deps = { getUrl: () => '', getTasks: () => [], openModalTop: null, onSyncState: null };
     let state = loadState();
-    let selectedCategory = 'Todas';
     let syncPromise = null;
     let pollTimer = null;
     let pendingFile = null;
     let removeFile = false;
+    let formMode = 'view';
 
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function id(prefix) { return `${prefix}_${global.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`; }
@@ -56,6 +56,7 @@
             emitidoEm: String(source.emitidoEm || ''),
             venceEm: String(source.venceEm || ''),
             observacoes: String(source.observacoes || ''),
+            tarefaId: String(source.tarefaId || ''),
             arquivo: source.arquivo && typeof source.arquivo === 'object' ? {
                 nome: String(source.arquivo.nome || ''), mime: String(source.arquivo.mime || ''), tamanho: Number(source.arquivo.tamanho || 0), atualizadoEm: Number(source.arquivo.atualizadoEm || 0)
             } : null,
@@ -96,35 +97,32 @@
         if (days <= 30) return { key:'vencendo', label:`Vence em ${days}d` };
         return { key:'em-dia', label:'Em dia' };
     }
-    function categoryButtons() {
-        const target = document.getElementById('checklistDocumentsCategories');
-        if (!target) return;
-        const used = new Set(visibleDocuments().map(document => document.categoria));
-        target.innerHTML = ['Todas', ...CATEGORIES.filter(category => used.has(category))].map(category => {
-            const encoded = encodeURIComponent(category).replace(/'/g, '%27');
-            return `<button type="button" class="${selectedCategory === category ? 'active' : ''}" onclick="AloChecklistDocuments.setCategory(decodeURIComponent('${encoded}'))">${escapeHtml(category)}</button>`;
-        }).join('');
+    function taskName(taskId) {
+        const task = deps.getTasks().find(item => String(item.id) === String(taskId));
+        return task?.nome || '';
     }
     function render() {
         const target = document.getElementById('checklistDocumentsList');
         if (!target) return;
-        categoryButtons();
         const query = normalizeSearch(document.getElementById('checklistDocumentsSearch')?.value);
-        const documents = visibleDocuments().filter(document => (selectedCategory === 'Todas' || document.categoria === selectedCategory)
-            && (!query || normalizeSearch(`${document.nome} ${document.categoria} ${document.alcance} ${document.orgao}`).includes(query)))
-            .sort((left, right) => left.categoria.localeCompare(right.categoria) || left.nome.localeCompare(right.nome));
+        const documents = visibleDocuments().filter(document => !query || normalizeSearch(`${document.nome} ${document.orgao} ${taskName(document.tarefaId)}`).includes(query))
+            .sort((left, right) => left.nome.localeCompare(right.nome));
         const statusCounts = documents.reduce((counts, document) => { const status = statusFor(document).key; counts[status] = (counts[status] || 0) + 1; return counts; }, {});
         const summary = document.getElementById('checklistDocumentsSummary');
         if (summary) summary.textContent = `${documents.length} documentos · ${statusCounts.vencido || 0} vencidos · ${statusCounts.vencendo || 0} vencendo`;
         target.innerHTML = documents.length ? documents.map(document => {
             const status = statusFor(document);
-            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openForm('${escapeHtml(document.id)}')"><span class="document-card-icon" aria-hidden="true">${document.sensivel ? '🔒' : '📄'}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong><span>${escapeHtml(document.categoria)} · ${escapeHtml(document.alcance)}</span><small>${document.arquivo ? escapeHtml(document.arquivo.nome || 'Arquivo anexado') : escapeHtml(document.orientacao || 'Documento ainda não cadastrado')}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
+            const linkedTask = taskName(document.tarefaId);
+            const fileState = document.arquivo ? (document.arquivo.nome || 'Arquivo anexado') : 'Documento ainda não cadastrado';
+            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openForm('${escapeHtml(document.id)}', 'view')"><span class="document-card-icon" aria-hidden="true">${document.sensivel ? '🔒' : '📄'}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small>${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
     }
-    function setCategory(category) { selectedCategory = category || 'Todas'; render(); }
     function activate() { render(); syncNow().catch(() => {}); }
     function findDocument(documentId) { return visibleDocuments().find(document => document.id === documentId); }
-    function categoryOptions(selected) { return CATEGORIES.map(category => `<option ${category === selected ? 'selected' : ''}>${escapeHtml(category)}</option>`).join(''); }
+    function taskOptions(selected) {
+        const tasks = deps.getTasks().filter(task => task && task.ativa !== false && task.id && task.nome).sort((left, right) => String(left.nome).localeCompare(String(right.nome)));
+        return `<option value="">Sem atividade vinculada</option>${tasks.map(task => `<option value="${escapeHtml(task.id)}" ${String(task.id) === String(selected) ? 'selected' : ''}>${escapeHtml(task.nome)}</option>`).join('')}`;
+    }
     function displayFileState(documentRecord) {
         const file = pendingFile || documentRecord?.arquivo;
         const target = document.getElementById('checklistDocumentFileState');
@@ -135,12 +133,47 @@
         if (open) open.style.display = hasFile ? 'inline-flex' : 'none';
         if (remove) remove.style.display = hasFile ? 'inline-flex' : 'none';
     }
-    function openForm(documentId = '') {
+    function openManager() {
+        document.getElementById('modalConfigTasksMenu').style.display = 'none';
+        renderManager();
+        deps.openModalTop?.('modalChecklistDocumentsManager') || (document.getElementById('modalChecklistDocumentsManager').style.display = 'flex');
+    }
+    function closeManager() {
+        document.getElementById('modalChecklistDocumentsManager').style.display = 'none';
+        global.AloTasks?.openSettingsMenu?.();
+    }
+    function renderManager() {
+        const target = document.getElementById('checklistDocumentsManagerList');
+        if (!target) return;
+        const query = normalizeSearch(document.getElementById('checklistDocumentsManagerSearch')?.value);
+        const documents = visibleDocuments().filter(document => !query || normalizeSearch(`${document.nome} ${document.orgao} ${taskName(document.tarefaId)}`).includes(query))
+            .sort((left, right) => left.nome.localeCompare(right.nome));
+        target.innerHTML = documents.length ? documents.map(document => {
+            const linkedTask = taskName(document.tarefaId);
+            return `<button type="button" class="technical-manager-item document-manager-item" onclick="AloChecklistDocuments.openForm('${escapeHtml(document.id)}', 'manager')"><span><strong>${escapeHtml(document.nome)}</strong><small>${linkedTask ? `Atividade: ${escapeHtml(linkedTask)}` : statusFor(document).label}</small></span><b aria-hidden="true">✎</b></button>`;
+        }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
+    }
+    function setFormReadOnly(readOnly) {
+        ['checklistDocumentName','checklistDocumentTask','checklistDocumentIssuer','checklistDocumentNumber','checklistDocumentIssuedAt','checklistDocumentExpiresAt','checklistDocumentNotes'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field) field.disabled = readOnly;
+        });
+        document.querySelectorAll('#modalChecklistDocument .task-photo-pick').forEach(button => { button.style.display = readOnly ? 'none' : ''; });
+        const save = document.getElementById('checklistDocumentSave');
+        if (save) save.style.display = readOnly ? 'none' : '';
+        const removeDocument = document.getElementById('checklistDocumentDelete');
+        if (removeDocument && readOnly) removeDocument.style.display = 'none';
+        const remove = document.getElementById('checklistDocumentRemoveFile');
+        if (remove && readOnly) remove.style.display = 'none';
+    }
+    function openForm(documentId = '', mode = 'manager') {
+        formMode = mode;
+        if (mode === 'manager') document.getElementById('modalChecklistDocumentsManager').style.display = 'none';
         const record = findDocument(documentId) || normalizeDocument({ id:id('documento'), categoria:'Outros', personalizado:true });
         document.getElementById('checklistDocumentFormTitle').textContent = documentId ? 'Documento' : 'Novo Documento';
         document.getElementById('checklistDocumentId').value = record.id;
         document.getElementById('checklistDocumentName').value = record.nome;
-        document.getElementById('checklistDocumentCategory').innerHTML = categoryOptions(record.categoria);
+        document.getElementById('checklistDocumentTask').innerHTML = taskOptions(record.tarefaId);
         document.getElementById('checklistDocumentIssuer').value = record.orgao;
         document.getElementById('checklistDocumentNumber').value = record.numero;
         document.getElementById('checklistDocumentIssuedAt').value = record.emitidoEm;
@@ -152,9 +185,13 @@
         pendingFile = null;
         removeFile = false;
         displayFileState(record);
+        setFormReadOnly(mode === 'view');
         deps.openModalTop?.('modalChecklistDocument') || (document.getElementById('modalChecklistDocument').style.display = 'flex');
     }
-    function closeForm() { document.getElementById('modalChecklistDocument').style.display = 'none'; }
+    function closeForm(reopen = true) {
+        document.getElementById('modalChecklistDocument').style.display = 'none';
+        if (reopen && formMode === 'manager') openManager();
+    }
     function readAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.')); reader.readAsDataURL(file); }); }
     async function handleFile(input) {
         const file = input?.files?.[0];
@@ -178,7 +215,7 @@
         const current = findDocument(document.getElementById('checklistDocumentId').value);
         return normalizeDocument({
             ...(current || {}), id:document.getElementById('checklistDocumentId').value || id('documento'),
-            nome:document.getElementById('checklistDocumentName').value.trim(), categoria:document.getElementById('checklistDocumentCategory').value,
+            nome:document.getElementById('checklistDocumentName').value.trim(), tarefaId:document.getElementById('checklistDocumentTask').value,
             orgao:document.getElementById('checklistDocumentIssuer').value.trim(), numero:document.getElementById('checklistDocumentNumber').value.trim(),
             emitidoEm:document.getElementById('checklistDocumentIssuedAt').value, venceEm:document.getElementById('checklistDocumentExpiresAt').value,
             observacoes:document.getElementById('checklistDocumentNotes').value.trim(), personalizado:current ? current.personalizado : true
@@ -207,7 +244,7 @@
         }
         draft.revisao = Number(current?.revisao || 0) + 1;
         draft.atualizadoEm = Date.now();
-        queueDocument(draft); closeForm();
+        queueDocument(draft); closeForm(false); openManager();
     }
     async function deleteCurrent() {
         const current = findDocument(document.getElementById('checklistDocumentId').value);
@@ -215,7 +252,7 @@
         const confirmed = await global.AloUiDialog?.confirm(`Excluir “${current.nome}”?`, { title:'Excluir documento', icon:'×', tone:'danger', confirmText:'Excluir' });
         if (!confirmed) return;
         if (current.arquivo && deps.getUrl()) global.AloApi.deleteChecklistDocument(deps.getUrl(), current.id).catch(() => {});
-        queueDocument({ ...current, excluido:true, revisao:Number(current.revisao || 0) + 1, atualizadoEm:Date.now() }); closeForm();
+        queueDocument({ ...current, excluido:true, revisao:Number(current.revisao || 0) + 1, atualizadoEm:Date.now() }); closeForm(false); openManager();
     }
     async function openFile() {
         const current = findDocument(document.getElementById('checklistDocumentId').value);
@@ -258,11 +295,14 @@
         if (state.outbox.length) {
             await global.AloApi.post(deps.getUrl(), { action:'salvar_documentos_lote', operacoes:state.outbox.slice(0, 30) });
             const confirmation = await getRemote('');
-            mergeRemote(confirmation.documentos || []);
+            if (!Array.isArray(confirmation.documentos)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar documentos.');
+            mergeRemote(confirmation.documentos);
             state.revision = Number(confirmation.revision || state.revision);
+            if (state.outbox.length) throw new Error('A nuvem não confirmou as alterações dos documentos.');
         }
         const result = await getRemote(state.revision);
-        if (result.changed) mergeRemote(result.documentos || []);
+        if (result.changed && !Array.isArray(result.documentos)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar documentos.');
+        if (result.changed) mergeRemote(result.documentos);
         state.revision = Number(result.revision || state.revision);
         saveState(); render();
         setSyncStatus(state.outbox.length ? 'syncing' : 'ok', state.outbox.length ? 'Alterações aguardando confirmação' : 'Documentos sincronizados');
@@ -287,5 +327,5 @@
         saveState(); render(); return true;
     }
 
-    global.AloChecklistDocuments = Object.freeze({ configure, activate, render, setCategory, openForm, closeForm, handleFile, removeFileDraft, saveForm, deleteCurrent, openFile, syncNow, getBackup, restoreBackup });
+    global.AloChecklistDocuments = Object.freeze({ configure, activate, render, openManager, closeManager, renderManager, openForm, closeForm, handleFile, removeFileDraft, saveForm, deleteCurrent, openFile, syncNow, getBackup, restoreBackup });
 })(window);

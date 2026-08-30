@@ -15,8 +15,23 @@
         };
     }
 
+    function canonical(value, path = '') {
+        if (Array.isArray(value)) {
+            const items = value.map(item => canonical(item, path));
+            if (path === 'tarefas') {
+                return items.sort((left, right) => String(left?.id || '').localeCompare(String(right?.id || '')));
+            }
+            return items;
+        }
+        if (!value || typeof value !== 'object') return value;
+        return Object.keys(value).sort().reduce((result, key) => {
+            result[key] = canonical(value[key], path ? `${path}.${key}` : key);
+            return result;
+        }, {});
+    }
+
     function isEqual(bank, data) {
-        return JSON.stringify(comparable(bank)) === JSON.stringify(comparable(data));
+        return JSON.stringify(canonical(comparable(bank))) === JSON.stringify(canonical(comparable(data)));
     }
 
     async function publish({ api, url, data, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {

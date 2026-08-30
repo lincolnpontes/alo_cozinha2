@@ -93,6 +93,32 @@ async function listarCategoriasComprasPeloHost() {
     return JSON.parse(JSON.stringify((db.categorias || []).filter(categoria => categoria?.ativo !== false)));
 }
 
+async function registrarPrecoProdutoComprasPeloHost(produtoId, dados = {}) {
+    await comprasProntasHost;
+    const produto = db.produtos.find(item => String(item.id) === String(produtoId) && item.ativo !== false);
+    const preco = Number(dados.preco || 0);
+    if (!produto) throw new Error('Ingrediente não encontrado na Lista de Compras.');
+    if (!Number.isFinite(preco) || preco <= 0) throw new Error('Informe um preço válido.');
+
+    const fornecedorId = String(dados.fornecedorId || '');
+    const unidade = String(dados.unidade || produto.unidades?.[0] || 'un');
+    const agora = agoraServidor();
+    produto.historicoPrecos = Array.isArray(produto.historicoPrecos) ? produto.historicoPrecos : [];
+    produto.historicoPrecos.push({
+        id: `preco_ficha_${agora}_${Math.random().toString(36).slice(2, 7)}`,
+        data: getHojeSTR(),
+        preco,
+        unidade,
+        fornecedorId,
+        registradoEm: agora,
+        atualizadoEm: agora
+    });
+    if (fornecedorId) produto.fornecedores = Array.from(new Set([...(produto.fornecedores || []), fornecedorId]));
+    marcarMudancaEstrutural(produto);
+    sincronizarFundo(false, true);
+    return JSON.parse(JSON.stringify(produto));
+}
+
 function hashCentralCompras(pessoa) {
     const alternativas = pessoa?.credentials?.alternatives || [];
     return alternativas.find(item => item.scheme === 'pbkdf2-sha256')?.hash || '';

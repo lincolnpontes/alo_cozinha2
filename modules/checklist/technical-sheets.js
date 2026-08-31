@@ -17,8 +17,14 @@
     let priceEditorTargetId = '';
     let selectedCategory = 'Todas';
     let managerCategory = 'Todas';
+    let labelPickerCategory = 'Todas';
     let formReturnTarget = 'view';
+    let categoryColorTarget = '';
+    let detailScaleSheetId = '';
+    let detailScaleIngredientId = '';
+    let detailScaleRatio = 1;
     const photoCache = new Map();
+    const CATEGORY_PALETTE = ['#7b3fb5', '#087f68', '#1d6fb8', '#c0522f', '#a02f5f', '#657b24', '#9a6713', '#47606f', '#8b3f32', '#356b4f', '#6d4a9e', '#247a87'];
 
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function id(prefix) { return `${prefix}_${global.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`; }
@@ -33,10 +39,26 @@
                 outbox: Array.isArray(saved.outbox) ? saved.outbox : [],
                 revision: Number(saved.revision || 0),
                 categories: Array.isArray(saved.categories) ? saved.categories.map(String).filter(Boolean) : [],
+                categoryColors: normalizeCategoryColors(saved.categoryColors),
                 categoriesRevision: Number(saved.categoriesRevision || 0),
                 categoriesUpdatedAt: Number(saved.categoriesUpdatedAt || 0)
             };
-        } catch (error) { return { sheets: [], outbox: [], revision: 0, categories:[], categoriesRevision:0, categoriesUpdatedAt:0 }; }
+        } catch (error) { return { sheets: [], outbox: [], revision: 0, categories:[], categoryColors:{}, categoriesRevision:0, categoriesUpdatedAt:0 }; }
+    }
+    function safeColor(value, fallback = '#7b3fb5') {
+        const color = String(value || '').trim();
+        return /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : fallback;
+    }
+    function normalizeCategoryColors(value) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+        return Object.fromEntries(Object.entries(value).map(([name, color]) => [String(name), safeColor(color)]));
+    }
+    function categoryColor(category) {
+        const name = String(category || '');
+        if (state?.categoryColors?.[name]) return safeColor(state.categoryColors[name]);
+        let hash = 0;
+        for (let index = 0; index < name.length; index += 1) hash = ((hash << 5) - hash + name.charCodeAt(index)) | 0;
+        return CATEGORY_PALETTE[Math.abs(hash) % CATEGORY_PALETTE.length] || CATEGORY_PALETTE[0];
     }
     function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     function normalizeSheet(sheet) {
@@ -120,6 +142,8 @@
                         codigo:String(product.codigo),
                         nome:String(product.nome),
                         categoria:String(product.categoria || ''),
+                        categoriaCor:safeColor(product.categoriaCor || '#1565c0', '#1565c0'),
+                        categoriaCorTexto:safeColor(product.categoriaCorTexto || '#ffffff', '#ffffff'),
                         fichasTecnicas:Array.isArray(product.fichasTecnicas) ? product.fichasTecnicas : []
                     }))
                     .sort((left, right) => left.nome.localeCompare(right.nome));
@@ -232,7 +256,8 @@
         const values = ['Todas', ...categories()];
         target.innerHTML = values.map(category => {
             const encoded = encodeURIComponent(category).replace(/'/g, '%27');
-            return `<button type="button" class="${category === current ? 'active' : ''}" onclick="AloTechnicalSheets.${setter}(decodeURIComponent('${encoded}'))">${escapeHtml(category)}</button>`;
+            const color = category === 'Todas' ? '#56676d' : categoryColor(category);
+            return `<button type="button" class="${category === current ? 'active' : ''}" style="--category-color:${escapeHtml(color)}" onclick="AloTechnicalSheets.${setter}(decodeURIComponent('${encoded}'))">${escapeHtml(category)}</button>`;
         }).join('');
     }
     function filteredSheets(query, category) {
@@ -247,7 +272,7 @@
         const visible = filteredSheets(document.getElementById('technicalSheetsSearch')?.value, selectedCategory);
         list.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => {
             const cost = calculate(sheet);
-            return `<button class="technical-sheet-card" type="button" onclick="AloTechnicalSheets.openDetail('${escapeHtml(sheet.id)}')"><span class="technical-sheet-card-icon">🍽️</span><span class="technical-sheet-card-copy"><strong>${escapeHtml(sheet.nome)}</strong><span>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</span><small>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)} · ${cost.portions ? `${cost.portions.toLocaleString('pt-BR', { maximumFractionDigits:1 })} porções` : 'rendimento cadastrado'}</small></span><span class="technical-sheet-card-cost ${cost.missing.length ? 'incomplete' : ''}">${cost.missing.length ? 'Custo incompleto' : money(cost.portionCost)}</span></button>`;
+            return `<button class="technical-sheet-card" style="--category-color:${escapeHtml(categoryColor(sheet.categoria))}" type="button" onclick="AloTechnicalSheets.openDetail('${escapeHtml(sheet.id)}')"><span class="technical-sheet-card-icon">🍽️</span><span class="technical-sheet-card-copy"><strong>${escapeHtml(sheet.nome)}</strong><span>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</span></span><span class="technical-sheet-card-cost ${cost.missing.length ? 'incomplete' : ''}">${cost.missing.length ? 'Custo incompleto' : money(cost.portionCost)}</span></button>`;
         }).join('') : '<div class="tasks-empty">Nenhuma ficha técnica cadastrada.</div>';
     }
     function toggleMainSearch() {
@@ -294,7 +319,7 @@
         if (!target) return;
         categoryButtons('technicalSheetsManagerCategories', managerCategory, 'setManagerCategory');
         const visible = filteredSheets(document.getElementById('technicalSheetsManagerSearch')?.value, managerCategory);
-        target.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => `<div class="technical-manager-item"><button type="button" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')"><span><strong>${escapeHtml(sheet.nome)}</strong><small>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</small></span></button><div class="technical-manager-actions"><button type="button" onclick="AloTechnicalSheets.duplicateSheet('${escapeHtml(sheet.id)}')" aria-label="Duplicar ficha" title="Duplicar ficha">⧉</button><button type="button" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')" aria-label="Editar ficha" title="Editar ficha">✎</button></div></div>`).join('') : '<div class="tasks-empty">Nenhuma ficha técnica encontrada.</div>';
+        target.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => `<div class="technical-manager-item" style="--category-color:${escapeHtml(categoryColor(sheet.categoria))}"><button type="button" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')"><span><strong>${escapeHtml(sheet.nome)}</strong><small>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</small></span></button><div class="technical-manager-actions"><button type="button" onclick="AloTechnicalSheets.duplicateSheet('${escapeHtml(sheet.id)}')" aria-label="Duplicar ficha" title="Duplicar ficha">⧉</button><button type="button" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')" aria-label="Editar ficha" title="Editar ficha">✎</button></div></div>`).join('') : '<div class="tasks-empty">Nenhuma ficha técnica encontrada.</div>';
     }
 
     function renderCategoryManager() {
@@ -304,7 +329,7 @@
         target.innerHTML = values.length ? values.map(category => {
             const encoded = encodeURIComponent(category).replace(/'/g, '%27');
             const inUse = activeSheets().some(sheet => sheet.categoria === category);
-            return `<div class="technical-category-item"><strong>${escapeHtml(category)}</strong><div><button type="button" onclick="AloTechnicalSheets.renameCategory(decodeURIComponent('${encoded}'))" aria-label="Editar ${escapeHtml(category)}">✎</button><button type="button" onclick="AloTechnicalSheets.deleteCategory(decodeURIComponent('${encoded}'))" aria-label="Excluir ${escapeHtml(category)}" ${inUse ? 'disabled title="Categoria em uso"' : ''}>🗑️</button></div></div>`;
+            return `<div class="technical-category-item" style="--category-color:${escapeHtml(categoryColor(category))}"><span class="technical-category-name"><i aria-hidden="true"></i><strong>${escapeHtml(category)}</strong></span><div><button class="technical-category-color-button" type="button" onclick="AloTechnicalSheets.openCategoryColor(decodeURIComponent('${encoded}'))" aria-label="Escolher cor de ${escapeHtml(category)}" title="Escolher cor"><span aria-hidden="true"></span></button><button type="button" onclick="AloTechnicalSheets.renameCategory(decodeURIComponent('${encoded}'))" aria-label="Editar ${escapeHtml(category)}">✎</button><button type="button" onclick="AloTechnicalSheets.deleteCategory(decodeURIComponent('${encoded}'))" aria-label="Excluir ${escapeHtml(category)}" ${inUse ? 'disabled title="Categoria em uso"' : ''}>🗑️</button></div></div>`;
         }).join('') : '<div class="tasks-empty">Nenhuma categoria cadastrada.</div>';
     }
     function openCategoryManager() {
@@ -321,13 +346,15 @@
             id:CATEGORY_RECORD_ID,
             tipo:'categorias',
             categorias:[...(state.categories || [])],
+            categoryColors:{ ...state.categoryColors },
             revisao:Number(state.categoriesRevision || 0),
             atualizadoEm:Number(state.categoriesUpdatedAt || 0),
             excluida:false
         };
     }
-    function queueCategories(values) {
+    function queueCategories(values, colors = state.categoryColors) {
         state.categories = [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
+        state.categoryColors = Object.fromEntries(state.categories.map(category => [category, safeColor(colors?.[category] || categoryColor(category))]));
         state.categoriesRevision = Number(state.categoriesRevision || 0) + 1;
         state.categoriesUpdatedAt = Date.now();
         const record = categoryRecord();
@@ -343,7 +370,9 @@
         if (categories().some(category => normalizedSearch(category) === normalizedSearch(name))) {
             return global.AloUiDialog?.notice('Essa categoria já existe.', { title:'Categoria existente', confirmText:'Entendi' });
         }
-        queueCategories([...(state.categories || []), name]);
+        const nextColor = CATEGORY_PALETTE[categories().length % CATEGORY_PALETTE.length];
+        queueCategories([...(state.categories || []), name], { ...state.categoryColors, [name]:nextColor });
+        openCategoryColor(name);
     }
     async function renameCategory(current) {
         const name = await global.AloUiDialog?.prompt('', { title:'Editar categoria', inputLabel:'Nome', defaultValue:current, confirmText:'Salvar' });
@@ -352,34 +381,107 @@
             return global.AloUiDialog?.notice('Essa categoria já existe.', { title:'Categoria existente', confirmText:'Entendi' });
         }
         state.sheets = state.sheets.map(sheet => sheet.categoria === current ? { ...sheet, categoria:name } : sheet);
-        queueCategories((state.categories || []).map(category => category === current ? name : category).concat(name));
+        const colors = { ...state.categoryColors, [name]:categoryColor(current) };
+        delete colors[current];
+        queueCategories((state.categories || []).map(category => category === current ? name : category).concat(name), colors);
         state.sheets.filter(sheet => sheet.categoria === name).forEach(sheet => queueSheet({ ...sheet, revisao:Number(sheet.revisao || 0) + 1, atualizadoEm:Date.now() }));
     }
     async function deleteCategory(category) {
         if (activeSheets().some(sheet => sheet.categoria === category)) return;
         const confirmed = await global.AloUiDialog?.confirm(`Excluir a categoria “${category}”?`, { title:'Excluir categoria', icon:'×', tone:'danger', confirmText:'Excluir' });
-        if (confirmed) queueCategories((state.categories || []).filter(item => item !== category));
+        if (confirmed) {
+            const colors = { ...state.categoryColors };
+            delete colors[category];
+            queueCategories((state.categories || []).filter(item => item !== category), colors);
+        }
+    }
+
+    function openCategoryColor(category) {
+        categoryColorTarget = String(category || '');
+        if (!categoryColorTarget) return;
+        document.getElementById('modalTechnicalSheetCategories').style.display = 'none';
+        const target = document.getElementById('technicalCategoryColorPalette');
+        if (target) target.innerHTML = CATEGORY_PALETTE.map(color => `<button type="button" class="${safeColor(color) === categoryColor(categoryColorTarget) ? 'selected' : ''}" style="--swatch:${escapeHtml(color)}" onclick="AloTechnicalSheets.selectCategoryColor('${escapeHtml(color)}')" aria-label="Usar cor ${escapeHtml(color)}"><span></span></button>`).join('');
+        const name = document.getElementById('technicalCategoryColorName');
+        if (name) name.textContent = categoryColorTarget;
+        deps.openModalTop?.('modalTechnicalCategoryColor') || (document.getElementById('modalTechnicalCategoryColor').style.display = 'flex');
+    }
+    function closeCategoryColor() {
+        document.getElementById('modalTechnicalCategoryColor').style.display = 'none';
+        categoryColorTarget = '';
+        renderCategoryManager();
+        deps.openModalTop?.('modalTechnicalSheetCategories') || (document.getElementById('modalTechnicalSheetCategories').style.display = 'flex');
+    }
+    function selectCategoryColor(color) {
+        if (!categoryColorTarget) return;
+        queueCategories(categories(), { ...state.categoryColors, [categoryColorTarget]:safeColor(color) });
+        closeCategoryColor();
     }
 
     function areaOptions(selected) {
         return deps.getAreas().filter(area => area.ativo !== false || area.id === selected).map(area => `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(areaOptionLabel(area))}</option>`).join('');
     }
-    function labelProductOptions(selectedCode, selectedName = '') {
-        const selected = String(selectedCode || '');
-        const available = labelProducts.some(product => product.codigo === selected);
-        const unavailable = selected && !available
-            ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selectedName || `Produto ${selected}`)} · indisponível</option>`
-            : '';
-        return `<option value="">Nenhum · usar etiqueta avulsa</option>${unavailable}${labelProducts.map(product => `<option value="${escapeHtml(product.codigo)}" ${product.codigo === selected ? 'selected' : ''}>${escapeHtml(product.nome)}${product.categoria ? ` · ${escapeHtml(product.categoria)}` : ''}</option>`).join('')}`;
-    }
     function updateLabelProductNote() {
-        const select = document.getElementById('technicalSheetLabelProduct');
+        const field = document.getElementById('technicalSheetLabelProduct');
+        const name = document.getElementById('technicalSheetLabelProductName');
+        const category = document.getElementById('technicalSheetLabelProductCategory');
         const note = document.getElementById('technicalSheetLabelProductNote');
-        if (!select || !note) return;
-        const product = labelProducts.find(item => item.codigo === String(select.value || ''));
+        if (!field || !note) return;
+        const product = labelProducts.find(item => item.codigo === String(field.value || ''));
+        if (name) name.textContent = product?.nome || field.dataset.fallbackName || 'Nenhum produto vinculado';
+        if (category) {
+            category.textContent = product?.categoria || (field.value ? 'Produto indisponível' : 'A impressão usará uma etiqueta avulsa');
+            category.style.setProperty('--label-category-color', product?.categoriaCor || '#7b3fb5');
+        }
         note.textContent = product
             ? 'A ficha e este produto ficarão vinculados nos dois módulos.'
             : 'Sem vínculo, a impressão abrirá como etiqueta avulsa.';
+    }
+    function labelCategories() {
+        return [...new Set(labelProducts.map(product => product.categoria).filter(Boolean))].sort((left, right) => left.localeCompare(right));
+    }
+    function openLabelProductPicker() {
+        labelPickerCategory = 'Todas';
+        const search = document.getElementById('technicalLabelProductSearch');
+        if (search) search.value = '';
+        document.getElementById('modalTechnicalSheet').style.display = 'none';
+        renderLabelProductPicker();
+        deps.openModalTop?.('modalTechnicalLabelProductPicker') || (document.getElementById('modalTechnicalLabelProductPicker').style.display = 'flex');
+        setTimeout(() => search?.focus({ preventScroll:true }), 50);
+    }
+    function closeLabelProductPicker() {
+        document.getElementById('modalTechnicalLabelProductPicker').style.display = 'none';
+        document.getElementById('modalTechnicalSheet').style.display = 'flex';
+    }
+    function setLabelProductCategory(category) {
+        labelPickerCategory = category || 'Todas';
+        renderLabelProductPicker();
+    }
+    function renderLabelProductPicker() {
+        const categoriesTarget = document.getElementById('technicalLabelProductCategories');
+        const list = document.getElementById('technicalLabelProductList');
+        if (!categoriesTarget || !list) return;
+        const selected = String(document.getElementById('technicalSheetLabelProduct')?.value || '');
+        const query = normalizedSearch(document.getElementById('technicalLabelProductSearch')?.value || '');
+        const values = ['Todas', ...labelCategories()];
+        categoriesTarget.innerHTML = values.map(category => {
+            const encoded = encodeURIComponent(category).replace(/'/g, '%27');
+            const sample = labelProducts.find(product => product.categoria === category);
+            return `<button type="button" class="${labelPickerCategory === category ? 'active' : ''}" style="--label-category-color:${escapeHtml(sample?.categoriaCor || '#62737a')}" onclick="AloTechnicalSheets.setLabelProductCategory(decodeURIComponent('${encoded}'))">${escapeHtml(category)}</button>`;
+        }).join('');
+        const products = labelProducts.filter(product => (labelPickerCategory === 'Todas' || product.categoria === labelPickerCategory)
+            && (!query || normalizedSearch(`${product.nome} ${product.categoria}`).includes(query)));
+        const unlink = `<button type="button" class="technical-label-picker-option avulsa ${selected ? '' : 'selected'}" onclick="AloTechnicalSheets.selectLabelProduct('')"><span class="technical-label-picker-avatar">＋</span><span><strong>Etiqueta avulsa</strong><small>Sem produto correspondente</small></span><b>${selected ? '›' : '✓'}</b></button>`;
+        list.innerHTML = unlink + products.map(product => `<button type="button" class="technical-label-picker-option ${selected === product.codigo ? 'selected' : ''}" style="--label-category-color:${escapeHtml(product.categoriaCor)};--label-category-text:${escapeHtml(product.categoriaCorTexto)}" onclick="AloTechnicalSheets.selectLabelProduct('${escapeHtml(product.codigo)}')"><span class="technical-label-picker-avatar">${escapeHtml(product.nome.charAt(0).toUpperCase())}</span><span><strong>${escapeHtml(product.nome)}</strong><small>${escapeHtml(product.categoria || 'Sem categoria')}</small></span><b>${selected === product.codigo ? '✓' : '›'}</b></button>`).join('');
+    }
+    function selectLabelProduct(code) {
+        const field = document.getElementById('technicalSheetLabelProduct');
+        if (!field) return;
+        const product = labelProducts.find(item => item.codigo === String(code || ''));
+        field.value = product?.codigo || '';
+        field.dataset.fallbackName = product?.nome || '';
+        updateLabelProductNote();
+        closeLabelProductPicker();
     }
     function readIngredients(includeEmpty = false) {
         const ingredients = [...document.querySelectorAll('#technicalSheetIngredients .technical-ingredient-row')].map(row => {
@@ -545,8 +647,9 @@
         }
     }
     function draftFromForm() {
-        const labelProductSelect = document.getElementById('technicalSheetLabelProduct');
-        const labelProductCode = labelProductSelect?.value || '';
+        const labelProductField = document.getElementById('technicalSheetLabelProduct');
+        const labelProductCode = labelProductField?.value || '';
+        const labelProduct = labelProducts.find(product => product.codigo === String(labelProductCode));
         return normalizeSheet({
             id: document.getElementById('technicalSheetId').value || id('ficha'),
             nome: document.getElementById('technicalSheetName').value.trim(),
@@ -559,7 +662,7 @@
             precoVenda: document.getElementById('technicalSheetSalePrice').value,
             cmvDesejado: document.getElementById('technicalSheetTargetCmv').value,
             etiquetaProdutoCodigo: labelProductCode,
-            etiquetaProdutoNome: labelProductCode ? labelProductSelect?.selectedOptions?.[0]?.textContent?.split(' · ')[0] || '' : '',
+            etiquetaProdutoNome: labelProductCode ? labelProduct?.nome || labelProductField?.dataset.fallbackName || '' : '',
             ingredientes: readIngredients(), preparo: global.AloTasks?.sanitizeRichHtml?.(document.getElementById('technicalSheetPreparation').innerHTML) || document.getElementById('technicalSheetPreparation').innerHTML
         });
     }
@@ -626,7 +729,9 @@
         document.getElementById('technicalSheetName').value = sheet.nome;
         document.getElementById('technicalSheetCategory').innerHTML = categoryOptions(sheet.categoria);
         document.getElementById('technicalSheetArea').innerHTML = areaOptions(sheet.setorId);
-        document.getElementById('technicalSheetLabelProduct').innerHTML = labelProductOptions(sheet.etiquetaProdutoCodigo, sheet.etiquetaProdutoNome);
+        const labelProductField = document.getElementById('technicalSheetLabelProduct');
+        labelProductField.value = sheet.etiquetaProdutoCodigo || '';
+        labelProductField.dataset.fallbackName = sheet.etiquetaProdutoNome || '';
         updateLabelProductNote();
         document.getElementById('technicalSheetYield').value = sheet.rendimento || '';
         document.getElementById('technicalSheetYieldUnit').value = sheet.rendimentoUnidade;
@@ -745,17 +850,65 @@
             global.AloUiDialog?.notice(error.message || 'Não foi possível abrir a etiqueta.', { title:'Etiqueta não aberta', confirmText:'Entendi' });
         }
     }
-    function openDetail(sheetId) {
-        const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida);
-        if (!sheet) return;
-        const cost = calculate(sheet);
-        document.getElementById('technicalSheetDetailTitle').textContent = sheet.nome;
+    function scaledSheet(sheet, ratio) {
+        const factor = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+        return normalizeSheet({
+            ...clone(sheet),
+            rendimento:Number(sheet.rendimento || 0) * factor,
+            ingredientes:sheet.ingredientes.map(ingredient => ({ ...ingredient, quantidade:Number(ingredient.quantidade || 0) * factor }))
+        });
+    }
+    function detailScaleMarkup(sheet) {
+        if (!sheet.ingredientes.length) return '';
+        const selected = sheet.ingredientes.find(ingredient => ingredient.id === detailScaleIngredientId) || sheet.ingredientes[0];
+        detailScaleIngredientId = selected.id;
+        const adjustedQuantity = Number(selected.quantidade || 0) * detailScaleRatio;
+        return `<section class="technical-recipe-scaler"><div class="technical-recipe-scaler-heading"><span><small>Redimensionar receita</small><strong>${detailScaleRatio === 1 ? 'Receita original' : `${detailScaleRatio.toLocaleString('pt-BR', { maximumFractionDigits:2 })}× a receita`}</strong></span>${detailScaleRatio !== 1 ? '<button type="button" onclick="AloTechnicalSheets.resetDetailScale()">Usar original</button>' : ''}</div><div class="technical-recipe-scaler-controls"><div class="form-group"><label for="technicalScaleIngredient">Ingrediente-base:</label><select id="technicalScaleIngredient" onchange="AloTechnicalSheets.updateDetailScaleBase()">${sheet.ingredientes.map(ingredient => `<option value="${escapeHtml(ingredient.id)}" ${ingredient.id === selected.id ? 'selected' : ''}>${escapeHtml(ingredient.nome || 'Ingrediente')}</option>`).join('')}</select></div><div class="form-group"><label for="technicalScaleQuantity">Nova quantidade:</label><div class="technical-scale-quantity"><input id="technicalScaleQuantity" type="number" min="0.01" step="0.01" inputmode="decimal" value="${escapeHtml(Number(adjustedQuantity.toFixed(3)))}"><span id="technicalScaleUnit">${escapeHtml(selected.unidade)}</span></div></div><button type="button" class="technical-scale-apply" onclick="AloTechnicalSheets.applyDetailScale()">Recalcular</button></div></section>`;
+    }
+    function renderDetailBody(sheet) {
+        const adjusted = scaledSheet(sheet, detailScaleRatio);
+        const cost = calculate(adjusted);
         const preparation = global.AloTasks?.sanitizeRichHtml?.(sheet.preparo || 'Preparo não informado.') || escapeHtml(sheet.preparo || 'Preparo não informado.');
         const labelLink = sheet.etiquetaProdutoCodigo
             ? `<div class="technical-label-link"><span aria-hidden="true">▣</span><div><small>Produto em Etiquetas</small><strong>${escapeHtml(sheet.etiquetaProdutoNome || `Código ${sheet.etiquetaProdutoCodigo}`)}</strong></div></div>`
             : '';
-        document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}${labelLink}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><div class="task-procedure-content technical-preparation-content">${preparation}</div>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
+        document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}${labelLink}${detailScaleMarkup(sheet)}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${Number(adjusted.rendimento || 0).toLocaleString('pt-BR', { maximumFractionDigits:2 })} ${escapeHtml(adjusted.rendimentoUnidade)}</strong></div><div><small>Porções</small><strong>${cost.portions ? cost.portions.toLocaleString('pt-BR', { maximumFractionDigits:1 }) : '—'}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${Number(item.quantidade || 0).toLocaleString('pt-BR', { maximumFractionDigits:3 })} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><div class="task-procedure-content technical-preparation-content">${preparation}</div>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
         if (sheet.fotoReferencia) resolvePhoto(sheet.id).then(url => { const target = document.getElementById('technicalSheetDetailPhoto'); if (!target) return; if (!url) target.remove(); else target.innerHTML = `<img src="${escapeHtml(url)}" alt="Foto da ficha técnica">`; }).catch(() => document.getElementById('technicalSheetDetailPhoto')?.remove());
+    }
+    function updateDetailScaleBase() {
+        const sheet = state.sheets.find(item => item.id === detailScaleSheetId && !item.excluida);
+        const ingredientId = document.getElementById('technicalScaleIngredient')?.value || '';
+        const ingredient = sheet?.ingredientes.find(item => item.id === ingredientId);
+        if (!ingredient) return;
+        detailScaleIngredientId = ingredient.id;
+        const input = document.getElementById('technicalScaleQuantity');
+        const unit = document.getElementById('technicalScaleUnit');
+        if (input) input.value = Number((Number(ingredient.quantidade || 0) * detailScaleRatio).toFixed(3));
+        if (unit) unit.textContent = ingredient.unidade;
+    }
+    function applyDetailScale() {
+        const sheet = state.sheets.find(item => item.id === detailScaleSheetId && !item.excluida);
+        const ingredient = sheet?.ingredientes.find(item => item.id === (document.getElementById('technicalScaleIngredient')?.value || detailScaleIngredientId));
+        const target = Number(document.getElementById('technicalScaleQuantity')?.value || 0);
+        if (!ingredient || !(Number(ingredient.quantidade) > 0) || !(target > 0)) return global.AloUiDialog?.notice('Informe uma quantidade maior que zero.', { title:'Quantidade necessária', confirmText:'Entendi' });
+        detailScaleIngredientId = ingredient.id;
+        detailScaleRatio = target / Number(ingredient.quantidade);
+        renderDetailBody(sheet);
+    }
+    function resetDetailScale() {
+        const sheet = state.sheets.find(item => item.id === detailScaleSheetId && !item.excluida);
+        if (!sheet) return;
+        detailScaleRatio = 1;
+        renderDetailBody(sheet);
+    }
+    function openDetail(sheetId) {
+        const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida);
+        if (!sheet) return;
+        detailScaleSheetId = sheet.id;
+        detailScaleIngredientId = sheet.ingredientes[0]?.id || '';
+        detailScaleRatio = 1;
+        document.getElementById('technicalSheetDetailTitle').textContent = sheet.nome;
+        renderDetailBody(sheet);
         document.getElementById('technicalSheetDetailLabel').onclick = () => printLabel(sheet.id);
         document.getElementById('technicalSheetDetailEdit').onclick = () => { document.getElementById('modalTechnicalSheetDetail').style.display = 'none'; openForm(sheet.id); };
         deps.openModalTop?.('modalTechnicalSheetDetail') || (document.getElementById('modalTechnicalSheetDetail').style.display = 'flex');
@@ -802,6 +955,7 @@
             const categoriesPending = state.outbox.some(item => item.ficha?.id === CATEGORY_RECORD_ID && Number(item.ficha.revisao || 0) > remoteRevision);
             if (hasNewerCategories && !categoriesPending) {
                 state.categories = Array.isArray(remoteCategoryRecord.categorias) ? remoteCategoryRecord.categorias.map(String).filter(Boolean) : [];
+                state.categoryColors = normalizeCategoryColors(remoteCategoryRecord.categoryColors);
                 state.categoriesRevision = remoteRevision;
                 state.categoriesUpdatedAt = remoteUpdatedAt;
             }
@@ -877,6 +1031,7 @@
             outbox:Array.isArray(backup.outbox) ? backup.outbox : [],
             revision:Number(backup.revision || 0),
             categories:Array.isArray(backup.categories) ? backup.categories.map(String).filter(Boolean) : [],
+            categoryColors:normalizeCategoryColors(backup.categoryColors),
             categoriesRevision:Number(backup.categoriesRevision || 0),
             categoriesUpdatedAt:Number(backup.categoriesUpdatedAt || 0)
         };
@@ -884,8 +1039,9 @@
     }
 
     global.AloTechnicalSheets = Object.freeze({
-        configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, getLinkOptions, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, duplicateSheet, closeForm, addIngredient, removeIngredient,
+        configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, getLinkOptions, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openCategoryColor, closeCategoryColor, selectCategoryColor, openForm, duplicateSheet, closeForm, addIngredient, removeIngredient,
         openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, createPurchaseIngredient, returnFromPurchaseProduct, openPriceEditor, closePriceEditor, savePriceEditor, updateLabelProductNote,
-        previewCost, saveForm, deleteCurrent, openDetail, printLabel, updateLabelProductReference, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
+        openLabelProductPicker, closeLabelProductPicker, setLabelProductCategory, renderLabelProductPicker, selectLabelProduct,
+        previewCost, saveForm, deleteCurrent, openDetail, printLabel, updateDetailScaleBase, applyDetailScale, resetDetailScale, updateLabelProductReference, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });
 })(window);

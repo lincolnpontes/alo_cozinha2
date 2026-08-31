@@ -78,6 +78,7 @@
         if (event.data.type === 'show-home') global.AloModuleHost?.showHome();
         if (event.data.type === 'data-changed') global.AloEtiquetasCloud?.markDirty?.();
         if (event.data.type === 'product-reference-changed') global.AloTechnicalSheets?.updateLabelProductReference?.(event.data.payload || {});
+        if (event.data.type === 'label-flow-closed') openTechnicalSheet(event.data.payload?.fichaId || '');
         if (event.data.type === 'open-settings') global.abrirLoginAdmin?.('etiquetas');
         if (event.data.type === 'switch-person') global.abrirLoginAdmin?.('trocar_l42');
     }
@@ -138,7 +139,14 @@
         try {
             const raw = localStorage.getItem('etiquetadora_db');
             const cached = raw ? JSON.parse(raw) : null;
-            if (cached && Array.isArray(cached.produtos)) return cached.produtos;
+            if (cached && Array.isArray(cached.produtos)) {
+                const categories = new Map((Array.isArray(cached.categorias) ? cached.categorias : []).map(category => [String(category.nome || ''), category]));
+                return cached.produtos.map(product => ({
+                    ...product,
+                    categoriaCor:categories.get(String(product.categoria || ''))?.cor || '#1565c0',
+                    categoriaCorTexto:categories.get(String(product.categoria || ''))?.corTexto || '#ffffff'
+                }));
+            }
         } catch (error) {}
         const child = await waitForChild();
         if (typeof child.obterProdutosEtiquetasPeloHost !== 'function') throw new Error('Atualize Etiquetas para escolher um produto.');
@@ -151,6 +159,15 @@
         const result = child.vincularFichaTecnicaPeloHost(reference || {});
         if (result?.status === 'ok' && result.changed) global.AloEtiquetasCloud?.markDirty?.({ immediate:true });
         return result;
+    }
+
+    function openTechnicalSheet(sheetId) {
+        const id = String(sheetId || '');
+        if (!id) return false;
+        global.AloTasks?.openModule?.('tasks');
+        global.AloTechnicalSheets?.showView?.('sheets', true, true);
+        global.AloTechnicalSheets?.openDetail?.(id);
+        return true;
     }
 
     function backToSettings() {
@@ -191,7 +208,7 @@
     global.receberLinkAutenticacaoSupabase = (...args) => deliverNativeCallback('receberLinkAutenticacaoSupabase', args);
 
     global.AloL42Module = Object.freeze({
-        configure, open, getBackup, restoreBackup, clearHistory, mergeCloudData, setCloudStatus, openSettings, openProductForPrint, getProducts, linkTechnicalSheet, backToSettings,
+        configure, open, getBackup, restoreBackup, clearHistory, mergeCloudData, setCloudStatus, openSettings, openProductForPrint, getProducts, linkTechnicalSheet, openTechnicalSheet, backToSettings,
         getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson, logout,
         getFullData: getBackup
     });

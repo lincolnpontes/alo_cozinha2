@@ -520,6 +520,8 @@
 .task-manager-item,
 .task-report-list > div,
 .task-report-list > button {
+    width: 100%;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -539,7 +541,7 @@
 }
 .task-report-list > button:active { background: #edf5f3; }
 .task-manager-item.inactive { opacity: .55; }
-.task-manager-copy { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.task-manager-copy { min-width: 0; flex: 1 1 auto; display: flex; align-items: center; gap: 9px; overflow: hidden; }
 .task-manager-copy > div { min-width: 0; }
 .task-manager-visual { width: 42px; height: 42px; flex: 0 0 42px; display: grid !important; place-items: center; margin: 0 !important; border-radius: 6px; background: #eef4f3; color: inherit !important; font-size: 24px !important; }
 .task-manager-visual .area-visual-image { width: 38px; height: 38px; object-fit: contain; }
@@ -551,6 +553,8 @@
 .task-report-list small { display: block; overflow-wrap: anywhere; }
 .task-manager-item span,
 .task-report-list small { margin-top: 3px; color: var(--tasks-muted); font-size: 12px; }
+.task-manager-copy strong,
+.task-manager-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-manager-item button { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 6px; background: #edf2f3; }
 .task-manager-actions { display: flex; flex: 0 0 auto; gap: 5px; }
 .task-manager-actions button:first-child:not(:last-child) { background: #e5f2ef; color: #075e54; font-size: 21px; }
@@ -618,6 +622,7 @@
 .public-task-error span { margin-top: 7px; color: #66787d; }
 
 .task-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.task-assignment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .task-priority-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .task-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 12px; }
 .task-weekdays label { position: relative; }
@@ -691,6 +696,8 @@
 .task-sheet-picker-option small { margin-top: 4px; color: #6f7d82; font-size: 11px; }
 .task-sheet-picker-option > b { color: #7b3fb5; font-size: 20px; text-align: center; }
 .task-sheet-picker-option.selected { border-color: #7b3fb5; background: #f6effa; box-shadow: inset 4px 0 0 #7b3fb5; }
+.task-sheet-picker-option.task-sheet-unlink { border-color: #e0caca; background: #fff8f8; color: #743737; }
+.task-sheet-picker-option.task-sheet-unlink > span:first-child { background: #f6e5e5; color: #a13232; font-size: 25px; }
 .task-linked-sheet { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding: 10px; border: 1px solid #d3c0e1; border-left: 4px solid #7b3fb5; border-radius: 7px; background: rgba(249, 245, 252, .72); }
 .task-linked-sheet span { min-width: 0; }
 .task-linked-sheet small, .task-linked-sheet strong { display: block; }
@@ -930,6 +937,7 @@
     .task-alarm-actions button { width: 100%; min-width: 0; min-height: 40px; padding-inline: 6px; font-size: 13px; }
     .task-form-grid { grid-template-columns: 1fr; gap: 0; }
     .task-priority-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .task-assignment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .task-form-section-title { align-items: stretch; flex-direction: column; }
     .task-add-schedule { width: 100%; }
     .task-hygiene-library-list { grid-template-columns: 1fr; }
@@ -1043,11 +1051,12 @@
 .technical-main-search:focus-within input { width: 100% !important; padding-right: 10px !important; }
 .technical-filter-row { display: flex; gap: 5px; margin: 0 0 8px; overflow-x: auto; scrollbar-width: thin; }
 .technical-filter-row button { min-height: 32px; flex: 0 0 auto; padding: 0 11px; border: 1px solid #d0dadd; border-radius: 6px; background: #fff; color: #56676d; font-size: 11px; font-weight: 800; cursor: pointer; }
-.technical-filter-row button.active { border-color: #6a329f; background: #eee5f6; color: #65358d; }
+.technical-filter-row button { border-bottom: 3px solid color-mix(in srgb, var(--category-color, #7b3fb5) 70%, white); }
+.technical-filter-row button.active { border-color: var(--category-color, #7b3fb5); background: color-mix(in srgb, var(--category-color, #7b3fb5) 13%, white); color: color-mix(in srgb, var(--category-color, #7b3fb5) 85%, #172126); }
 .technical-sheets-summary { min-height: 20px; margin-bottom: 7px; color: #63767c; font-size: 12px; font-weight: 700; }
 .technical-sheets-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; }
-.technical-sheet-card { min-width: 0; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 10px; border: 1px solid #d7dfe1; border-left: 4px solid #7b3fb5; border-radius: 7px; background: #fff; text-align: left; cursor: pointer; }
-.technical-sheet-card-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 7px; background: #f0e7f8; font-size: 25px; }
+.technical-sheet-card { min-width: 0; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 10px; border: 1px solid #d7dfe1; border-left: 4px solid var(--category-color, #7b3fb5); border-radius: 7px; background: #fff; text-align: left; cursor: pointer; }
+.technical-sheet-card-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--category-color, #7b3fb5) 13%, white); font-size: 25px; }
 .technical-sheet-card-copy { min-width: 0; }
 .technical-sheet-card-copy strong, .technical-sheet-card-copy span, .technical-sheet-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .technical-sheet-card-copy strong { color: #243239; font-size: 15px; }
@@ -1060,6 +1069,13 @@
 .technical-identification-grid .form-group { min-width: 0; }
 .technical-identification-grid select { width: 100%; min-width: 0; }
 .technical-label-product-field small { display: block; min-height: 15px; margin-top: 5px; color: #64757a; font-size: 11px; line-height: 1.35; }
+.technical-label-product-button { width: 100%; min-height: 52px; display: grid; grid-template-columns: 38px minmax(0, 1fr) 22px; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #cfd8da; border-radius: 7px; background: #fff; color: #2e3f45; text-align: left; cursor: pointer; }
+.technical-label-product-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 6px; background: #eee7f5; font-size: 21px; }
+.technical-label-product-button > span:nth-child(2) { min-width: 0; }
+.technical-label-product-button strong, .technical-label-product-button small { min-height: 0; display: block; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.technical-label-product-button strong { font-size: 13px; }
+.technical-label-product-button small { margin-top: 3px; padding-left: 8px; border-left: 3px solid var(--label-category-color, #7b3fb5); color: #65767b; font-size: 10px; }
+.technical-label-product-button > b { color: #6a329f; font-size: 24px; text-align: center; }
 .technical-form-section { margin: 0 0 11px; padding: 10px; border: 1px solid #dfe5e7; border-radius: 7px; background: #fafcfc; }
 .technical-form-section h3 { margin: 0 0 9px; color: #345159; font-size: 14px; }
 .technical-four-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
@@ -1111,7 +1127,7 @@
 .technical-sheet-sync-state.syncing { background: #e8ae22; }
 .technical-sheet-sync-state.ok { background: #20b77b; }
 .technical-sheet-sync-state.error { background: #d84646; }
-.technical-detail-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 12px; }
+.technical-detail-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-bottom: 12px; }
 .technical-detail-summary div { padding: 9px; border-radius: 6px; background: #eef4f4; }
 .technical-detail-summary small, .technical-detail-summary strong { display: block; }
 .technical-detail-summary small { color: #69787d; font-size: 10px; }
@@ -1124,7 +1140,7 @@
 .technical-manager-toolbar > button, .technical-category-add { min-height: 40px; padding: 0 13px; border: 0; border-radius: 6px; background: #6a329f; color: #fff; font-weight: 800; cursor: pointer; }
 .technical-manager-filters { margin-top: 8px; }
 .technical-sheets-manager-list { min-height: 110px; max-height: 56vh; display: grid; gap: 6px; overflow-y: auto; }
-.technical-manager-item { width: 100%; min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 8px 7px 11px; border: 1px solid #d9e1e3; border-left: 4px solid #7b3fb5; border-radius: 6px; background: #fff; color: #29383e; text-align: left; }
+.technical-manager-item { width: 100%; min-width: 0; min-height: 54px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 8px 7px 11px; border: 1px solid #d9e1e3; border-left: 4px solid var(--category-color, #7b3fb5); border-radius: 6px; background: #fff; color: #29383e; text-align: left; }
 .technical-manager-item > button { min-width: 0; flex: 1; padding: 2px 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .technical-manager-actions { display: flex; flex: 0 0 auto; gap: 5px; }
 .technical-manager-actions button { width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: #f0e7f8; color: #6a329f; font-size: 18px; cursor: pointer; }
@@ -1150,6 +1166,44 @@
 .technical-category-item > div { display: flex; gap: 5px; }
 .technical-category-item button { width: 36px; height: 36px; border: 0; border-radius: 6px; background: #eef1f3; cursor: pointer; }
 .technical-category-item button:disabled { opacity: .35; cursor: default; }
+.technical-category-name { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.technical-category-name i { width: 12px; height: 32px; flex: 0 0 12px; border-radius: 4px; background: var(--category-color); }
+.technical-category-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.technical-category-item .technical-category-color-button { display: grid; place-items: center; border: 1px solid #d9e0e2; background: #fff; }
+.technical-category-color-button span { width: 22px; height: 22px; display: block; border-radius: 5px; background: var(--category-color); }
+.technical-category-color-modal { width: min(430px, calc(100vw - 24px)); }
+.technical-category-color-name { display: block; margin-bottom: 12px; color: #31444a; font-size: 16px; }
+.technical-category-color-palette { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.technical-category-color-palette button { aspect-ratio: 1; min-width: 0; display: grid; place-items: center; padding: 5px; border: 2px solid transparent; border-radius: 7px; background: #f2f5f5; cursor: pointer; }
+.technical-category-color-palette button.selected { border-color: #26383e; }
+.technical-category-color-palette span { width: 100%; height: 100%; display: block; border-radius: 5px; background: var(--swatch); }
+.technical-label-picker-overlay { z-index: 1465; }
+.technical-label-picker-modal { width: min(520px, calc(100vw - 24px)); border-top: 4px solid #7b3fb5; }
+.technical-label-picker-categories { display: flex; gap: 5px; margin-bottom: 9px; padding-bottom: 4px; overflow-x: auto; }
+.technical-label-picker-categories button { min-height: 36px; flex: 0 0 auto; padding: 0 11px; border: 1px solid #d4dcde; border-bottom: 3px solid var(--label-category-color); border-radius: 6px; background: #fff; color: #52656b; font-size: 11px; font-weight: 850; }
+.technical-label-picker-categories button.active { border-color: var(--label-category-color); background: color-mix(in srgb, var(--label-category-color) 13%, white); color: #24363c; }
+.technical-label-picker-list { max-height: min(48vh, 430px); display: grid; gap: 5px; overflow-y: auto; overscroll-behavior: contain; }
+.technical-label-picker-option { width: 100%; min-height: 54px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 24px; align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid #dce2e4; border-left: 4px solid var(--label-category-color, #7b3fb5); border-radius: 7px; background: #fff; color: #2e4046; text-align: left; cursor: pointer; }
+.technical-label-picker-option.selected { background: color-mix(in srgb, var(--label-category-color, #7b3fb5) 10%, white); box-shadow: inset 0 0 0 1px var(--label-category-color, #7b3fb5); }
+.technical-label-picker-avatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 7px; background: var(--label-category-color, #7b3fb5); color: var(--label-category-text, #fff); font-size: 17px; font-weight: 900; }
+.technical-label-picker-option > span:nth-child(2) { min-width: 0; }
+.technical-label-picker-option strong, .technical-label-picker-option small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.technical-label-picker-option small { margin-top: 3px; color: #6b7a80; font-size: 10px; }
+.technical-label-picker-option > b { color: #66777d; font-size: 19px; text-align: center; }
+.technical-label-picker-option.avulsa { --label-category-color: #79878c; --label-category-text: #fff; }
+.technical-recipe-scaler { margin-bottom: 11px; padding: 10px; border: 1px solid #cfdcda; border-left: 4px solid #087f68; border-radius: 7px; background: #f4f9f8; }
+.technical-recipe-scaler-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.technical-recipe-scaler-heading small, .technical-recipe-scaler-heading strong { display: block; }
+.technical-recipe-scaler-heading small { color: #52736c; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.technical-recipe-scaler-heading strong { margin-top: 2px; color: #173f38; font-size: 14px; }
+.technical-recipe-scaler-heading button { min-height: 34px; padding: 0 10px; border: 1px solid #a8c9c1; border-radius: 6px; background: #fff; color: #176b5d; font-size: 11px; font-weight: 850; }
+.technical-recipe-scaler-controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(120px, .7fr) auto; align-items: end; gap: 7px; }
+.technical-recipe-scaler .form-group { min-width: 0; margin: 0; }
+.technical-recipe-scaler select, .technical-recipe-scaler input { width: 100%; height: 40px; box-sizing: border-box; border: 1px solid #bdcdca; border-radius: 6px; background: #fff; }
+.technical-scale-quantity { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.technical-scale-quantity input { border-radius: 6px 0 0 6px; }
+.technical-scale-quantity span { min-width: 42px; height: 40px; display: grid; place-items: center; box-sizing: border-box; border: 1px solid #bdcdca; border-left: 0; border-radius: 0 6px 6px 0; background: #e7f0ee; color: #395e57; font-size: 11px; font-weight: 900; }
+.technical-scale-apply { min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #087f68; color: #fff; font-weight: 900; }
 .technical-sheet-actions { align-items: center; }
 .technical-sheet-delete { width: auto; min-width: 104px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto 0 0; padding: 0 13px; border: 1px solid #c92d2d !important; border-radius: 6px; background: #c92d2d !important; color: #fff !important; font-weight: 900; text-align: center; }
 
@@ -1213,7 +1267,7 @@
 .document-viewer-controls output { width: 58px; text-align: center; font-size: 12px; font-weight: 900; }
 .document-viewer-controls .document-viewer-share { width: 40px; flex: 0 0 40px; padding: 0; border: 1px solid #536267; background: #253135; color: #f3f7f8; font-size: 21px; display: grid; place-items: center; }
 .document-viewer-controls .document-viewer-share .document-share-icon { width: 22px; height: 22px; margin: 0; background: currentColor; }
-@media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 48px 58px; } .technical-ingredient-cost-row { grid-template-columns: 48px minmax(145px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 9px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
+@media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 48px 58px; } .technical-ingredient-cost-row { grid-template-columns: 48px minmax(145px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 9px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .technical-detail-summary, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-recipe-scaler-controls { grid-template-columns: minmax(0, 1fr) 116px; } .technical-scale-apply { grid-column: 1 / -1; } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
 @media (max-width: 620px) {
     .tasks-dashboard-sector { grid-template-columns: minmax(62px, 1fr) minmax(48px, 1.2fr) auto; gap: 5px; padding: 7px 6px; }
     .tasks-dashboard-sector strong { font-size: 11px; }

@@ -7,18 +7,18 @@
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon.png">
-    <title>Lista de Compras v2.1.24</title>
-    <link rel="stylesheet" href="src/styles/base.css?v=2.1.24-compras-r1">
-    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.24-compras-r1">
-    <link rel="stylesheet" href="src/styles/components.css?v=2.1.24-compras-r1">
-    <link rel="stylesheet" href="src/styles/features.css?v=2.1.24-compras-r1">
-    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.24-compras-r1">
+    <title>Lista de Compras v2.1.25</title>
+    <link rel="stylesheet" href="src/styles/base.css?v=2.1.25-compras-r1">
+    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.25-compras-r1">
+    <link rel="stylesheet" href="src/styles/components.css?v=2.1.25-compras-r1">
+    <link rel="stylesheet" href="src/styles/features.css?v=2.1.25-compras-r1">
+    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.25-compras-r1">
 </head>
 <body class="theme-pedido">
 <div id="splashScreen">
     <img src="icon.png" alt="Ícone" class="splash-logo" onerror="this.style.display='none'">
     <div class="splash-titulo">Lista de Compras</div>
-    <div class="splash-versao">v2.1.24</div>
+    <div class="splash-versao">v2.1.25</div>
 </div>
 <div id="syncIndicador" class="sync-indicador oculto" role="status" aria-live="polite"></div>
 <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
@@ -55,7 +55,7 @@
             </div>
             <div class="filtros-acoes">
                 <button id="btnHistHoje" style="display:none;" aria-label="Pedidos enviados hoje" title="Pedidos enviados hoje" onclick="abrirPedidosHoje()">📋</button>
-                <button id="btnRelatorioBar" style="display:none;" aria-label="Criar relatório para fornecedor" title="Relatório para fornecedor" onclick="abrirModalRelatorio()">📄</button>
+                <button id="btnRelatorioBar" style="display:none;" aria-label="Criar relatório para fornecedor" title="Relatório para fornecedor" onclick="abrirModalRelatorio()"><img src="report-send.png?v=2.1.25" alt=""></button>
             </div>
         </div>
         <div class="scroll-area">
@@ -281,7 +281,7 @@
 <div class="modal-overlay" id="modalRelatorio">
     <div class="modal">
         <div class="modal-title" style="border-color:#25d366; display: flex; justify-content: space-between; align-items: center;">Relatório para Fornecedor</div>
-        <div class="form-group"><label>Fornecedor:</label><select id="relatFornecedor" onchange="selecionarFornecedorRelatorio()"></select></div>
+        <div class="form-group report-supplier-field"><label>Fornecedor:</label><select id="relatFornecedor" class="report-supplier-native" tabindex="-1" aria-hidden="true" onchange="selecionarFornecedorRelatorio()"></select><button id="relatFornecedorButton" class="report-supplier-button" type="button" aria-haspopup="listbox" aria-expanded="false" onclick="toggleFornecedoresRelatorio()"><span id="relatFornecedorButtonLabel">Selecionar fornecedor</span><span class="report-supplier-chevron" aria-hidden="true">⌄</span></button><div id="relatFornecedorOptions" class="report-supplier-options" role="listbox" aria-label="Fornecedores"></div></div>
         <div style="background:#f1f8e9; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #c5e1a5; display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
             <div style="display:flex; align-items:center;">
                 <label class="switch"><input type="checkbox" id="relatToggleCab" checked onchange="gerarTextoRelatorio()"><span class="slider"></span></label>
@@ -498,20 +498,20 @@
         <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormFornecedor'); abrirGerenciar('fornecedores', true);">Cancelar</button><button class="btn-action" onclick="salvarFornecedor()">Salvar</button></div>
     </div>
 </div>
-<script src="src/scripts/domain.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/core.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/security.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/sync.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/auth.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/orders.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/catalog.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/drafts.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/purchases.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/purchase-details.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/reports.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/settings.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/catalog-settings.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/people-settings.js?v=2.1.24-compras-r1"></script>
-<script src="src/scripts/app.js?v=2.1.24-compras-r1"></script>
+<script src="src/scripts/domain.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/core.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/security.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/sync.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/auth.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/orders.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/catalog.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/drafts.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/purchases.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/purchase-details.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/reports.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/settings.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/catalog-settings.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/people-settings.js?v=2.1.25-compras-r1"></script>
+<script src="src/scripts/app.js?v=2.1.25-compras-r1"></script>
 </body>
 </html>

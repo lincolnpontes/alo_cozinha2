@@ -26,6 +26,7 @@
         .filtros-acoes-selecao button { width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:5px; color:#fff; font-size:18px; font-weight:900; cursor:pointer; }
         .filtros-acoes { display:flex; align-items:center; gap:2px; flex-shrink:0; }
         .filtros-acoes button { width:40px; height:40px; padding:0; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:5px; background:transparent; color:#263238; font-size:20px; cursor:pointer; }
+        #btnRelatorioBar img { width:34px; height:34px; display:block; object-fit:contain; }
         .btn-desfazer-filtros { width:40px; height:40px; padding:0; align-items:center; justify-content:center; border:0; border-radius:5px; color:#9a5200; background:#fff0c7; font-size:20px; cursor:pointer; }
         body.theme-pedido .filtros-acoes button { color:#0d4f9a; }
         body.theme-compras .filtros-acoes button { color:#521565; }

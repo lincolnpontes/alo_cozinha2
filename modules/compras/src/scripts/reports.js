@@ -7,12 +7,51 @@ function abrirModalRelatorio() {
         .forEach(f => {
             const option = document.createElement('option');
             option.value = f.id;
-            option.textContent = `${f.nome} (Vend: ${f.vendedor || 'N/A'})`;
+            option.textContent = rotuloFornecedorRelatorio(f);
             selForn.appendChild(option);
         });
+    renderizarFornecedoresRelatorio();
     aplicarPreferenciasRelatorio(null);
     document.getElementById('modalRelatorio').style.display = 'flex';
     gerarTextoRelatorio();
+}
+
+function rotuloFornecedorRelatorio(fornecedor) {
+    const nome = String(fornecedor?.nome || 'Fornecedor').trim();
+    const vendedor = String(fornecedor?.vendedor || '').trim();
+    return vendedor ? `${nome} (${vendedor})` : nome;
+}
+
+function renderizarFornecedoresRelatorio() {
+    const selecionado = document.getElementById('relatFornecedor').value;
+    const fornecedores = [...db.fornecedores]
+        .filter(fornecedor => fornecedor.ativo !== false)
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+    const atual = fornecedores.find(fornecedor => String(fornecedor.id) === String(selecionado));
+    document.getElementById('relatFornecedorButtonLabel').textContent = atual ? rotuloFornecedorRelatorio(atual) : 'Selecionar fornecedor';
+    const target = document.getElementById('relatFornecedorOptions');
+    target.innerHTML = fornecedores.length ? fornecedores.map(fornecedor => {
+        const label = rotuloFornecedorRelatorio(fornecedor);
+        const ativo = String(fornecedor.id) === String(selecionado);
+        const inicial = Array.from(String(fornecedor.nome || '?').trim())[0]?.toUpperCase() || '?';
+        return `<button type="button" role="option" aria-selected="${ativo}" class="${ativo ? 'selected' : ''}" onclick="escolherFornecedorRelatorio('${escaparHtml(fornecedor.id)}')"><span class="report-supplier-initial" aria-hidden="true">${escaparHtml(inicial)}</span><span>${escaparHtml(label)}</span><b aria-hidden="true">${ativo ? '✓' : ''}</b></button>`;
+    }).join('') : '<div class="report-supplier-empty">Nenhum fornecedor cadastrado.</div>';
+}
+
+function toggleFornecedoresRelatorio() {
+    const list = document.getElementById('relatFornecedorOptions');
+    const button = document.getElementById('relatFornecedorButton');
+    const open = !list.classList.contains('open');
+    list.classList.toggle('open', open);
+    button.setAttribute('aria-expanded', String(open));
+}
+
+function escolherFornecedorRelatorio(fornecedorId) {
+    document.getElementById('relatFornecedor').value = fornecedorId;
+    document.getElementById('relatFornecedorOptions').classList.remove('open');
+    document.getElementById('relatFornecedorButton').setAttribute('aria-expanded', 'false');
+    renderizarFornecedoresRelatorio();
+    selecionarFornecedorRelatorio();
 }
 
 function normalizarPreferenciasRelatorio(preferencias) {

@@ -475,7 +475,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.24";
+const APP_VERSION="2.1.25";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -632,6 +632,7 @@ const LABEL_MODELOS=[
     {id:"60_classica",tamanho:"60x40",nome:"Clássica",descricao:"Cabeçalho central, conteúdo equilibrado e QR lateral.",composicao:"classica",acao:"acao",validade:"VAL:",logo:!1},
     {id:"60_operacional",tamanho:"60x40",nome:"Painel operacional",descricao:"Informações à esquerda e rastreio isolado à direita.",composicao:"painel",acao:"acaoEm",validade:"VALIDADE:",logo:!1},
     {id:"60_identidade",tamanho:"60x40",nome:"Com logomarca",descricao:"Identidade no cabeçalho, conteúdo compacto e QR independente.",composicao:"identidade",acao:"acaoEm",validade:"USAR ATÉ:",logo:!0},
+    {id:"60_simples_cozinha",tamanho:"60x40",nome:"Simples de cozinha",descricao:"Preto e branco, com linhas para produto, fornecedor e datas de manipulação.",composicao:"simplesCozinha",acao:"acao",validade:"VÁLIDO ATÉ:",logo:!1,layoutFixo:!0},
     {id:"80_completa",tamanho:"80x50",nome:"Completa",descricao:"Mais espaço para lote, peso, preço, conservação e rastreio.",composicao:"completa",acao:"acao",validade:"VALIDADE:",logo:!1},
     {id:"80_comercial",tamanho:"80x50",nome:"Comercial",descricao:"Preço e total recebem a maior hierarquia, sem perder validade e QR.",composicao:"comercial",acao:"acaoEm",validade:"VALIDADE:",logo:!1},
     {id:"80_identidade",tamanho:"80x50",nome:"Identidade e rastreio",descricao:"Logomarca e QR formam uma coluna; produção e validade ficam na coluna principal.",composicao:"identidadeLarga",acao:"acaoEm",validade:"USAR ATÉ:",logo:!0}
@@ -642,6 +643,7 @@ const LABEL_MODELO_LAYOUTS={
     "40_validade":{produto:{size:"M"},producao:{size:"P",align:"center"},marcaLote:{visible:!1},pesoPreco:{visible:!1},total:{visible:!1},qr:{size:"P",align:"right"},sku:{visible:!1},conservacao:{size:"P",align:"left"},validade:{size:"G"}},
     "60_operacional":{produto:{size:"M",align:"left"},producao:{size:"P",align:"left"},marcaLote:{visible:!0,size:"P"},pesoPreco:{visible:!0,size:"P"},total:{visible:!0,size:"M"},qr:{size:"M"},sku:{visible:!0,size:"P"},conservacao:{size:"P"},validade:{size:"G",align:"left"}},
     "60_identidade":{produto:{size:"M",align:"left"},producao:{size:"P"},marcaLote:{visible:!0,size:"P"},pesoPreco:{visible:!1},total:{visible:!1},qr:{size:"P"},sku:{visible:!0,size:"P"},conservacao:{size:"P"},validade:{size:"G"}},
+    "60_simples_cozinha":{produto:{size:"M",align:"left"},producao:{visible:!1},marcaLote:{visible:!1},pesoPreco:{visible:!1},total:{visible:!1},qr:{visible:!1},sku:{visible:!1},conservacao:{visible:!1},validade:{size:"M",align:"left"},estabelecimento:{visible:!1},operador:{visible:!1}},
     "80_completa":{produto:{size:"G"},producao:{size:"M"},marcaLote:{visible:!0,size:"M"},pesoPreco:{visible:!0,size:"M"},total:{visible:!0,size:"M"},qr:{size:"G"},sku:{visible:!0,size:"M"},conservacao:{size:"M"},validade:{size:"G"}},
     "80_comercial":{produto:{size:"G",align:"left"},producao:{size:"P",align:"left"},marcaLote:{visible:!1},pesoPreco:{visible:!0,bold:!0,size:"M"},total:{visible:!0,bold:!0,size:"G"},qr:{size:"M"},sku:{visible:!0,size:"P"},conservacao:{size:"P"},validade:{size:"G",align:"left"}},
     "80_identidade":{produto:{size:"G",align:"left"},producao:{size:"M",align:"left"},marcaLote:{visible:!0,size:"M"},pesoPreco:{visible:!0,size:"P"},total:{visible:!1},qr:{size:"M",align:"left"},sku:{visible:!0,size:"P"},conservacao:{size:"M"},validade:{size:"G",align:"left"}}
@@ -1928,7 +1930,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.24" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.25" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -2434,6 +2436,7 @@ function garantirTelaEditorLayoutEtiqueta(){
 }
 
 function abrirTelaEditorLayoutEtiqueta(){
+    if(modeloEtiquetaAtual().layoutFixo)return;
     garantirTelaEditorLayoutEtiqueta();
     const preview=document.getElementById('previewEtiquetaVirtual');
     const campos=document.getElementById('layoutCamposEditor');
@@ -2523,7 +2526,14 @@ function renderizarEditorLayoutEtiqueta(){
     normalizarLayoutsEtiqueta(db.configs);
     const el=document.getElementById('layoutCamposEditor');
     if(!el)return;
+    const modelo=modeloEtiquetaAtual();
+    const editar=document.getElementById('btnEditarLayoutEtiqueta');
+    if(editar)editar.style.display=modelo.layoutFixo?'none':'flex';
     el.innerHTML='';
+    if(modelo.layoutFixo){
+        renderizarPreviewEtiquetaVirtual();
+        return;
+    }
     LABEL_LAYOUT_FIELDS.forEach(f=>{
         const cfg=layoutCampo(f.key);
         const tamanhoAtivo=layoutTamanho(f.key);
@@ -5570,6 +5580,81 @@ function rotuloAcaoEtiquetaModelo(ac){
 
 function rotuloValidadeEtiquetaModelo(){return modeloEtiquetaAtual().validade||"VAL:"}
 
+function valorEtiquetaSimples(valor){
+    if(valor===null||valor===undefined)return"";
+    const texto=String(valor).trim();
+    return /^(undefined|null|nan)$/i.test(texto)?"":texto;
+}
+
+function formatarDataHoraEtiquetaSimples(valor){
+    const texto=valorEtiquetaSimples(valor);
+    if(!texto)return"";
+    const br=texto.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+(\d{1,2}:\d{2}))?/);
+    if(br)return br[2]?`${br[1]}  Hs. ${br[2]}`:br[1];
+    const iso=texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}:\d{2}))?/);
+    if(iso){
+        const data=`${iso[3]}/${iso[2]}/${iso[1]}`;
+        return iso[4]?`${data}  Hs. ${iso[4]}`:data;
+    }
+    return texto;
+}
+
+function dadosEtiquetaSimplesCozinha(p,ac,mB,vB,ma){
+    const tipo=textoComparacao(ac);
+    const dataHora=formatarDataHoraEtiquetaSimples(mB);
+    return{
+        produto:valorEtiquetaSimples(p&&p.nome),
+        fornecedor:valorEtiquetaSimples(p&&(p.fornecedor||p.fornecedorNome)),
+        fabricado:(tipo.includes("fabric")||tipo.includes("produz"))?dataHora:"",
+        descongelado:tipo.includes("descongel")?dataHora:"",
+        aberto:tipo.includes("abert")?dataHora:"",
+        validade:formatarDataHoraEtiquetaSimples(vB)
+    };
+}
+
+function criarPlanoEtiquetaSimplesCozinha(p,ac,mB,vB,ma){
+    const tam=tsplTamanhoAtual(),w=tsplDots(tam.largura),h=tsplDots(tam.altura);
+    const left=18,right=w-18,top=10,bottom=10,elementos=[],warnings=[];
+    const dados=dadosEtiquetaSimplesCozinha(p,ac,mB,vB,ma);
+    const linhas=[
+        ["Produto:",dados.produto,!0],
+        ["Fornecedor:",dados.fornecedor,!1],
+        ["Fabricado:",dados.fabricado,!1],
+        ["Descongelado:",dados.descongelado,!1],
+        ["Aberto em:",dados.aberto,!1],
+        ["Valido ate:",dados.validade,!0]
+    ];
+    const rowHeight=Math.floor((h-top-bottom)/linhas.length);
+    const labelFont="1",valueStart=left+112;
+    const addText=(field,text,x,y,maxRight,bold,preferida="2")=>{
+        let clean=tsplSafeText(text,140).replace(/[<>&]/g," ").trim();
+        if(!clean)return;
+        const largura=Math.max(8,maxRight-x);
+        const fontes=preferida==="2"?["2","1"]:["1"];
+        const font=fontes.find(f=>tsplTextWidth(clean,f,1)<=largura)||"1";
+        const limite=tsplMaxChars(font,1,largura);
+        if(clean.length>limite){
+            clean=clean.substring(0,limite);
+            if(!warnings.includes("Conteudo longo sera abreviado."))warnings.push("Conteudo longo sera abreviado.");
+        }
+        elementos.push({type:"text",field,text:clean,font,xmul:1,ymul:1,x,y,width:tsplTextWidth(clean,font,1),height:tsplTextHeight(font,1),bold,align:"left"});
+    };
+    linhas.forEach((linha,indice)=>{
+        const rowTop=top+(indice*rowHeight),lineY=rowTop+rowHeight-5;
+        const labelY=rowTop+Math.max(4,Math.floor((rowHeight-tsplTextHeight(labelFont,1))/2)-1);
+        addText(`simplesLabel${indice}`,linha[0],left,labelY,valueStart-6,!0,"1");
+        const valor=linha[1];
+        if(valor){
+            const valorY=rowTop+Math.max(2,Math.floor((rowHeight-tsplTextHeight("2",1))/2)-1);
+            addText(`simplesValor${indice}`,valor,valueStart,valorY,right,linha[2],"2");
+        }
+        elementos.push({type:"bar",x:valueStart,y:lineY,width:right-valueStart,height:1});
+    });
+    const ajusteY=ajusteVerticalDots();
+    if(ajusteY)elementos.forEach(e=>{if(Number.isFinite(e.y))e.y=Math.round(e.y+ajusteY)});
+    return{tam,w,h,left,right,elementos,warnings};
+}
+
 function criarPlanoEtiquetaPorZonas(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,opcoes,modelo,geometria){
     const tam=tsplTamanhoAtual(),w=tsplDots(tam.largura),h=tsplDots(tam.altura);
     const narrow=w<=340,wide=w>=600,left=narrow?20:(wide?34:36),right=w-(narrow?18:22),top=narrow?14:18;
@@ -5679,6 +5764,7 @@ function criarPlanoEtiquetaPorZonas(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,opcoes,mod
 
 function criarPlanoEtiqueta(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,opcoes={}){
     const modeloSelecionado=modeloEtiquetaAtual(),geometria=LABEL_TEMPLATE_GEOMETRY[modeloSelecionado.id];
+    if(modeloSelecionado.composicao==="simplesCozinha")return criarPlanoEtiquetaSimplesCozinha(p,ac,mB,vB,ma);
     if(geometria)return criarPlanoEtiquetaPorZonas(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,opcoes,modeloSelecionado,geometria);
     const tam=tsplTamanhoAtual(),w=tsplDots(tam.largura),h=tsplDots(tam.altura);
     const narrow=w<=340,wide=w>=600;
@@ -5908,8 +5994,45 @@ function montarTSPLDoPlano(plano){
     return cmds.join("\r\n");
 }
 
+function montarZPLDoPlanoSimples(plano,modo="zpl"){
+    const cmds=["^XA",`^PW${plano.w}`,`^LL${plano.h}`,"^LH0,0",zplMediaCommand(),modo==="zpl_i"?"^POI":"^PON","^PR2","^MD12"];
+    plano.elementos.forEach(e=>{
+        if(e.type==="bar")cmds.push(`^FO${Math.round(e.x)},${Math.round(e.y)}^GB${Math.round(e.width)},${Math.max(1,Math.round(e.height))},${Math.max(1,Math.round(e.height))}^FS`);
+        else if(e.type==="text"){
+            const altura=Math.max(14,Math.round(e.height)),largura=Math.max(8,Math.round(tsplFontMetric(e.font).w));
+            cmds.push(`^FO${Math.round(e.x)},${Math.round(e.y)}^A0N,${altura},${largura}^FD${zplSafeText(e.text,160)}^FS`);
+        }
+    });
+    cmds.push("^XZ","");
+    return cmds.join("\r\n");
+}
+
+function montarEPLDoPlanoSimples(plano,offsetDots=0,modo="epl_zt"){
+    modo=normalizarModoComandoL42(modo);
+    const cmds=["N","R0,0",`q${plano.w}`,eplQCommand(plano.h,printerGapDots(),offsetDots)];
+    if(modo==="epl_zb")cmds.push("ZB");
+    else if(modo!=="epl_noz")cmds.push("ZT");
+    cmds.push("JF","D12","S2");
+    plano.elementos.forEach(e=>{
+        if(e.type==="bar")cmds.push(`LO${Math.round(e.x)},${Math.round(e.y)},${Math.round(e.width)},${Math.max(1,Math.round(e.height))}`);
+        else if(e.type==="text"){
+            const fonte=e.font==="2"?2:1;
+            eplAddText(cmds,e.x,e.y,fonte,1,1,e.text,160);
+            if(e.bold)eplAddText(cmds,e.x+1,e.y,fonte,1,1,e.text,160);
+        }
+    });
+    cmds.push("P1","");
+    return cmds.join("\r\n");
+}
+
 function montarComandoEtiquetaRede(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,offsetDots=0,modo=printerCommandMode()){
     modo=normalizarModoComandoL42(modo);
+    if(modeloEtiquetaAtual().composicao==="simplesCozinha"){
+        const plano=criarPlanoEtiquetaSimplesCozinha(p,ac,mB,vB,ma);
+        if(modo==="zpl"||modo==="zpl_i")return montarZPLDoPlanoSimples(plano,modo);
+        if(modo==="tspl")return montarTSPLDoPlano(plano);
+        return montarEPLDoPlanoSimples(plano,offsetDots,modo);
+    }
     if(modo==="zpl"||modo==="zpl_i")return montarZPLNativo(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,modo);
     if(modo==="tspl")return montarTSPLNativo(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku);
     return montarEPLNativo(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,offsetDots,modo);
@@ -6546,6 +6669,30 @@ function salvarPngNaGaleria(dataUrl,nome){
     return{ok:!0,name:nome};
 }
 
+function gerarPDFEtiquetaSimplesCozinha(p,ac,mB,vB,q,ma){
+    const win=window.open('','','width=600,height=800');
+    if(!win){
+        alert("O navegador bloqueou a janela de impressao.");
+        return;
+    }
+    const dados=dadosEtiquetaSimplesCozinha(p,ac,mB,vB,ma);
+    const campos=[
+        ["Produto",dados.produto],
+        ["Fornecedor",dados.fornecedor],
+        ["Fabricado",dados.fabricado],
+        ["Descongelado",dados.descongelado],
+        ["Aberto em",dados.aberto],
+        ["Valido ate",dados.validade]
+    ];
+    const linhas=campos.map(([rotulo,valor])=>`<div class="linha"><strong>${rotulo}:</strong><span>${htmlSeguro(valorEtiquetaSimples(valor))}</span></div>`).join('');
+    let html=`<html><head><meta charset="utf-8"><style>@page{margin:0;size:60mm 40mm}html,body{margin:0;width:60mm;height:40mm;background:#fff;color:#000;font-family:Arial,sans-serif}.etiqueta{box-sizing:border-box;width:60mm;height:40mm;padding:1.4mm 2mm;display:grid;grid-template-rows:repeat(6,1fr);overflow:hidden}.linha{min-width:0;display:grid;grid-template-columns:21mm 1fr;align-items:center;gap:1mm;font-size:8pt;line-height:1}.linha strong{white-space:nowrap}.linha span{height:4.2mm;border-bottom:.35mm solid #000;display:flex;align-items:center;min-width:0;font-size:9.5pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}</style></head><body>`;
+    const total=Math.max(1,parseInt(q,10)||1);
+    for(let i=0;i<total;i++)html+=`<div class="etiqueta"${i<total-1?' style="page-break-after:always"':''}>${linhas}</div>`;
+    html+='<script>setTimeout(function(){window.print();window.close()},300);<\/script></body></html>';
+    win.document.write(html);
+    win.document.close();
+}
+
 async function salvarEtiquetasNaGaleria(p,ac,ps,mB,vB,q,op,es,prN,ma,lo,sk){
     const total=Math.max(1,parseInt(q,10)||1);
     let enviadas=0;
@@ -6566,6 +6713,7 @@ async function salvarEtiquetasNaGaleria(p,ac,ps,mB,vB,q,op,es,prN,ma,lo,sk){
 }
 
 function gerarPDF(p,ac,ps,mB,vB,q,op,es,prN,ma,lo,sk){
+    if(modeloEtiquetaAtual().composicao==="simplesCozinha")return gerarPDFEtiquetaSimplesCozinha(p,ac,mB,vB,q,ma);
     let win=window.open('','','width=600,height=800'),aH="";
     if(p.armazenamento&&p.armazenamento.toLowerCase()!=="não informar"&&p.armazenamento.toLowerCase()!=="nenhuma"){
         let tA=p.armazenamento.toUpperCase();if(!tA.startsWith("MANTER"))tA="MANTER "+tA;
@@ -7232,7 +7380,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.24" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.25" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7258,7 +7406,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.24" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.25" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

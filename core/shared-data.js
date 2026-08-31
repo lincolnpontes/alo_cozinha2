@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.25';
+    const VERSION = '2.1.26';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [

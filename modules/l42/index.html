@@ -475,7 +475,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.25";
+const APP_VERSION="2.1.26";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -632,7 +632,7 @@ const LABEL_MODELOS=[
     {id:"60_classica",tamanho:"60x40",nome:"Clássica",descricao:"Cabeçalho central, conteúdo equilibrado e QR lateral.",composicao:"classica",acao:"acao",validade:"VAL:",logo:!1},
     {id:"60_operacional",tamanho:"60x40",nome:"Painel operacional",descricao:"Informações à esquerda e rastreio isolado à direita.",composicao:"painel",acao:"acaoEm",validade:"VALIDADE:",logo:!1},
     {id:"60_identidade",tamanho:"60x40",nome:"Com logomarca",descricao:"Identidade no cabeçalho, conteúdo compacto e QR independente.",composicao:"identidade",acao:"acaoEm",validade:"USAR ATÉ:",logo:!0},
-    {id:"60_simples_cozinha",tamanho:"60x40",nome:"Simples de cozinha",descricao:"Preto e branco, com linhas para produto, fornecedor e datas de manipulação.",composicao:"simplesCozinha",acao:"acao",validade:"VÁLIDO ATÉ:",logo:!1,layoutFixo:!0},
+    {id:"60_simples_cozinha",tamanho:"60x40",nome:"Simples de cozinha",descricao:"Logomarca, produto, marca, manipulação e validade em um formato direto.",composicao:"simplesCozinha",acao:"acao",validade:"VÁLIDO ATÉ:",logo:!0,layoutFixo:!0},
     {id:"80_completa",tamanho:"80x50",nome:"Completa",descricao:"Mais espaço para lote, peso, preço, conservação e rastreio.",composicao:"completa",acao:"acao",validade:"VALIDADE:",logo:!1},
     {id:"80_comercial",tamanho:"80x50",nome:"Comercial",descricao:"Preço e total recebem a maior hierarquia, sem perder validade e QR.",composicao:"comercial",acao:"acaoEm",validade:"VALIDADE:",logo:!1},
     {id:"80_identidade",tamanho:"80x50",nome:"Identidade e rastreio",descricao:"Logomarca e QR formam uma coluna; produção e validade ficam na coluna principal.",composicao:"identidadeLarga",acao:"acaoEm",validade:"USAR ATÉ:",logo:!0}
@@ -1930,7 +1930,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.25" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.26" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -5599,33 +5599,37 @@ function formatarDataHoraEtiquetaSimples(valor){
     return texto;
 }
 
+function rotuloAcaoEtiquetaSimples(ac){
+    const base=valorEtiquetaSimples(ac).replace(/\s*:\s*$/,'').replace(/\s+EM$/i,'').trim();
+    return `${(base||'MANIPULADO').toUpperCase()} EM:`;
+}
+
 function dadosEtiquetaSimplesCozinha(p,ac,mB,vB,ma){
-    const tipo=textoComparacao(ac);
-    const dataHora=formatarDataHoraEtiquetaSimples(mB);
     return{
         produto:valorEtiquetaSimples(p&&p.nome),
-        fornecedor:valorEtiquetaSimples(p&&(p.fornecedor||p.fornecedorNome)),
-        fabricado:(tipo.includes("fabric")||tipo.includes("produz"))?dataHora:"",
-        descongelado:tipo.includes("descongel")?dataHora:"",
-        aberto:tipo.includes("abert")?dataHora:"",
+        marca:valorEtiquetaSimples(ma||(p&&p.marca)),
+        acaoRotulo:rotuloAcaoEtiquetaSimples(ac),
+        acaoEm:formatarDataHoraEtiquetaSimples(mB),
         validade:formatarDataHoraEtiquetaSimples(vB)
     };
 }
 
 function criarPlanoEtiquetaSimplesCozinha(p,ac,mB,vB,ma){
     const tam=tsplTamanhoAtual(),w=tsplDots(tam.largura),h=tsplDots(tam.altura);
-    const left=18,right=w-18,top=10,bottom=10,elementos=[],warnings=[];
+    const left=18,right=w-18,top=12,bottom=12,elementos=[],warnings=[];
     const dados=dadosEtiquetaSimplesCozinha(p,ac,mB,vB,ma);
+    const logo=db.configs.logoEtiqueta&&db.configs.logoEtiqueta.bytesBase64?db.configs.logoEtiqueta:null;
+    const logoW=logo?logo.width:112,logoH=logo?logo.height:48,logoX=right-logoW,logoY=top+4;
+    if(logo)elementos.push({type:"logo",x:logoX,y:logoY,width:logo.width,height:logo.height,dataUrl:logo.dataUrl,widthBytes:logo.widthBytes,bytesBase64:logo.bytesBase64});
+    else elementos.push({type:"logoPlaceholder",x:logoX,y:logoY,width:logoW,height:logoH});
     const linhas=[
-        ["Produto:",dados.produto,!0],
-        ["Fornecedor:",dados.fornecedor,!1],
-        ["Fabricado:",dados.fabricado,!1],
-        ["Descongelado:",dados.descongelado,!1],
-        ["Aberto em:",dados.aberto,!1],
-        ["Valido ate:",dados.validade,!0]
+        {rotulo:"Produto:",valor:dados.produto,negrito:!0,limiteDireito:logoX-8},
+        {rotulo:"Marca:",valor:dados.marca,negrito:!1,limiteDireito:right},
+        {rotulo:dados.acaoRotulo,valor:dados.acaoEm,negrito:!1,limiteDireito:right},
+        {rotulo:"Valido ate:",valor:dados.validade,negrito:!0,limiteDireito:right}
     ];
     const rowHeight=Math.floor((h-top-bottom)/linhas.length);
-    const labelFont="1",valueStart=left+112;
+    const labelFont="1";
     const addText=(field,text,x,y,maxRight,bold,preferida="2")=>{
         let clean=tsplSafeText(text,140).replace(/[<>&]/g," ").trim();
         if(!clean)return;
@@ -5642,13 +5646,13 @@ function criarPlanoEtiquetaSimplesCozinha(p,ac,mB,vB,ma){
     linhas.forEach((linha,indice)=>{
         const rowTop=top+(indice*rowHeight),lineY=rowTop+rowHeight-5;
         const labelY=rowTop+Math.max(4,Math.floor((rowHeight-tsplTextHeight(labelFont,1))/2)-1);
-        addText(`simplesLabel${indice}`,linha[0],left,labelY,valueStart-6,!0,"1");
-        const valor=linha[1];
-        if(valor){
+        const valueStart=Math.min(linha.limiteDireito-18,left+Math.max(82,tsplTextWidth(linha.rotulo,labelFont,1)+12));
+        addText(`simplesLabel${indice}`,linha.rotulo,left,labelY,valueStart-6,!0,"1");
+        if(linha.valor){
             const valorY=rowTop+Math.max(2,Math.floor((rowHeight-tsplTextHeight("2",1))/2)-1);
-            addText(`simplesValor${indice}`,valor,valueStart,valorY,right,linha[2],"2");
+            addText(`simplesValor${indice}`,linha.valor,valueStart,valorY,linha.limiteDireito,linha.negrito,"2");
         }
-        elementos.push({type:"bar",x:valueStart,y:lineY,width:right-valueStart,height:1});
+        elementos.push({type:"bar",x:valueStart,y:lineY,width:Math.max(8,linha.limiteDireito-valueStart),height:1});
     });
     const ajusteY=ajusteVerticalDots();
     if(ajusteY)elementos.forEach(e=>{if(Number.isFinite(e.y))e.y=Math.round(e.y+ajusteY)});
@@ -5998,6 +6002,11 @@ function montarZPLDoPlanoSimples(plano,modo="zpl"){
     const cmds=["^XA",`^PW${plano.w}`,`^LL${plano.h}`,"^LH0,0",zplMediaCommand(),modo==="zpl_i"?"^POI":"^PON","^PR2","^MD12"];
     plano.elementos.forEach(e=>{
         if(e.type==="bar")cmds.push(`^FO${Math.round(e.x)},${Math.round(e.y)}^GB${Math.round(e.width)},${Math.max(1,Math.round(e.height))},${Math.max(1,Math.round(e.height))}^FS`);
+        else if(e.type==="logo"){
+            const binario=atob(e.bytesBase64||""),total=Math.round(e.widthBytes*e.height);
+            let hex="";for(let i=0;i<binario.length;i++)hex+=binario.charCodeAt(i).toString(16).padStart(2,"0").toUpperCase();
+            if(hex)cmds.push(`^FO${Math.round(e.x)},${Math.round(e.y)}^GFA,${total},${total},${Math.round(e.widthBytes)},${hex}^FS`);
+        }
         else if(e.type==="text"){
             const altura=Math.max(14,Math.round(e.height)),largura=Math.max(8,Math.round(tsplFontMetric(e.font).w));
             cmds.push(`^FO${Math.round(e.x)},${Math.round(e.y)}^A0N,${altura},${largura}^FD${zplSafeText(e.text,160)}^FS`);
@@ -6015,6 +6024,10 @@ function montarEPLDoPlanoSimples(plano,offsetDots=0,modo="epl_zt"){
     cmds.push("JF","D12","S2");
     plano.elementos.forEach(e=>{
         if(e.type==="bar")cmds.push(`LO${Math.round(e.x)},${Math.round(e.y)},${Math.round(e.width)},${Math.max(1,Math.round(e.height))}`);
+        else if(e.type==="logo"){
+            const binario=atob(e.bytesBase64||"");
+            if(binario)cmds.push(`GW${Math.round(e.x)},${Math.round(e.y)},${Math.round(e.widthBytes)},${Math.round(e.height)},${binario}`);
+        }
         else if(e.type==="text"){
             const fonte=e.font==="2"?2:1;
             eplAddText(cmds,e.x,e.y,fonte,1,1,e.text,160);
@@ -6678,16 +6691,15 @@ function gerarPDFEtiquetaSimplesCozinha(p,ac,mB,vB,q,ma){
     const dados=dadosEtiquetaSimplesCozinha(p,ac,mB,vB,ma);
     const campos=[
         ["Produto",dados.produto],
-        ["Fornecedor",dados.fornecedor],
-        ["Fabricado",dados.fabricado],
-        ["Descongelado",dados.descongelado],
-        ["Aberto em",dados.aberto],
+        ["Marca",dados.marca],
+        [dados.acaoRotulo.replace(/:$/,''),dados.acaoEm],
         ["Valido ate",dados.validade]
     ];
     const linhas=campos.map(([rotulo,valor])=>`<div class="linha"><strong>${rotulo}:</strong><span>${htmlSeguro(valorEtiquetaSimples(valor))}</span></div>`).join('');
-    let html=`<html><head><meta charset="utf-8"><style>@page{margin:0;size:60mm 40mm}html,body{margin:0;width:60mm;height:40mm;background:#fff;color:#000;font-family:Arial,sans-serif}.etiqueta{box-sizing:border-box;width:60mm;height:40mm;padding:1.4mm 2mm;display:grid;grid-template-rows:repeat(6,1fr);overflow:hidden}.linha{min-width:0;display:grid;grid-template-columns:21mm 1fr;align-items:center;gap:1mm;font-size:8pt;line-height:1}.linha strong{white-space:nowrap}.linha span{height:4.2mm;border-bottom:.35mm solid #000;display:flex;align-items:center;min-width:0;font-size:9.5pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}</style></head><body>`;
+    const logo=db.configs.logoEtiqueta&&db.configs.logoEtiqueta.dataUrl?`<img class="logo" src="${db.configs.logoEtiqueta.dataUrl}" alt="">`:'';
+    let html=`<html><head><meta charset="utf-8"><style>@page{margin:0;size:60mm 40mm}html,body{margin:0;width:60mm;height:40mm;background:#fff;color:#000;font-family:Arial,sans-serif}.etiqueta{position:relative;box-sizing:border-box;width:60mm;height:40mm;padding:1.5mm 2mm;display:grid;grid-template-rows:repeat(4,1fr);overflow:hidden}.linha{min-width:0;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:1mm;padding-right:0;font-size:8pt;line-height:1}.linha:first-of-type{padding-right:15mm}.linha strong{white-space:nowrap}.linha span{height:5mm;border-bottom:.35mm solid #000;display:flex;align-items:center;min-width:0;font-size:10pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.logo{position:absolute;right:2mm;top:2mm;max-width:14mm;max-height:6mm;object-fit:contain}</style></head><body>`;
     const total=Math.max(1,parseInt(q,10)||1);
-    for(let i=0;i<total;i++)html+=`<div class="etiqueta"${i<total-1?' style="page-break-after:always"':''}>${linhas}</div>`;
+    for(let i=0;i<total;i++)html+=`<div class="etiqueta"${i<total-1?' style="page-break-after:always"':''}>${logo}${linhas}</div>`;
     html+='<script>setTimeout(function(){window.print();window.close()},300);<\/script></body></html>';
     win.document.write(html);
     win.document.close();
@@ -7380,7 +7392,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.25" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.26" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7406,7 +7418,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.25" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.26" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

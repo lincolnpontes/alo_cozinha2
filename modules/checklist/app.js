@@ -1280,6 +1280,7 @@
 
     function showHome() {
         const previousModule = activeModule;
+        if (previousModule === 'tasks') global.AloTechnicalSheets?.showView('activities', true);
         activeModule = 'home';
         if (global.AloModuleHost) global.AloModuleHost.showHome();
         else {
@@ -1301,6 +1302,13 @@
             document.getElementById('feiraModule').style.display = canonicalModule === 'compras' ? 'flex' : 'none';
         }
         if (canonicalModule === 'checklist') {
+            if (selectedArea === 'todos' && global.podeAcessarChecklistVisao?.('geral') === false) {
+                const firstArea = db().setoresTarefas.find(area => area.ativo !== false);
+                if (firstArea) {
+                    selectedArea = firstArea.id;
+                    localStorage.setItem(STORAGE_SELECTED_AREA, selectedArea);
+                }
+            }
             generateToday();
             render();
             syncNow(true);
@@ -1309,7 +1317,11 @@
         if (canonicalModule === 'compras') global.AloFeiraModule?.open();
     }
     function setTab(tab) { selectedTab = tab; render(); }
-    function setArea(area) {
+    function setArea(area, acessoConfirmado = false) {
+        if (area === 'todos' && !acessoConfirmado && global.solicitarAcessoChecklist?.('geral') === false) {
+            closeAreaPicker();
+            return;
+        }
         selectedArea = area;
         localStorage.setItem(STORAGE_SELECTED_AREA, area);
         closeAreaPicker();

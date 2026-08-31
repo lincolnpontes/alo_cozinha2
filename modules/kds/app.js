@@ -35,6 +35,21 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         { id: 'panelas', nome: 'Panelas', tipo: 'envio', emoji: '🥘' },
         { id: 'cozinha', nome: 'Cozinha', tipo: 'recebimento', emoji: '🧑‍🍳' }
     ];
+    const IMAGENS_AREA_LEGADAS = {
+        'assets/areas/kitchen.svg':'🧑‍🍳',
+        'assets/areas/production.svg':'🔪',
+        'assets/areas/pans.svg':'🥣',
+        'assets/areas/grill.svg':'🍖',
+        'assets/areas/pastry.svg':'🥐',
+        'assets/areas/bar.svg':'🍹',
+        'assets/areas/dining.svg':'🍽️',
+        'assets/areas/cleaning.svg':'🧹',
+        'assets/areas/restroom.svg':'🚻',
+        'assets/areas/stock.svg':'🧺',
+        'assets/areas/cold-room.svg':'❄️',
+        'assets/areas/delivery.svg':'🛵',
+        'assets/areas/cashier.svg':'🧾'
+    };
 
     function normalizarAreasERotas() {
         const recebidas = Array.isArray(db.areas) ? db.areas : [];
@@ -47,7 +62,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 id,
                 nome: String(area.nome || area.id),
                 tipo,
-                emoji: area.emoji === '🏺' ? '🥣' : (area.emoji || (tipo === 'recebimento' ? '🧑‍🍳' : '🥘'))
+                emoji: IMAGENS_AREA_LEGADAS[area.emoji]
+                    || (area.emoji === '🏺' ? '🥣' : (area.emoji || (tipo === 'recebimento' ? '🧑‍🍳' : '🥘')))
             });
         });
         db.areas = Array.from(porId.values());
@@ -410,7 +426,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             setoresTarefas: [{ id: 'setor_cozinha', nome: 'Cozinha', emoji: '🧑‍🍳', ativo: true }],
             funcionarios: [], tarefas: [], coreCompartilhado: null,
             configsTarefas: { som: 'beep', volume: '80', repeticaoMinutos: '5' },
-            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido", loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true } }
+            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido", loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true }, loginObrigatorioChecklistVisoes: { documentos:false, geral:false } }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
         if(local) {
@@ -424,6 +440,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             if(!local.configs.inatividade) local.configs.inatividade = "0";
             if(!local.configs.reenvio) local.configs.reenvio = "permitido";
             local.configs.loginObrigatorioModulos = { kds:false, checklist:false, compras:true, l42:true, ...(local.configs.loginObrigatorioModulos || {}) };
+            local.configs.loginObrigatorioChecklistVisoes = { documentos:false, geral:false, ...(local.configs.loginObrigatorioChecklistVisoes || {}) };
             if(!local.configs.volumeCozinha) local.configs.volumeCozinha = "100";
             if(!local.configs.volumePanelas) local.configs.volumePanelas = "70";
             if(!Array.isArray(local.setoresTarefas) || !local.setoresTarefas.length) local.setoresTarefas = defaultDB.setoresTarefas;
@@ -1292,6 +1309,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let sessaoL42 = null;
     let sessaoKds = null;
     let sessaoChecklist = null;
+    let destinoChecklistProtegido = '';
     let sessaoAdministrativaAtiva = false;
     const ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1';
 
@@ -1322,10 +1340,36 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         return db.configs.loginObrigatorioModulos?.[modulo] ?? defaults[modulo] ?? false;
     }
 
+    function exigeLoginChecklistVisao(visao) {
+        return Boolean(db.configs.loginObrigatorioChecklistVisoes?.[visao]);
+    }
+
+    function podeAcessarChecklistVisao(visao) {
+        return !exigeLoginChecklistVisao(visao) || Boolean(sessaoChecklist);
+    }
+
+    function solicitarAcessoChecklist(visao) {
+        if (!exigeLoginChecklistVisao(visao) || sessaoChecklist) return true;
+        destinoChecklistProtegido = visao;
+        abrirLoginAdmin('checklist_acesso');
+        return false;
+    }
+
+    function abrirVisaoChecklistProtegida() {
+        const destino = destinoChecklistProtegido;
+        destinoChecklistProtegido = '';
+        if (destino === 'documentos') AloTechnicalSheets?.showView('documents', true);
+        if (destino === 'geral') AloTasks?.setArea('todos', true);
+    }
+
     function sincronizarSwitchesLogin() {
         [['loginRequiredKds','kds'],['loginRequiredChecklist','checklist'],['loginRequiredCompras','compras'],['loginRequiredL42','l42']].forEach(([id, modulo]) => {
             const input = document.getElementById(id);
             if (input) input.checked = exigeLoginModulo(modulo);
+        });
+        [['loginRequiredChecklistDocuments','documentos'],['loginRequiredChecklistOverview','geral']].forEach(([id, visao]) => {
+            const input = document.getElementById(id);
+            if (input) input.checked = exigeLoginChecklistVisao(visao);
         });
     }
 
@@ -1333,6 +1377,16 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         db.configs.loginObrigatorioModulos = { kds:false, checklist:false, compras:true, l42:true, ...(db.configs.loginObrigatorioModulos || {}), [modulo]:Boolean(exigir) };
         marcarBancoAlterado();
         atualizarEngrenagensDaSessao();
+    }
+
+    function salvarExigirLoginChecklistVisao(visao, exigir) {
+        db.configs.loginObrigatorioChecklistVisoes = {
+            documentos:false,
+            geral:false,
+            ...(db.configs.loginObrigatorioChecklistVisoes || {}),
+            [visao]:Boolean(exigir)
+        };
+        marcarBancoAlterado();
     }
 
     function abrirPainelControle() {
@@ -1420,7 +1474,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     async function abrirLoginAdmin(destino = 'painel') {
-        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'etiquetas', 'kds_modulo', 'trocar_kds', 'checklist_modulo', 'trocar_checklist', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'];
+        const destinosValidos = ['painel', 'kds', 'tasks', 'compras', 'etiquetas', 'kds_modulo', 'trocar_kds', 'checklist_modulo', 'trocar_checklist', 'checklist_acesso', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'];
         destinoLoginOperador = destinosValidos.includes(destino) ? destino : 'painel';
         if (['painel', 'kds', 'tasks', 'compras', 'etiquetas'].includes(destinoLoginOperador)) destinoConfiguracoes = destinoLoginOperador;
         if (destinoLoginOperador === 'compras' && sessaoCompras?.isAdmin) {
@@ -1441,7 +1495,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const select = document.getElementById('operadorAdmin');
         const input = document.getElementById('senhaAdmin');
         const button = document.getElementById('btnConfirmarLoginOperador');
-        const titulosModulo = { kds_modulo:'Entrar no KDS', checklist_modulo:'Entrar no Checklist', compras_modulo:'Entrar na Lista de Compras', l42_modulo:'Entrar em Etiquetas' };
+        const titulosModulo = { kds_modulo:'Entrar no KDS', checklist_modulo:'Entrar no Checklist', checklist_acesso:'Entrar no Checklist', compras_modulo:'Entrar na Lista de Compras', l42_modulo:'Entrar em Etiquetas' };
         document.getElementById('tituloLoginOperador').innerText = titulosModulo[destinoLoginOperador]
             || (destinoLoginOperador.startsWith('trocar_') ? 'Trocar pessoa' : 'Acesso às configurações');
         select.innerHTML = '<option value="">Carregando operadores...</option>';
@@ -1456,7 +1510,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         try {
             const finalidade = ['kds_modulo', 'trocar_kds'].includes(destinoLoginOperador)
                 ? 'kds_operacional'
-                : (['checklist_modulo', 'trocar_checklist'].includes(destinoLoginOperador)
+                : (['checklist_modulo', 'trocar_checklist', 'checklist_acesso'].includes(destinoLoginOperador)
                     ? 'checklist_operacional'
                     : (['compras_modulo', 'trocar_compras'].includes(destinoLoginOperador)
                         ? 'compras'
@@ -1763,7 +1817,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.22',
+                version: '2.1.23',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2272,7 +2326,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         document.getElementById('areaKdsIdOriginal').value = kds?.id || '';
         document.getElementById('areaChecklistIdOriginal').value = checklist?.id || '';
         document.getElementById('areaNome').value = grupo?.nome || '';
-        document.getElementById('areaEmoji').value = grupo?.emoji || 'assets/areas/kitchen.svg';
+        document.getElementById('areaEmoji').value = grupo?.emoji || '🧑‍🍳';
         selecionarEmojiArea(document.getElementById('areaEmoji').value);
         document.getElementById('areaTipo').value = kds?.tipo || 'envio';
         const moduloKds = document.getElementById('areaModuloKds');
@@ -2419,7 +2473,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 return;
             }
             localStorage.setItem(ULTIMO_OPERADOR_LOGIN_KEY, resultado.operador.id);
-            const acessoOperacional = ['kds_modulo', 'trocar_kds', 'checklist_modulo', 'trocar_checklist', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'].includes(destinoLoginOperador);
+            const acessoOperacional = ['kds_modulo', 'trocar_kds', 'checklist_modulo', 'trocar_checklist', 'checklist_acesso', 'compras_modulo', 'trocar_compras', 'l42_modulo', 'trocar_l42'].includes(destinoLoginOperador);
             const podeConfigurar = acessoOperacional
                 || (destinoLoginOperador === 'kds' && resultado.operador.podeConfigurarKds)
                 || (destinoLoginOperador === 'tasks' && resultado.operador.podeConfigurarChecklist)
@@ -2454,6 +2508,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 sessaoChecklist = resultado.operador;
                 atualizarEngrenagensDaSessao();
                 if (destinoLoginOperador === 'checklist_modulo') AloTasks.openModule('tasks');
+                return;
+            }
+            if (destinoLoginOperador === 'checklist_acesso') {
+                sessaoChecklist = resultado.operador;
+                atualizarEngrenagensDaSessao();
+                abrirVisaoChecklistProtegida();
                 return;
             }
             if (destinoLoginOperador === 'l42_modulo' || destinoLoginOperador === 'trocar_l42') {
@@ -2569,6 +2629,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         }
         if (modulo === 'tasks' || modulo === 'checklist') {
             sessaoChecklist = null;
+            destinoChecklistProtegido = '';
             atualizarEngrenagensDaSessao();
         }
     }
@@ -2914,7 +2975,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 telaAtiva: settings.telaAtiva || 'sim',
                 inatividade: settings.inatividade || '0',
                 reenvio: settings.reenvio || 'permitido',
-                loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true, ...(settings.loginObrigatorioModulos || {}) }
+                loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true, ...(settings.loginObrigatorioModulos || {}) },
+                loginObrigatorioChecklistVisoes: { documentos:false, geral:false, ...(settings.loginObrigatorioChecklistVisoes || {}) }
             }
         };
     }
@@ -3009,6 +3071,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     async function sincronizarBancoAutomaticamente() {
         if(bancoSyncEmAndamento || !db.configs.url || !navigator.onLine) return;
         bancoSyncEmAndamento = true;
+        bancoSyncErro = '';
+        atualizarIndicadorSincronizacao(estadoSyncPedidosAtual);
         try {
             if(db.configs.bancoPendente) {
                 await publicarBancoPendente();
@@ -3071,7 +3135,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.22').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.23').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

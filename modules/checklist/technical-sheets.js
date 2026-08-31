@@ -160,7 +160,8 @@
     }
     function money(value) { return Number(value || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
 
-    function showView(view) {
+    function showView(view, acessoConfirmado = false) {
+        if (view === 'documents' && !acessoConfirmado && global.solicitarAcessoChecklist?.('documentos') === false) return;
         const sheets = view === 'sheets';
         const documents = view === 'documents';
         const activities = !sheets && !documents;

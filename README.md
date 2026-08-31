@@ -1,13 +1,13 @@
-# Alô Cozinha v2.1.22
+# Alô Cozinha v2.1.23
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
-- A v2.1.22 restaura a confirmação por conteúdo do KDS, evitando o amarelo causado por notificações internas sem alteração real do catálogo.
-- A v2.1.22 diferencia sincronização pendente de uma instalação sem URL da nuvem e mantém a proteção contra conflitos e tarefas mais novas do servidor.
-- A v2.1.22 redesenha as imagens dos setores, devolve a panelinha e a scooter de delivery e remove o atalho redundante de funcionários.
-- A v2.1.22 usa `📄` para todos os documentos cadastrados e integra o compartilhamento ampliado ao tema escuro do visualizador.
+- A v2.1.23 confirma cada publicação do catálogo do KDS por um recibo único devolvido pelo backend, sem confundir mesclagens válidas com falha de sincronização.
+- A v2.1.23 adiciona proteção de login independente para Documentos e Visão Geral do Checklist e esclarece o alcance do login em cada módulo.
+- A v2.1.23 usa imagens de setor no estilo nativo dos emojis, preserva a panelinha marrom e restaura a motinha amarela de delivery.
+- A v2.1.23 centraliza o comando de compartilhamento no visualizador de documentos.
 - A v2.1.13 corrige a retenção das atividades após a sincronização com o Google Sheets, cria o painel Geral do Checklist por setor e melhora fichas técnicas, fotos e busca de ingredientes.
 - A v2.1.13 simplifica Funcionários e Acessos, torna o teclado de PIN mais responsivo, refina os filtros de KDS e Compras e melhora a edição visual de pedidos em andamento.
 - O APK v2.1.13 abre a câmera nativa para fotos das atividades e fichas técnicas e atualiza o ícone dos controles da etiquetadora.

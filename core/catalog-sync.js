@@ -1,4 +1,12 @@
 (function (global) {
+    const RECEIPT_KEY = '_catalogSyncReceipt';
+
+    function comparableConfigs(configs) {
+        const clean = { ...(configs || {}) };
+        delete clean[RECEIPT_KEY];
+        return clean;
+    }
+
     function comparable(bank) {
         return {
             produtos: bank.produtos || [],
@@ -11,7 +19,7 @@
             tarefas: bank.tarefas || [],
             coreCompartilhado: bank.coreCompartilhado || null,
             configsTarefas: bank.configsTarefas || {},
-            configs: bank.configs || {}
+            configs: comparableConfigs(bank.configs)
         };
     }
 
@@ -75,11 +83,14 @@
         });
     }
 
-    async function publish({ api, url, data, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
+    async function publish({ api, url, data, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), createReceipt }) {
         let sent = false;
         let sharedSupported = false;
         let lastRevision = 0;
         let lastBank = null;
+        const receipt = typeof createReceipt === 'function'
+            ? String(createReceipt())
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
         for (let publishAttempt = 0; publishAttempt < 2; publishAttempt += 1) {
             const current = await api.getBank(url);
             if (!current || Array.isArray(current) || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, '_revision')) {
@@ -88,9 +99,12 @@
             lastBank = current;
             lastRevision = Number(current._revision || 0);
             sharedSupported = Boolean(current._capabilities?.dadosCompartilhados);
-            const dataForServer = sharedSupported ? data : { ...data };
+            const dataForServer = {
+                ...data,
+                configs: { ...(data.configs || {}), [RECEIPT_KEY]:receipt }
+            };
             if (!sharedSupported) delete dataForServer.coreCompartilhado;
-            if (isEqual(current, dataForServer)) {
+            if (isEqual(current, data)) {
                 return { confirmed:true, revision:lastRevision, sent, sharedSupported, bank:current };
             }
             await api.post(url, {
@@ -104,7 +118,8 @@
                 const confirmed = await api.getBank(url);
                 lastBank = confirmed;
                 lastRevision = Number(confirmed?._revision || lastRevision);
-                if (isEqual(confirmed, dataForServer)) {
+                const confirmedReceipt = String(confirmed?.configs?.[RECEIPT_KEY] || '') === receipt;
+                if (confirmedReceipt || isEqual(confirmed, dataForServer)) {
                     return { confirmed:true, revision:lastRevision, sent:true, sharedSupported, bank:confirmed };
                 }
             }

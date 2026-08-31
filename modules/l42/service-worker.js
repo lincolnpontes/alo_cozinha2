@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alo-l42-v2.1.22-integrado';
+const CACHE_NAME = 'alo-l42-v2.1.23-integrado';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting(); // Força a instalação da nova versão imediatamente
@@ -9,8 +9,8 @@ self.addEventListener('install', (e) => {
                 './index.html',
                 './manifest.json',
                 './icon.png',
-                './assets/qr-reader.svg?v=2.1.22',
-                './assets/printer-controls.svg?v=2.1.22',
+                './assets/qr-reader.svg?v=2.1.23',
+                './assets/printer-controls.svg?v=2.1.23',
                 './vendor/html2canvas.min.js',
                 './vendor/qrcode.min.js',
                 './vendor/html5-qrcode.min.js',

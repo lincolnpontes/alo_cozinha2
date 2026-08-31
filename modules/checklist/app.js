@@ -62,8 +62,8 @@
     function adjustHeaderAreaName(element, name) {
         if (!element) return;
         const length = Array.from(String(name || '')).length;
-        const desktop = length > 30 ? 10 : (length > 24 ? 11 : (length > 17 ? 14 : (length > 11 ? 16 : 18)));
-        const mobile = length > 24 ? 10 : (length > 17 ? 11 : (length > 11 ? 12 : 14));
+        const desktop = length > 30 ? 10 : (length > 24 ? 12 : (length > 17 ? 15 : (length > 11 ? 17 : 19)));
+        const mobile = length > 24 ? 10 : (length > 17 ? 12 : (length > 11 ? 13 : 15));
         element.style.setProperty('--area-name-size', `${desktop}px`);
         element.style.setProperty('--area-name-size-mobile', `${mobile}px`);
     }
@@ -1335,7 +1335,7 @@
     }
 
     function closeAllSettings() {
-        ['modalPainelUnificado', 'modalConfigTasksMenu', 'modalTasksManager', 'modalTaskForm', 'modalTaskScheduleEditor', 'modalTaskHygieneLibrary', 'modalTaskQr', 'modalTaskReports', 'modalTaskHistory', 'modalTaskBasicSettings']
+        ['modalPainelUnificado', 'modalConfigTasksMenu', 'modalTasksManager', 'modalTaskForm', 'modalTaskScheduleEditor', 'modalTaskTechnicalSheetPicker', 'modalTaskHygieneLibrary', 'modalTaskQr', 'modalTaskReports', 'modalTaskHistory', 'modalTaskBasicSettings']
             .forEach(id => { const element = document.getElementById(id); if (element) element.style.display = 'none'; });
     }
     function openSettingsMenu() {
@@ -1362,8 +1362,8 @@
         }
         backToSettingsMenu();
     }
-    function managerItem(title, subtitle, index, active, qrId = '', canDuplicate = false) {
-        return `<div class="task-manager-item ${active === false ? 'inactive' : ''}"><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle)}</span></div><div class="task-manager-actions">${qrId ? `<button onclick="AloTasks.openTaskQr('${escapeHtml(qrId)}')" aria-label="Gerar QR Code" title="Gerar QR Code">▦</button>` : ''}${canDuplicate ? `<button class="task-duplicate-button" onclick="AloTasks.duplicateTask(${index})" aria-label="Duplicar tarefa" title="Duplicar tarefa">⧉</button>` : ''}<button onclick="AloTasks.editManagedItem(${index})" aria-label="Editar" title="Editar">✏️</button></div></div>`;
+    function managerItem(title, subtitle, index, active, qrId = '', canDuplicate = false, visual = '') {
+        return `<div class="task-manager-item ${active === false ? 'inactive' : ''}"><div class="task-manager-copy">${visual ? `<span class="task-manager-visual">${visual}</span>` : ''}<div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle)}</span></div></div><div class="task-manager-actions">${qrId ? `<button onclick="AloTasks.openTaskQr('${escapeHtml(qrId)}')" aria-label="Gerar QR Code" title="Gerar QR Code">▦</button>` : ''}${canDuplicate ? `<button class="task-duplicate-button" onclick="AloTasks.duplicateTask(${index})" aria-label="Duplicar tarefa" title="Duplicar tarefa">⧉</button>` : ''}<button onclick="AloTasks.editManagedItem(${index})" aria-label="Editar" title="Editar">✏️</button></div></div>`;
     }
     function openManager(type) {
         managerType = type;
@@ -1378,7 +1378,7 @@
         if (employeesButton) employeesButton.style.display = type === 'areas' ? 'block' : 'none';
         if (type === 'areas') {
             title.innerText = 'Setores do Estabelecimento';
-            list.innerHTML = db().setoresTarefas.map((area, index) => managerItem(`${areaVisualText(area.emoji)} ${area.nome}`, area.ativo === false ? 'Inativo' : 'Ativo', index, area.ativo)).join('');
+            list.innerHTML = db().setoresTarefas.map((area, index) => managerItem(area.nome, area.ativo === false ? 'Inativo' : 'Ativo', index, area.ativo, '', false, areaVisualHtml(area.emoji))).join('');
         } else if (type === 'employees') {
             title.innerText = 'Funcionários';
             list.innerHTML = db().funcionarios.map((employee, index) => {
@@ -1434,6 +1434,44 @@
             `<option value="${escapeHtml(sheet.id)}" ${String(sheet.id) === String(selected || '') ? 'selected' : ''}>${escapeHtml(sheet.nome)}${sheet.categoria ? ` · ${escapeHtml(sheet.categoria)}` : ''}</option>`
         ).join('');
     }
+    function taskTechnicalSheetPickerMarkup(selected) {
+        const sheet = technicalSheetSummary(selected);
+        return `<input id="taskTechnicalSheet" type="hidden" value="${escapeHtml(selected || '')}"><button class="task-sheet-picker-button" type="button" onclick="AloTasks.openTechnicalSheetPicker()"><span class="task-sheet-picker-icon" aria-hidden="true">🍽️</span><span><small>Ficha técnica</small><strong id="taskTechnicalSheetName">${escapeHtml(sheet?.nome || 'Escolher ficha técnica')}</strong><em id="taskTechnicalSheetMeta">${escapeHtml(sheet ? [sheet.categoria, sheet.setorNome].filter(Boolean).join(' · ') : 'Toque para procurar')}</em></span><b aria-hidden="true">›</b></button>`;
+    }
+    function renderTaskTechnicalSheetSelection() {
+        const selected = document.getElementById('taskTechnicalSheet')?.value || '';
+        const sheet = technicalSheetSummary(selected);
+        const name = document.getElementById('taskTechnicalSheetName');
+        const meta = document.getElementById('taskTechnicalSheetMeta');
+        if (name) name.textContent = sheet?.nome || 'Escolher ficha técnica';
+        if (meta) meta.textContent = sheet ? [sheet.categoria, sheet.setorNome].filter(Boolean).join(' · ') : 'Toque para procurar';
+    }
+    function openTechnicalSheetPicker() {
+        const input = document.getElementById('taskTechnicalSheetSearch');
+        if (input) input.value = '';
+        renderTechnicalSheetPicker();
+        document.getElementById('modalTaskForm').style.display = 'none';
+        deps.openModalTop('modalTaskTechnicalSheetPicker');
+        setTimeout(() => input?.focus({ preventScroll:true }), 50);
+    }
+    function renderTechnicalSheetPicker() {
+        const target = document.getElementById('taskTechnicalSheetPickerList');
+        if (!target) return;
+        const query = String(document.getElementById('taskTechnicalSheetSearch')?.value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const selected = document.getElementById('taskTechnicalSheet')?.value || '';
+        const sheets = (global.AloTechnicalSheets?.getLinkOptions?.() || []).filter(sheet => !query || `${sheet.nome} ${sheet.categoria || ''} ${sheet.setorNome || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query));
+        target.innerHTML = sheets.length ? sheets.map(sheet => `<button class="task-sheet-picker-option ${String(sheet.id) === String(selected) ? 'selected' : ''}" type="button" onclick="AloTasks.selectTechnicalSheet('${escapeHtml(sheet.id)}')"><span aria-hidden="true">🍽️</span><span><strong>${escapeHtml(sheet.nome)}</strong><small>${escapeHtml([sheet.categoria, sheet.setorNome].filter(Boolean).join(' · ') || 'Ficha técnica')}</small></span><b aria-hidden="true">${String(sheet.id) === String(selected) ? '✓' : '›'}</b></button>`).join('') : '<div class="tasks-empty">Nenhuma ficha técnica encontrada.</div>';
+    }
+    function selectTechnicalSheet(sheetId) {
+        const field = document.getElementById('taskTechnicalSheet');
+        if (field) field.value = sheetId;
+        renderTaskTechnicalSheetSelection();
+        closeTechnicalSheetPicker();
+    }
+    function closeTechnicalSheetPicker() {
+        document.getElementById('modalTaskTechnicalSheetPicker').style.display = 'none';
+        document.getElementById('modalTaskForm').style.display = 'flex';
+    }
     function technicalSheetSummary(sheetId) {
         return (global.AloTechnicalSheets?.getLinkOptions?.() || []).find(sheet => String(sheet.id) === String(sheetId || '')) || null;
     }
@@ -1455,6 +1493,7 @@
         if (procedure) procedure.style.display = selected === 'procedimento' ? 'block' : 'none';
         if (sheet) sheet.style.display = selected === 'ficha' ? 'block' : 'none';
         document.querySelectorAll('#taskGuidanceTabs button').forEach(button => button.classList.toggle('active', button.dataset.guidance === selected));
+        if (selected === 'ficha') renderTaskTechnicalSheetSelection();
     }
     function recurrenceLabel(schedule) {
         if (schedule.recorrencia === 'unica') return `Uma vez · ${formatDateKey(schedule.dataUnica)}`;
@@ -1711,7 +1750,7 @@
             const employee = index >= 0 ? db().funcionarios[index] : { nome: '', setorId: '', setorIds:[], ativo: true };
             title.innerText = index >= 0 ? 'Editar Funcionário' : 'Novo Funcionário';
             const selectedAreas = new Set(employeeAreaIds(employee));
-            body.innerHTML = `<div class="form-group"><label>Nome:</label><input id="taskEmployeeName" value="${escapeHtml(employee.nome)}" placeholder="Nome do funcionário"></div><div class="form-group"><label>Setores em que trabalha:</label><div id="taskEmployeeAreas" class="shared-area-choice-grid">${db().setoresTarefas.filter(area => area.ativo !== false || selectedAreas.has(area.id)).map(area => `<label class="shared-area-choice"><input type="checkbox" value="${escapeHtml(area.id)}" ${selectedAreas.has(area.id) ? 'checked' : ''}><span>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</span></label>`).join('')}</div></div><label class="task-simple-switch"><input id="taskEmployeeActive" type="checkbox" ${employee.ativo !== false ? 'checked' : ''}><span>Funcionário ativo</span></label>`;
+            body.innerHTML = `<div class="form-group"><label>Nome:</label><input id="taskEmployeeName" value="${escapeHtml(employee.nome)}" placeholder="Nome do funcionário"></div><div class="form-group"><label>Setores em que trabalha:</label><div id="taskEmployeeAreas" class="shared-area-choice-grid">${db().setoresTarefas.filter(area => area.ativo !== false || selectedAreas.has(area.id)).map(area => `<label class="shared-area-choice"><input type="checkbox" value="${escapeHtml(area.id)}" ${selectedAreas.has(area.id) ? 'checked' : ''}><span>${areaVisualHtml(area.emoji)} ${escapeHtml(area.nome)}</span></label>`).join('')}</div></div><label class="task-simple-switch"><input id="taskEmployeeActive" type="checkbox" ${employee.ativo !== false ? 'checked' : ''}><span>Funcionário ativo</span></label>`;
         } else {
             const isNewTask = !preset && index < 0;
             const task = preset || (index >= 0 ? db().tarefas[index] : { id: createId('tarefa'), nome: '', setorId: db().setoresTarefas[0]?.id || '', funcionarioId: '', prioridade: 'normal', tempoEsperadoMin: 0, instrucoes: '', fichaTecnicaId: '', procedimentoFormato: 'rico', permiteRemarcacao: false, registroPop: false, ativo: true });
@@ -1726,8 +1765,8 @@
                 <div class="form-group"><label>Nome curto:</label><input id="taskName" value="${escapeHtml(task.nome)}" placeholder="Ex: Higienizar bancada"></div>
                 <div class="task-form-grid"><div class="form-group"><label>Setor:</label><select id="taskArea" onchange="AloTasks.refreshTaskEmployeeOptions()">${areaOptions(task.setorId)}</select></div><div class="form-group"><label>Responsável:</label><select id="taskEmployee">${employeeOptions(task.funcionarioId, task.setorId)}</select></div></div>
                 <section class="task-schedule-section"><div class="task-form-section-title"><strong>Horários e frequência</strong><button type="button" class="task-add-schedule" onclick="AloTasks.openScheduleEditor()">＋ Cadastrar horário</button></div><div id="taskScheduleList" class="task-schedule-list"></div></section>
-                <div class="task-form-grid"><div class="form-group"><label>Prioridade:</label><select id="taskPriority"><option value="normal" ${task.prioridade !== 'urgente' ? 'selected' : ''}>Normal</option><option value="urgente" ${task.prioridade === 'urgente' ? 'selected' : ''}>Urgente</option></select></div><div class="form-group"><label>Tempo esperado (min.):</label><input id="taskExpected" type="number" min="0" inputmode="numeric" value="${Number(task.tempoEsperadoMin || 0)}" onfocus="this.select()" onclick="this.select()"></div></div>
-                <section class="task-guidance-section"><div id="taskGuidanceTabs" class="task-guidance-tabs" role="tablist" aria-label="Orientação da tarefa"><button type="button" data-guidance="procedimento" onclick="AloTasks.setTaskGuidance('procedimento')">Procedimento</button><button type="button" data-guidance="ficha" onclick="AloTasks.setTaskGuidance('ficha')">Ficha técnica</button></div><div id="taskProcedureGuidance" class="form-group"><label>Procedimento:</label>${richEditorMarkup('taskInstructions', task.instrucoes, task.procedimentoFormato, 'Escreva o procedimento', 1800)}</div><div id="taskSheetGuidance" class="task-sheet-guidance"><div class="form-group"><label for="taskTechnicalSheet">Ficha técnica vinculada:</label><select id="taskTechnicalSheet">${technicalSheetOptions(task.fichaTecnicaId)}</select></div><small>Quem abrir a atividade poderá consultar a ficha completa e imprimir a etiqueta correspondente.</small></div></section>
+                <div class="task-form-grid task-priority-grid"><div class="form-group"><label>Prioridade:</label><select id="taskPriority"><option value="normal" ${task.prioridade !== 'urgente' ? 'selected' : ''}>Normal</option><option value="urgente" ${task.prioridade === 'urgente' ? 'selected' : ''}>Urgente</option></select></div><div class="form-group"><label>Tempo esperado (min.):</label><input id="taskExpected" type="number" min="0" inputmode="numeric" value="${Number(task.tempoEsperadoMin || 0)}" onfocus="this.select()" onclick="this.select()"></div></div>
+                <section class="task-guidance-section"><div id="taskGuidanceTabs" class="task-guidance-tabs" role="tablist" aria-label="Orientação da tarefa"><button type="button" data-guidance="procedimento" onclick="AloTasks.setTaskGuidance('procedimento')">Procedimento</button><button type="button" data-guidance="ficha" onclick="AloTasks.setTaskGuidance('ficha')">Ficha técnica</button></div><div id="taskProcedureGuidance" class="form-group"><label>Procedimento:</label>${richEditorMarkup('taskInstructions', task.instrucoes, task.procedimentoFormato, 'Escreva o procedimento', 1800)}</div><div id="taskSheetGuidance" class="task-sheet-guidance">${taskTechnicalSheetPickerMarkup(task.fichaTecnicaId)}</div></section>
                 <div class="task-photo-field"><div class="task-form-section-title"><strong>Foto de referência</strong><div class="task-photo-actions"><button type="button" class="task-photo-pick" onclick="document.getElementById('taskCameraInput').click()">📷 Tirar foto</button><button type="button" class="task-photo-pick" onclick="document.getElementById('taskPhotoInput').click()">▣ Anexar</button></div></div><input id="taskCameraInput" type="file" accept="image/*" capture="environment" hidden onchange="AloTasks.handleTaskPhoto(this)"><input id="taskPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="AloTasks.handleTaskPhoto(this)"><div class="task-photo-preview"><span id="taskPhotoPreviewEmpty">Nenhuma foto cadastrada</span><img id="taskPhotoPreviewImage" alt="Prévia da foto de referência" style="display:none"><button type="button" id="taskPhotoRemoveButton" onclick="AloTasks.removeTaskPhotoDraft()" style="display:none">Remover foto</button></div></div>
                 <div class="task-option-grid"><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">📅</b><strong>Permitir remarcar</strong></span><span class="switch-moderno"><input id="taskAllowReschedule" type="checkbox" ${task.permiteRemarcacao ? 'checked' : ''}><span class="switch-trilho"></span></span></label><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">📋</b><strong>Exigir registro POP</strong></span><span class="switch-moderno"><input id="taskPopRequired" type="checkbox" ${task.registroPop ? 'checked' : ''}><span class="switch-trilho"></span></span></label><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">✓</b><strong>Tarefa ativa</strong></span><span class="switch-moderno"><input id="taskActive" type="checkbox" ${task.ativo !== false ? 'checked' : ''}><span class="switch-trilho"></span></span></label></div>`;
             renderTaskSchedules();
@@ -2056,6 +2095,7 @@
         openSettingsMenu, backToControlPanel, backToSettingsMenu, backFromManager,
         manageTaskAreas, manageEmployees, manageTemplates, editManagedItem, duplicateTask,
         cancelForm, saveCurrentForm, toggleRecurrenceFields, refreshTaskEmployeeOptions, setTaskGuidance, openLinkedTechnicalSheet,
+        openTechnicalSheetPicker, renderTechnicalSheetPicker, selectTechnicalSheet, closeTechnicalSheetPicker,
         openScheduleEditor, saveScheduleDraft, cancelScheduleEditor, deleteScheduleDraft, toggleScheduleRecurrenceFields,
         formatRichEditor, cycleRichEditorAlignment, limitRichEditor, sanitizeRichHtml,
         handleTaskPhoto, removeTaskPhotoDraft,

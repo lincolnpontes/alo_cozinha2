@@ -114,8 +114,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     function ajustarNomeAreaCabecalho(element, nome) {
         if (!element) return;
         const length = Array.from(String(nome || '')).length;
-        const desktop = length > 30 ? 10 : (length > 24 ? 11 : (length > 17 ? 14 : (length > 11 ? 16 : 18)));
-        const mobile = length > 24 ? 10 : (length > 17 ? 11 : (length > 11 ? 12 : 14));
+        const desktop = length > 30 ? 10 : (length > 24 ? 12 : (length > 17 ? 15 : (length > 11 ? 17 : 19)));
+        const mobile = length > 24 ? 10 : (length > 17 ? 12 : (length > 11 ? 13 : 15));
         element.style.setProperty('--area-name-size', `${desktop}px`);
         element.style.setProperty('--area-name-size-mobile', `${mobile}px`);
     }
@@ -1871,7 +1871,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.28',
+                version: '2.1.29',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -3197,7 +3197,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.28').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.29').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

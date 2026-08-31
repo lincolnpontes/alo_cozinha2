@@ -128,6 +128,7 @@ body{color:#20242a;background:var(--fundo)}
 .manage-products-search>span{font-size:22px;color:#6d7480}
 .manage-products-search input{min-width:0;width:100%;border:0;background:transparent;outline:0;padding:7px 0;font-size:15px}
 .empty-manage-search{padding:24px;text-align:center;color:#737983;font-weight:700}
+.product-sheet-link{display:block;margin-top:5px;color:#08776a;font-size:11px;font-weight:800}
 .product-manager-actions{display:flex;gap:7px;margin:0 0 6px;flex:0 0 auto}
 .product-manager-actions #btnNovoListagem{flex:1;width:auto!important;margin:0!important;min-height:42px}
 .product-manager-excel{flex:0 0 48px;width:48px;border:1px solid var(--primaria);border-radius:9px;background:var(--secundaria);color:var(--primaria);font-size:22px;cursor:pointer}
@@ -475,7 +476,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.28";
+const APP_VERSION="2.1.29";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1045,6 +1046,7 @@ function carregarBanco(){
             p.acaoPadrao=normalizarAcaoNome(p.acaoPadrao);
             if(!p.armazenamento)p.armazenamento="Não informar";
             if(typeof p.usaQR==='undefined')p.usaQR=!1;
+            p.fichasTecnicas=Array.isArray(p.fichasTecnicas)?p.fichasTecnicas.filter(f=>f&&f.id).map(f=>({id:String(f.id),nome:String(f.nome||'Ficha técnica')})):[];
         });
         l.operadores.forEach((o,i)=>normalizarOperador(o,i));
         return l;
@@ -1930,7 +1932,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.28" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.29" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -2691,7 +2693,11 @@ function renderizarProdutosGerenciamento(){
             return texto.includes(termo);
         })
         .sort((a,b)=>(a.produto.codigo||0)-(b.produto.codigo||0));
-    lista.innerHTML=encontrados.map(({produto:p,indiceOriginal:i})=>`<div class="gerenciar-item"><div class="gerenciar-info"><strong>${p.codigo} - ${htmlSeguro(p.nome)}</strong><br><span style="color:#666">${htmlSeguro(p.categoria||"Sem categoria")}</span></div><div class="gerenciar-actions"><button onclick="abrirFormProduto(${i})">✏️</button><button onclick="duplicarProduto(${i})">📑</button><button onclick="excluirItem('produtos',${p.codigo})">🗑️</button></div></div>`).join('');
+    lista.innerHTML=encontrados.map(({produto:p,indiceOriginal:i})=>{
+        const fichas=Array.isArray(p.fichasTecnicas)?p.fichasTecnicas:[];
+        const vinculo=fichas.length?`<span class="product-sheet-link">▣ ${fichas.length===1?'Ficha técnica vinculada':`${fichas.length} fichas técnicas vinculadas`}</span>`:'';
+        return `<div class="gerenciar-item"><div class="gerenciar-info"><strong>${p.codigo} - ${htmlSeguro(p.nome)}</strong><br><span style="color:#666">${htmlSeguro(p.categoria||"Sem categoria")}</span>${vinculo}</div><div class="gerenciar-actions"><button onclick="abrirFormProduto(${i})">✏️</button><button onclick="duplicarProduto(${i})">📑</button><button onclick="excluirItem('produtos',${p.codigo})">🗑️</button></div></div>`;
+    }).join('');
     if(!encontrados.length)lista.innerHTML='<div class="empty-manage-search">Nenhum produto encontrado.</div>';
 }
 
@@ -4201,7 +4207,9 @@ function renderizarLista(){
     f.forEach(p=>{
         const c=db.categorias.find(x=>x.nome===p.categoria)||{cor:'#eee',corTexto:'#333'};
         let a=modoBusca==='codigo'?p.codigo:p.nome.charAt(0).toUpperCase();
-        l.innerHTML+=`<li class="item" onclick="abrirModalImprimir(${p.codigo})"><div class="item-avatar" style="background:${c.cor};color:${c.corTexto}">${a}</div><div class="item-info"><div class="item-title">${p.nome}</div><div class="item-subtitle">${p.categoria} • Val: ${p.validadeDias}d</div></div><div class="print-icon" style="font-size:26px">🖨️</div></li>`;
+        const fichas=Array.isArray(p.fichasTecnicas)?p.fichasTecnicas:[];
+        const vinculo=fichas.length?` • ${fichas.length===1?'Ficha técnica':`${fichas.length} fichas técnicas`}`:'';
+        l.innerHTML+=`<li class="item" onclick="abrirModalImprimir(${p.codigo})"><div class="item-avatar" style="background:${c.cor};color:${c.corTexto}">${a}</div><div class="item-info"><div class="item-title">${p.nome}</div><div class="item-subtitle">${p.categoria} • Val: ${p.validadeDias}d${vinculo}</div></div><div class="print-icon" style="font-size:26px">🖨️</div></li>`;
     });
     l.innerHTML+=`<li class="item" style="border:2px dashed var(--primaria);background:var(--secundaria)" onclick="abrirModalImprimirPersonalizada()"><div class="item-avatar" style="background:var(--primaria);color:white">*</div><div class="item-info"><div class="item-title" style="color:var(--primaria)">Etiqueta Personalizada</div><div class="item-subtitle">Item avulso (sem QR)</div></div><div class="print-icon" style="font-size:26px">🖨️</div></li>`;
 }
@@ -4288,7 +4296,10 @@ async function excluirItem(t,id){
     const tipo=t==='produtos'?"produto":(t==='categorias'?"categoria":"operador");
     const confirmado=await confirmarNoApp({titulo:`Excluir ${tipo}?`,mensagem:`${nome} será removido. Esta ação não pode ser desfeita.`,confirmar:"Excluir",cancelar:"Cancelar",tom:"danger",icone:"🗑️"});
     if(!confirmado)return;
-    if(t==='produtos')db.produtos=db.produtos.filter(i=>i.codigo!==id);
+    if(t==='produtos'){
+        db.produtos=db.produtos.filter(i=>i.codigo!==id);
+        if(window.ALO_L42_EMBEDDED&&window.parent&&window.parent!==window)window.parent.postMessage({source:'alo-l42',type:'product-reference-changed',payload:{oldCode:String(id),newCode:'',name:'',deleted:!0}},'*');
+    }
     if(t==='categorias')db.categorias=db.categorias.filter(i=>i.nome!==id);
     if(t==='operadores')db.operadores=db.operadores.filter(i=>i.nome!==id);
     marcarAlteracaoEstrutura();salvarBancoLocal();iniciar();abrirGerenciar(t);sincronizarComNuvemSilencioso();mostrarToast(`${nome} excluído.`);
@@ -4365,7 +4376,8 @@ function salvarProduto(){
     const codigoEmUso=(o===""&&db.produtos.find(p=>p.codigo===cod))||(o!==""&&parseInt(o)!==cod&&db.produtos.find(p=>p.codigo===cod));
     if(codigoEmUso){const campo=document.getElementById('prodCodigo');campo.classList.add('form-field-invalid');mostrarToast("Este código já está em uso.");campo.focus();return}
 
-    let obj={codigo:cod,nome:n,categoria:c,validadeDias:v,armazenamento:a,precoPadrao:pr,marcas:m,acaoPadrao:ac,usaQR:q};
+    const produtoAnterior=o!==""?db.produtos.find(p=>p.codigo===parseInt(o)):null;
+    let obj={codigo:cod,nome:n,categoria:c,validadeDias:v,armazenamento:a,precoPadrao:pr,marcas:m,acaoPadrao:ac,usaQR:q,fichasTecnicas:Array.isArray(produtoAnterior&&produtoAnterior.fichasTecnicas)?produtoAnterior.fichasTecnicas:[]};
     if(o!=="") db.produtos[db.produtos.findIndex(p=>p.codigo===parseInt(o))]=obj;
     else db.produtos.push(obj);
 
@@ -4375,6 +4387,7 @@ function salvarProduto(){
     fecharModal('modalFormProduto');
     abrirGerenciar('produtos');
     sincronizarComNuvemSilencioso();
+    if(produtoAnterior&&window.ALO_L42_EMBEDDED&&window.parent&&window.parent!==window)window.parent.postMessage({source:'alo-l42',type:'product-reference-changed',payload:{oldCode:String(produtoAnterior.codigo),newCode:String(obj.codigo),name:obj.nome,deleted:!1}},'*');
 }
 
 function abrirFormCategoria(i,origem='categorias'){
@@ -7148,6 +7161,39 @@ function abrirProdutoEtiquetasPeloHost(referencia){
     return{status:'ok',encontrado:!1,avulsa:!0,nome:nome};
 }
 
+function obterProdutosEtiquetasPeloHost(){
+    return JSON.parse(JSON.stringify((db.produtos||[]).map(produto=>({
+        codigo:produto.codigo,
+        nome:produto.nome,
+        categoria:produto.categoria||'',
+        fichasTecnicas:Array.isArray(produto.fichasTecnicas)?produto.fichasTecnicas:[]
+    }))));
+}
+
+function vincularFichaTecnicaPeloHost(referencia){
+    const ref=referencia&&typeof referencia==='object'?referencia:{};
+    const fichaId=String(ref.fichaId||'').trim();
+    const fichaNome=String(ref.fichaNome||'Ficha técnica').trim();
+    const codigo=String(ref.produtoCodigo||'').trim();
+    if(!fichaId)return{status:'error',message:'Ficha técnica não identificada.'};
+    const produtoSelecionado=codigo?db.produtos.find(produto=>String(produto.codigo)===codigo):null;
+    if(codigo&&!produtoSelecionado)return{status:'error',message:'O produto escolhido não existe mais em Etiquetas.'};
+    const antes=JSON.stringify(db.produtos||[]);
+    (db.produtos||[]).forEach(produto=>{
+        const fichas=Array.isArray(produto.fichasTecnicas)?produto.fichasTecnicas:[];
+        produto.fichasTecnicas=fichas.filter(ficha=>String(ficha&&ficha.id||'')!==fichaId);
+    });
+    if(produtoSelecionado)produtoSelecionado.fichasTecnicas.push({id:fichaId,nome:fichaNome});
+    const changed=JSON.stringify(db.produtos||[])!==antes;
+    if(changed){
+        marcarAlteracaoEstrutura();
+        salvarBancoLocal();
+        renderizarLista();
+        if(tipoGerenciarAtual==='produtos')renderizarProdutosGerenciamento();
+    }
+    return{status:'ok',changed,codigo:codigo,nome:produtoSelecionado&&produtoSelecionado.nome||''};
+}
+
 function obterDadosCompartilhadosL42PeloHost(){
     return{
         restaurant:{nome:db.configs&&db.configs.estabelecimento||"",atualizadoEm:Number(db.configs&&db.configs.estabelecimentoAtualizadoEm||0)},
@@ -7421,7 +7467,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.28" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.29" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7447,7 +7493,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.28" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.29" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

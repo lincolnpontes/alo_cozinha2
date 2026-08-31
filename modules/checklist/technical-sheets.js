@@ -6,6 +6,7 @@
     let state = loadState();
     let purchaseProducts = [];
     let purchaseSuppliers = [];
+    let labelProducts = [];
     let formIngredients = [];
     let syncPromise = null;
     let pollTimer = null;
@@ -63,6 +64,8 @@
                 fornecedorId: String(item.fornecedorId || '')
             })) : [],
             preparo: String(source.preparo || ''),
+            etiquetaProdutoCodigo: source.etiquetaProdutoCodigo == null ? '' : String(source.etiquetaProdutoCodigo),
+            etiquetaProdutoNome: String(source.etiquetaProdutoNome || ''),
             fotoReferencia: source.fotoReferencia === true,
             atualizadoEm: Number(source.atualizadoEm || Date.now()),
             revisao: Number(source.revisao || 1),
@@ -70,9 +73,16 @@
         };
     }
     function activeSheets() { return state.sheets.filter(sheet => !sheet.excluida); }
+    function isAreaImage(value) {
+        return /^assets\/areas\/[a-z0-9-]+\.(?:svg|png)$/.test(String(value || ''));
+    }
     function areaName(areaId) {
         const area = deps.getAreas().find(item => item.id === areaId);
-        return area ? `${area.emoji || '📍'} ${area.nome}` : 'Sem setor';
+        return area ? String(area.nome || 'Sem setor') : 'Sem setor';
+    }
+    function areaOptionLabel(area) {
+        const visual = isAreaImage(area?.emoji) ? '' : String(area?.emoji || '📍');
+        return `${visual ? `${visual} ` : ''}${String(area?.nome || 'Sem setor')}`;
     }
     function setSyncStatus(status, title) {
         const indicator = document.getElementById('technicalSheetSyncState');
@@ -99,6 +109,25 @@
             purchaseSuppliers = purchaseSuppliers || [];
         }
         return purchaseProducts;
+    }
+    async function refreshLabelProducts() {
+        try {
+            const products = await global.AloL42Module?.getProducts?.();
+            if (Array.isArray(products)) {
+                labelProducts = products
+                    .filter(product => product && product.codigo != null && product.nome)
+                    .map(product => ({
+                        codigo:String(product.codigo),
+                        nome:String(product.nome),
+                        categoria:String(product.categoria || ''),
+                        fichasTecnicas:Array.isArray(product.fichasTecnicas) ? product.fichasTecnicas : []
+                    }))
+                    .sort((left, right) => left.nome.localeCompare(right.nome));
+            }
+        } catch (error) {
+            labelProducts = labelProducts || [];
+        }
+        return labelProducts;
     }
     function priceTimestamp(record) {
         const numeric = Number(record?.atualizadoEm || record?.criadoEm || record?.timestamp || 0);
@@ -254,7 +283,10 @@
             id:sheet.id,
             nome:sheet.nome,
             categoria:sheet.categoria,
-            setorId:sheet.setorId
+            setorId:sheet.setorId,
+            setorNome:areaName(sheet.setorId),
+            etiquetaProdutoCodigo:sheet.etiquetaProdutoCodigo,
+            etiquetaProdutoNome:sheet.etiquetaProdutoNome
         }));
     }
     function renderManager() {
@@ -330,7 +362,24 @@
     }
 
     function areaOptions(selected) {
-        return deps.getAreas().filter(area => area.ativo !== false).map(area => `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</option>`).join('');
+        return deps.getAreas().filter(area => area.ativo !== false || area.id === selected).map(area => `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(areaOptionLabel(area))}</option>`).join('');
+    }
+    function labelProductOptions(selectedCode, selectedName = '') {
+        const selected = String(selectedCode || '');
+        const available = labelProducts.some(product => product.codigo === selected);
+        const unavailable = selected && !available
+            ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selectedName || `Produto ${selected}`)} · indisponível</option>`
+            : '';
+        return `<option value="">Nenhum · usar etiqueta avulsa</option>${unavailable}${labelProducts.map(product => `<option value="${escapeHtml(product.codigo)}" ${product.codigo === selected ? 'selected' : ''}>${escapeHtml(product.nome)}${product.categoria ? ` · ${escapeHtml(product.categoria)}` : ''}</option>`).join('')}`;
+    }
+    function updateLabelProductNote() {
+        const select = document.getElementById('technicalSheetLabelProduct');
+        const note = document.getElementById('technicalSheetLabelProductNote');
+        if (!select || !note) return;
+        const product = labelProducts.find(item => item.codigo === String(select.value || ''));
+        note.textContent = product
+            ? 'A ficha e este produto ficarão vinculados nos dois módulos.'
+            : 'Sem vínculo, a impressão abrirá como etiqueta avulsa.';
     }
     function readIngredients(includeEmpty = false) {
         const ingredients = [...document.querySelectorAll('#technicalSheetIngredients .technical-ingredient-row')].map(row => {
@@ -496,6 +545,8 @@
         }
     }
     function draftFromForm() {
+        const labelProductSelect = document.getElementById('technicalSheetLabelProduct');
+        const labelProductCode = labelProductSelect?.value || '';
         return normalizeSheet({
             id: document.getElementById('technicalSheetId').value || id('ficha'),
             nome: document.getElementById('technicalSheetName').value.trim(),
@@ -507,6 +558,8 @@
             porcaoUnidade: document.getElementById('technicalSheetPortionUnit').value,
             precoVenda: document.getElementById('technicalSheetSalePrice').value,
             cmvDesejado: document.getElementById('technicalSheetTargetCmv').value,
+            etiquetaProdutoCodigo: labelProductCode,
+            etiquetaProdutoNome: labelProductCode ? labelProductSelect?.selectedOptions?.[0]?.textContent?.split(' · ')[0] || '' : '',
             ingredientes: readIngredients(), preparo: global.AloTasks?.sanitizeRichHtml?.(document.getElementById('technicalSheetPreparation').innerHTML) || document.getElementById('technicalSheetPreparation').innerHTML
         });
     }
@@ -555,6 +608,8 @@
             ...clone(source),
             id:id('ficha'),
             nome:`${source.nome} (cópia)`,
+            etiquetaProdutoCodigo:'',
+            etiquetaProdutoNome:'',
             fotoReferencia:false,
             revisao:0,
             atualizadoEm:Date.now()
@@ -562,7 +617,7 @@
         await openForm('', 'manager', copy);
     }
     async function openForm(sheetId = '', returnTarget = 'view', preset = null) {
-        await refreshPurchaseProducts();
+        await Promise.all([refreshPurchaseProducts(), refreshLabelProducts()]);
         formReturnTarget = returnTarget;
         if (returnTarget === 'manager') document.getElementById('modalTechnicalSheetsManager').style.display = 'none';
         const sheet = preset || state.sheets.find(item => item.id === sheetId && !item.excluida) || normalizeSheet({ id:id('ficha'), cmvDesejado:30, ingredientes:[] });
@@ -571,6 +626,8 @@
         document.getElementById('technicalSheetName').value = sheet.nome;
         document.getElementById('technicalSheetCategory').innerHTML = categoryOptions(sheet.categoria);
         document.getElementById('technicalSheetArea').innerHTML = areaOptions(sheet.setorId);
+        document.getElementById('technicalSheetLabelProduct').innerHTML = labelProductOptions(sheet.etiquetaProdutoCodigo, sheet.etiquetaProdutoNome);
+        updateLabelProductNote();
         document.getElementById('technicalSheetYield').value = sheet.rendimento || '';
         document.getElementById('technicalSheetYieldUnit').value = sheet.rendimentoUnidade;
         document.getElementById('technicalSheetPortion').value = sheet.porcao || '';
@@ -609,6 +666,20 @@
         saveState(); render(); setSyncStatus('syncing', 'Alterações aguardando envio');
         syncNow().catch(() => {});
     }
+    async function syncLabelLink(sheet, previous) {
+        if (!sheet.etiquetaProdutoCodigo && !previous?.etiquetaProdutoCodigo) return;
+        if (typeof global.AloL42Module?.linkTechnicalSheet !== 'function') {
+            if (sheet.etiquetaProdutoCodigo || previous?.etiquetaProdutoCodigo) throw new Error('O módulo Etiquetas ainda não está pronto para salvar o vínculo.');
+            return;
+        }
+        const result = await global.AloL42Module.linkTechnicalSheet({
+            fichaId:sheet.id,
+            fichaNome:sheet.nome,
+            produtoCodigo:sheet.etiquetaProdutoCodigo || '',
+            produtoAnteriorCodigo:previous?.etiquetaProdutoCodigo || ''
+        });
+        if (!result || result.status !== 'ok') throw new Error(result?.message || 'O vínculo com Etiquetas não foi salvo.');
+    }
     async function saveForm() {
         const draft = draftFromForm();
         if (!draft.nome || !draft.setorId) return global.AloUiDialog?.notice('Informe o nome e o setor da ficha.', { title:'Dados necessários', confirmText:'Entendi' });
@@ -637,6 +708,11 @@
                 return global.AloUiDialog?.notice('A foto não foi enviada. A ficha foi preservada para você tentar novamente.', { title:'Foto não enviada', confirmText:'Entendi' });
             }
         }
+        try {
+            await syncLabelLink(draft, current);
+        } catch (error) {
+            return global.AloUiDialog?.notice(error.message || 'O vínculo com Etiquetas não foi salvo.', { title:'Ficha não salva', confirmText:'Entendi' });
+        }
         draft.revisao = Number(current?.revisao || 0) + 1;
         draft.atualizadoEm = Date.now();
         queueSheet(draft);
@@ -649,6 +725,11 @@
         if (!current) return;
         const confirmed = await global.AloUiDialog?.confirm(`Excluir a ficha “${current.nome}”?`, { title:'Excluir ficha', icon:'×', tone:'danger', confirmText:'Excluir' });
         if (!confirmed) return;
+        try {
+            await syncLabelLink({ ...current, etiquetaProdutoCodigo:'', etiquetaProdutoNome:'' }, current);
+        } catch (error) {
+            return global.AloUiDialog?.notice(error.message || 'Não foi possível remover o vínculo em Etiquetas.', { title:'Ficha não excluída', confirmText:'Entendi' });
+        }
         queueSheet({ ...current, excluida:true, revisao:Number(current.revisao || 0) + 1, atualizadoEm:Date.now() });
         closeForm(false);
         if (formReturnTarget === 'manager') openManager(); else showView('sheets');
@@ -659,7 +740,7 @@
         document.getElementById('modalTechnicalSheetDetail').style.display = 'none';
         try {
             if (typeof global.abrirEtiquetaDaFicha !== 'function') throw new Error('O módulo Etiquetas ainda não está pronto.');
-            await global.abrirEtiquetaDaFicha({ fichaId:sheet.id, nome:sheet.nome });
+            await global.abrirEtiquetaDaFicha({ fichaId:sheet.id, nome:sheet.nome, codigo:sheet.etiquetaProdutoCodigo || '' });
         } catch (error) {
             global.AloUiDialog?.notice(error.message || 'Não foi possível abrir a etiqueta.', { title:'Etiqueta não aberta', confirmText:'Entendi' });
         }
@@ -670,11 +751,44 @@
         const cost = calculate(sheet);
         document.getElementById('technicalSheetDetailTitle').textContent = sheet.nome;
         const preparation = global.AloTasks?.sanitizeRichHtml?.(sheet.preparo || 'Preparo não informado.') || escapeHtml(sheet.preparo || 'Preparo não informado.');
-        document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><div class="task-procedure-content technical-preparation-content">${preparation}</div>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
+        const labelLink = sheet.etiquetaProdutoCodigo
+            ? `<div class="technical-label-link"><span aria-hidden="true">▣</span><div><small>Produto em Etiquetas</small><strong>${escapeHtml(sheet.etiquetaProdutoNome || `Código ${sheet.etiquetaProdutoCodigo}`)}</strong></div></div>`
+            : '';
+        document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}${labelLink}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><div class="task-procedure-content technical-preparation-content">${preparation}</div>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
         if (sheet.fotoReferencia) resolvePhoto(sheet.id).then(url => { const target = document.getElementById('technicalSheetDetailPhoto'); if (!target) return; if (!url) target.remove(); else target.innerHTML = `<img src="${escapeHtml(url)}" alt="Foto da ficha técnica">`; }).catch(() => document.getElementById('technicalSheetDetailPhoto')?.remove());
         document.getElementById('technicalSheetDetailLabel').onclick = () => printLabel(sheet.id);
         document.getElementById('technicalSheetDetailEdit').onclick = () => { document.getElementById('modalTechnicalSheetDetail').style.display = 'none'; openForm(sheet.id); };
         deps.openModalTop?.('modalTechnicalSheetDetail') || (document.getElementById('modalTechnicalSheetDetail').style.display = 'flex');
+    }
+
+    function updateLabelProductReference(reference = {}) {
+        const oldCode = String(reference.oldCode || '');
+        const newCode = String(reference.newCode || '');
+        if (!oldCode) return false;
+        const changed = [];
+        state.sheets = state.sheets.map(sheet => {
+            if (sheet.excluida || String(sheet.etiquetaProdutoCodigo || '') !== oldCode) return sheet;
+            const nextName = newCode ? String(reference.name || sheet.etiquetaProdutoNome || '') : '';
+            if (String(sheet.etiquetaProdutoCodigo || '') === newCode && String(sheet.etiquetaProdutoNome || '') === nextName) return sheet;
+            const updated = normalizeSheet({
+                ...sheet,
+                etiquetaProdutoCodigo:newCode,
+                etiquetaProdutoNome:nextName,
+                revisao:Number(sheet.revisao || 0) + 1,
+                atualizadoEm:Date.now()
+            });
+            changed.push(updated);
+            return updated;
+        });
+        if (!changed.length) return false;
+        changed.forEach(sheet => {
+            state.outbox = state.outbox.filter(item => item.ficha.id !== sheet.id).concat({ operationId:id('op'), ficha:clone(sheet) });
+        });
+        saveState();
+        render();
+        setSyncStatus('syncing', 'Vínculo com Etiquetas aguardando envio');
+        syncNow().catch(() => {});
+        return true;
     }
 
     function mergeRemote(remote) {
@@ -771,7 +885,7 @@
 
     global.AloTechnicalSheets = Object.freeze({
         configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, getLinkOptions, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, duplicateSheet, closeForm, addIngredient, removeIngredient,
-        openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, createPurchaseIngredient, returnFromPurchaseProduct, openPriceEditor, closePriceEditor, savePriceEditor,
-        previewCost, saveForm, deleteCurrent, openDetail, printLabel, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
+        openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, createPurchaseIngredient, returnFromPurchaseProduct, openPriceEditor, closePriceEditor, savePriceEditor, updateLabelProductNote,
+        previewCost, saveForm, deleteCurrent, openDetail, printLabel, updateLabelProductReference, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });
 })(window);

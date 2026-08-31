@@ -77,6 +77,7 @@
         }
         if (event.data.type === 'show-home') global.AloModuleHost?.showHome();
         if (event.data.type === 'data-changed') global.AloEtiquetasCloud?.markDirty?.();
+        if (event.data.type === 'product-reference-changed') global.AloTechnicalSheets?.updateLabelProductReference?.(event.data.payload || {});
         if (event.data.type === 'open-settings') global.abrirLoginAdmin?.('etiquetas');
         if (event.data.type === 'switch-person') global.abrirLoginAdmin?.('trocar_l42');
     }
@@ -133,6 +134,25 @@
         return child.abrirProdutoEtiquetasPeloHost(reference || {});
     }
 
+    async function getProducts() {
+        try {
+            const raw = localStorage.getItem('etiquetadora_db');
+            const cached = raw ? JSON.parse(raw) : null;
+            if (cached && Array.isArray(cached.produtos)) return cached.produtos;
+        } catch (error) {}
+        const child = await waitForChild();
+        if (typeof child.obterProdutosEtiquetasPeloHost !== 'function') throw new Error('Atualize Etiquetas para escolher um produto.');
+        return child.obterProdutosEtiquetasPeloHost();
+    }
+
+    async function linkTechnicalSheet(reference) {
+        const child = await waitForChild();
+        if (typeof child.vincularFichaTecnicaPeloHost !== 'function') throw new Error('Atualize Etiquetas para salvar o vínculo com a ficha técnica.');
+        const result = child.vincularFichaTecnicaPeloHost(reference || {});
+        if (result?.status === 'ok' && result.changed) global.AloEtiquetasCloud?.markDirty?.({ immediate:true });
+        return result;
+    }
+
     function backToSettings() {
         global.abrirConfiguracoesEtiquetas?.();
     }
@@ -171,7 +191,7 @@
     global.receberLinkAutenticacaoSupabase = (...args) => deliverNativeCallback('receberLinkAutenticacaoSupabase', args);
 
     global.AloL42Module = Object.freeze({
-        configure, open, getBackup, restoreBackup, clearHistory, mergeCloudData, setCloudStatus, openSettings, openProductForPrint, backToSettings,
+        configure, open, getBackup, restoreBackup, clearHistory, mergeCloudData, setCloudStatus, openSettings, openProductForPrint, getProducts, linkTechnicalSheet, backToSettings,
         getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson, logout,
         getFullData: getBackup
     });

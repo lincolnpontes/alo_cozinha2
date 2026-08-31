@@ -13,10 +13,10 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
 
         .header { min-height: 52px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; color: white; background-color: #1565C0; flex-shrink: 0; z-index: 10; box-sizing: border-box; }
         .header-area-picker { position: relative; min-width: 0; max-width: calc(100% - 105px); display: flex; align-items: center; }
-        .header-area-button { min-width: 112px; max-width: 260px; min-height: 42px; display: grid; grid-template-columns: 30px minmax(0, 1fr) 20px; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid rgba(255,255,255,.34); border-radius: 7px; background: rgba(0,0,0,.13); color: #fff; cursor: pointer; text-align: left; }
-        .header-area-button strong { min-width: 0; overflow: hidden; font-size: var(--area-name-size, 18px); text-overflow: ellipsis; white-space: nowrap; }
+        .header-area-button { min-width: 112px; max-width: 260px; min-height: 42px; display: grid; grid-template-columns: 32px minmax(0, 1fr) 18px; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid rgba(255,255,255,.34); border-radius: 7px; background: rgba(0,0,0,.13); color: #fff; cursor: pointer; text-align: left; }
+        .header-area-button strong { min-width: 0; overflow: hidden; font-size: var(--area-name-size, 19px); text-overflow: ellipsis; white-space: nowrap; }
         .header-area-button[aria-expanded="true"] { background: rgba(0,0,0,.24); box-shadow: 0 0 0 2px rgba(255,255,255,.18); }
-        .header-area-emoji { width: 30px; display: inline-flex; align-items: center; justify-content: center; font-size: 23px; }
+        .header-area-emoji { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-size: 25px; line-height: 1; }
         .header-area-chevron { font-size: 15px; font-weight: 900; line-height: 1; text-align: center; opacity: .86; transition: transform .16s ease; }
         .header-area-button[aria-expanded="true"] .header-area-chevron { transform: rotate(180deg); }
         .header-select-native { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
@@ -264,16 +264,16 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
             .area-image-picker { grid-template-columns: 52px minmax(0, 1fr); }
             .area-image-current { width: 52px; height: 52px; }
             .emoji-area-opcoes { grid-template-columns: repeat(5, 1fr); }
-            .header-area-button { min-width: 0; grid-template-columns: 25px minmax(0, 1fr) 14px; gap: 2px; }
+            .header-area-button { min-width: 0; grid-template-columns: 27px minmax(0, 1fr) 13px; gap: 3px; }
             .header-area-button strong {
                 display: block;
                 overflow: hidden;
                 white-space: nowrap;
                 line-height: 1.05;
                 text-overflow: ellipsis;
-                font-size: var(--area-name-size-mobile, 14px);
+                font-size: var(--area-name-size-mobile, 15px);
             }
-            .header-area-emoji { width: 25px; display: inline-flex; font-size: 20px; }
+            .header-area-emoji { width: 27px; height: 27px; display: inline-flex; font-size: 22px; }
             .header-area-chevron { font-size: 12px; }
             .header-area-options { position: fixed; top: 62px; left: 10px; width: calc(100vw - 20px); transform: none; }
         }

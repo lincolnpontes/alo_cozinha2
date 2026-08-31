@@ -129,6 +129,9 @@ body{color:#20242a;background:var(--fundo)}
 .manage-products-search input{min-width:0;width:100%;border:0;background:transparent;outline:0;padding:7px 0;font-size:15px}
 .empty-manage-search{padding:24px;text-align:center;color:#737983;font-weight:700}
 .product-sheet-link{display:inline-flex;align-items:center;min-height:28px;margin-top:5px;padding:0 8px;border:1px solid #9bc9c0;border-radius:6px;background:#edf7f5;color:#08776a;font-size:11px;font-weight:800;cursor:pointer}
+.label-print-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.label-print-title>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.label-print-title button{min-height:32px;flex:0 0 auto;padding:0 9px;border:1px solid color-mix(in srgb,var(--primaria) 36%,#cfd8da);border-radius:6px;background:var(--secundaria);color:var(--primaria);font-size:11px;font-weight:850;cursor:pointer}
 .product-manager-actions{display:flex;gap:7px;margin:0 0 6px;flex:0 0 auto}
 .product-manager-actions #btnNovoListagem{flex:1;width:auto!important;margin:0!important;min-height:42px}
 .product-manager-excel{flex:0 0 48px;width:48px;border:1px solid var(--primaria);border-radius:9px;background:var(--secundaria);color:var(--primaria);font-size:22px;cursor:pointer}
@@ -476,7 +479,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.30";
+const APP_VERSION="2.1.31";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1937,7 +1940,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.30" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.31" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -4212,10 +4215,7 @@ function renderizarLista(){
     f.forEach(p=>{
         const c=db.categorias.find(x=>x.nome===p.categoria)||{cor:'#eee',corTexto:'#333'};
         let a=modoBusca==='codigo'?p.codigo:p.nome.charAt(0).toUpperCase();
-        const fichas=Array.isArray(p.fichasTecnicas)?p.fichasTecnicas:[];
-        const fichaPrincipal=fichas[0];
-        const vinculo=fichaPrincipal?`<button type="button" class="product-sheet-link" onclick="abrirFichaTecnicaVinculada(event,'${encodeURIComponent(String(fichaPrincipal.id||''))}')">▣ ${htmlSeguro(fichaPrincipal.nome||'Ficha técnica')}${fichas.length>1?` +${fichas.length-1}`:''}</button>`:'';
-        l.innerHTML+=`<li class="item" onclick="abrirModalImprimir(${p.codigo})"><div class="item-avatar" style="background:${c.cor};color:${c.corTexto}">${a}</div><div class="item-info"><div class="item-title">${p.nome}</div><div class="item-subtitle">${p.categoria} • Val: ${p.validadeDias}d</div>${vinculo}</div><div class="print-icon" style="font-size:26px">🖨️</div></li>`;
+        l.innerHTML+=`<li class="item" onclick="abrirModalImprimir(${p.codigo})"><div class="item-avatar" style="background:${c.cor};color:${c.corTexto}">${a}</div><div class="item-info"><div class="item-title">${p.nome}</div><div class="item-subtitle">${p.categoria} • Val: ${p.validadeDias}d</div></div><div class="print-icon" style="font-size:26px">🖨️</div></li>`;
     });
     l.innerHTML+=`<li class="item" style="border:2px dashed var(--primaria);background:var(--secundaria)" onclick="abrirModalImprimirPersonalizada()"><div class="item-avatar" style="background:var(--primaria);color:white">*</div><div class="item-info"><div class="item-title" style="color:var(--primaria)">Etiqueta Personalizada</div><div class="item-subtitle">Item avulso (sem QR)</div></div><div class="print-icon" style="font-size:26px">🖨️</div></li>`;
 }
@@ -4996,7 +4996,9 @@ function abrirModalImprimir(c){
     quantidadeAtual=1;document.getElementById('imprimirQtd').innerText=quantidadeAtual;
     let d=new Date();d.setDate(d.getDate()+p.validadeDias);
     document.getElementById('imprimirCodigoProduto').value=p.codigo;
-    document.getElementById('imprimirNomeProduto').innerText=p.nome;
+    const fichasTecnicas=Array.isArray(p.fichasTecnicas)?p.fichasTecnicas:[];
+    document.getElementById('imprimirNomeProduto').classList.add('label-print-title');
+    document.getElementById('imprimirNomeProduto').innerHTML=`<span>${htmlSeguro(p.nome)}</span>${fichasTecnicas.length?'<button type="button" onclick="abrirFichaTecnicaDaImpressao(event)">Ficha Técnica</button>':''}`;
     let ac=normalizarAcaoNome(p.acaoPadrao||db.configs.acoes[0]);
     if(!db.configs.acoes.includes(ac))db.configs.acoes.push(ac);
     document.getElementById('imprimirAcao').value=ac;
@@ -7189,6 +7191,18 @@ function abrirFichaTecnicaVinculada(event,fichaIdCodificado){
     }
 }
 
+function abrirFichaTecnicaDaImpressao(event){
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const codigo=String(document.getElementById('imprimirCodigoProduto')?.value||'');
+    const produto=db.produtos.find(item=>String(item.codigo)===codigo);
+    const ficha=Array.isArray(produto?.fichasTecnicas)?produto.fichasTecnicas[0]:null;
+    if(!ficha?.id)return;
+    retornoFichaTecnicaAposEtiqueta=null;
+    fecharModal('modalImprimir');
+    abrirFichaTecnicaVinculada(event,encodeURIComponent(String(ficha.id)));
+}
+
 function vincularFichaTecnicaPeloHost(referencia){
     const ref=referencia&&typeof referencia==='object'?referencia:{};
     const fichaId=String(ref.fichaId||'').trim();
@@ -7486,7 +7500,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.30" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.31" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7512,7 +7526,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.30" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.31" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

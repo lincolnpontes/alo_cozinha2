@@ -1240,7 +1240,7 @@
         }
         currentAlarmId = activity.id;
         document.getElementById('globalTaskAlarmName').innerText = activity.nome;
-        document.getElementById('globalTaskAlarmMeta').innerText = `${areaVisualText(area.emoji)} ${area.nome}\u00a0·\u00a0${activity.horario}${due.length > 1 ? `\u00a0·\u00a0+${due.length - 1}` : ''}`;
+        document.getElementById('globalTaskAlarmMeta').innerText = `${area.nome}\u00a0·\u00a0${activity.horario}${due.length > 1 ? `\u00a0·\u00a0+${due.length - 1}` : ''}`;
         if (activeModule === 'tasks') {
             banner.style.display = hiddenAlarmId === activity.id ? 'none' : 'flex';
             if (!hiddenAlarmId && !alarmBannerTimer) {

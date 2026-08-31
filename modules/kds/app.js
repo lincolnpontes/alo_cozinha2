@@ -426,7 +426,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             setoresTarefas: [{ id: 'setor_cozinha', nome: 'Cozinha', emoji: '🧑‍🍳', ativo: true }],
             funcionarios: [], tarefas: [], coreCompartilhado: null,
             configsTarefas: { som: 'beep', volume: '80', repeticaoMinutos: '5' },
-            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido", loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true }, loginObrigatorioChecklistVisoes: { documentos:false, geral:false } }
+            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido", loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true }, loginObrigatorioChecklistVisoes: { documentos:false, geral:false }, modulosVisiveis: { kds:true, checklist:true, compras:true, l42:true } }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
         if(local) {
@@ -441,6 +441,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             if(!local.configs.reenvio) local.configs.reenvio = "permitido";
             local.configs.loginObrigatorioModulos = { kds:false, checklist:false, compras:true, l42:true, ...(local.configs.loginObrigatorioModulos || {}) };
             local.configs.loginObrigatorioChecklistVisoes = { documentos:false, geral:false, ...(local.configs.loginObrigatorioChecklistVisoes || {}) };
+            local.configs.modulosVisiveis = { kds:true, checklist:true, compras:true, l42:true, ...(local.configs.modulosVisiveis || {}) };
             if(!local.configs.volumeCozinha) local.configs.volumeCozinha = "100";
             if(!local.configs.volumePanelas) local.configs.volumePanelas = "70";
             if(!Array.isArray(local.setoresTarefas) || !local.setoresTarefas.length) local.setoresTarefas = defaultDB.setoresTarefas;
@@ -555,6 +556,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         document.getElementById('configVolumePanelas').value = db.configs.volumePanelas || "70";
         atualizarLabelsVolume();
         sincronizarSwitchesLogin();
+        aplicarVisibilidadeModulos();
         atualizarEngrenagensDaSessao();
         aplicarModoVisual(db.configs.areaAtual);
         solicitarWakeLock(); resetInatividade();
@@ -1309,6 +1311,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let sessaoL42 = null;
     let sessaoKds = null;
     let sessaoChecklist = null;
+    let etiquetaPendenteFicha = null;
     let destinoChecklistProtegido = '';
     let sessaoAdministrativaAtiva = false;
     const ULTIMO_OPERADOR_LOGIN_KEY = 'alo_ultimo_operador_login_v1';
@@ -1387,6 +1390,43 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             [visao]:Boolean(exigir)
         };
         marcarBancoAlterado();
+    }
+
+    function modulosVisiveis() {
+        return { kds:true, checklist:true, compras:true, l42:true, ...(db.configs.modulosVisiveis || {}) };
+    }
+
+    function aplicarVisibilidadeModulos() {
+        const visibility = modulosVisiveis();
+        document.querySelectorAll('[data-home-module]').forEach(button => {
+            button.style.display = visibility[button.dataset.homeModule] === false ? 'none' : '';
+        });
+    }
+
+    function sincronizarSwitchesModulos() {
+        const visibility = modulosVisiveis();
+        [['moduleVisibleKds','kds'],['moduleVisibleChecklist','checklist'],['moduleVisibleCompras','compras'],['moduleVisibleL42','l42']].forEach(([id, moduleId]) => {
+            const input = document.getElementById(id);
+            if (input) input.checked = visibility[moduleId] !== false;
+        });
+    }
+
+    function salvarModuloVisivel(modulo, visivel) {
+        if (!['kds', 'checklist', 'compras', 'l42'].includes(modulo)) return;
+        db.configs.modulosVisiveis = { ...modulosVisiveis(), [modulo]:Boolean(visivel) };
+        aplicarVisibilidadeModulos();
+        marcarBancoAlterado();
+    }
+
+    function abrirConfiguracaoModulos() {
+        sincronizarSwitchesModulos();
+        fecharModal('modalPainelUnificado');
+        abrirModalNoTopo('modalModuleVisibility');
+    }
+
+    function voltarConfiguracaoModulos() {
+        fecharModal('modalModuleVisibility');
+        abrirModalNoTopo('modalPainelUnificado');
     }
 
     function abrirPainelControle() {
@@ -1470,7 +1510,21 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     async function abrirModuloL42() {
+        etiquetaPendenteFicha = null;
         await abrirModuloComLogin('l42');
+    }
+
+    async function abrirEtiquetaDaFicha(reference) {
+        etiquetaPendenteFicha = reference && typeof reference === 'object' ? { ...reference } : null;
+        if (!etiquetaPendenteFicha) return;
+        if (!exigeLoginModulo('l42') || sessaoL42) {
+            AloTasks.openModule('l42');
+            const pending = etiquetaPendenteFicha;
+            etiquetaPendenteFicha = null;
+            await AloL42Module.openProductForPrint(pending);
+            return;
+        }
+        await abrirLoginAdmin('l42_modulo');
     }
 
     async function abrirLoginAdmin(destino = 'painel') {
@@ -1817,7 +1871,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.27',
+                version: '2.1.28',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2520,7 +2574,14 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 await AloSharedData.activateForModule('l42', resultado.operador.id);
                 sessaoL42 = resultado.operador;
                 atualizarEngrenagensDaSessao();
-                if (destinoLoginOperador === 'l42_modulo') AloTasks.openModule('l42');
+                if (destinoLoginOperador === 'l42_modulo') {
+                    AloTasks.openModule('l42');
+                    if (etiquetaPendenteFicha) {
+                        const pending = etiquetaPendenteFicha;
+                        etiquetaPendenteFicha = null;
+                        await AloL42Module.openProductForPrint(pending);
+                    }
+                }
                 return;
             }
             if (destinoLoginOperador === 'painel') sessaoAdministrativaAtiva = true;
@@ -2976,7 +3037,8 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 inatividade: settings.inatividade || '0',
                 reenvio: settings.reenvio || 'permitido',
                 loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true, ...(settings.loginObrigatorioModulos || {}) },
-                loginObrigatorioChecklistVisoes: { documentos:false, geral:false, ...(settings.loginObrigatorioChecklistVisoes || {}) }
+                loginObrigatorioChecklistVisoes: { documentos:false, geral:false, ...(settings.loginObrigatorioChecklistVisoes || {}) },
+                modulosVisiveis: { kds:true, checklist:true, compras:true, l42:true, ...(settings.modulosVisiveis || {}) }
             }
         };
     }
@@ -3135,7 +3197,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.27').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.28').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

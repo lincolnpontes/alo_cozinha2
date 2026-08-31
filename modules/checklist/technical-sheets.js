@@ -249,12 +249,20 @@
     }
     function setCategory(category) { selectedCategory = category || 'Todas'; render(); }
     function setManagerCategory(category) { managerCategory = category || 'Todas'; renderManager(); }
+    function getLinkOptions() {
+        return activeSheets().sort((left, right) => left.nome.localeCompare(right.nome)).map(sheet => ({
+            id:sheet.id,
+            nome:sheet.nome,
+            categoria:sheet.categoria,
+            setorId:sheet.setorId
+        }));
+    }
     function renderManager() {
         const target = document.getElementById('technicalSheetsManagerList');
         if (!target) return;
         categoryButtons('technicalSheetsManagerCategories', managerCategory, 'setManagerCategory');
         const visible = filteredSheets(document.getElementById('technicalSheetsManagerSearch')?.value, managerCategory);
-        target.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => `<button type="button" class="technical-manager-item" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')"><span><strong>${escapeHtml(sheet.nome)}</strong><small>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</small></span><b aria-hidden="true">✎</b></button>`).join('') : '<div class="tasks-empty">Nenhuma ficha técnica encontrada.</div>';
+        target.innerHTML = visible.length ? visible.sort((a, b) => a.nome.localeCompare(b.nome)).map(sheet => `<div class="technical-manager-item"><button type="button" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')"><span><strong>${escapeHtml(sheet.nome)}</strong><small>${escapeHtml(sheet.categoria || 'Sem categoria')} · ${escapeHtml(areaName(sheet.setorId))}</small></span></button><div class="technical-manager-actions"><button type="button" onclick="AloTechnicalSheets.duplicateSheet('${escapeHtml(sheet.id)}')" aria-label="Duplicar ficha" title="Duplicar ficha">⧉</button><button type="button" onclick="AloTechnicalSheets.openForm('${escapeHtml(sheet.id)}', 'manager')" aria-label="Editar ficha" title="Editar ficha">✎</button></div></div>`).join('') : '<div class="tasks-empty">Nenhuma ficha técnica encontrada.</div>';
     }
 
     function renderCategoryManager() {
@@ -540,12 +548,25 @@
         photoCache.delete(document.getElementById('technicalSheetId')?.value || '');
         showPhotoPreview('');
     }
-    async function openForm(sheetId = '', returnTarget = 'view') {
+    async function duplicateSheet(sheetId) {
+        const source = state.sheets.find(item => item.id === sheetId && !item.excluida);
+        if (!source) return;
+        const copy = normalizeSheet({
+            ...clone(source),
+            id:id('ficha'),
+            nome:`${source.nome} (cópia)`,
+            fotoReferencia:false,
+            revisao:0,
+            atualizadoEm:Date.now()
+        });
+        await openForm('', 'manager', copy);
+    }
+    async function openForm(sheetId = '', returnTarget = 'view', preset = null) {
         await refreshPurchaseProducts();
         formReturnTarget = returnTarget;
         if (returnTarget === 'manager') document.getElementById('modalTechnicalSheetsManager').style.display = 'none';
-        const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida) || normalizeSheet({ id:id('ficha'), cmvDesejado:30, ingredientes:[] });
-        document.getElementById('technicalSheetTitle').textContent = sheetId ? 'Editar Ficha Técnica' : 'Nova Ficha Técnica';
+        const sheet = preset || state.sheets.find(item => item.id === sheetId && !item.excluida) || normalizeSheet({ id:id('ficha'), cmvDesejado:30, ingredientes:[] });
+        document.getElementById('technicalSheetTitle').textContent = sheetId ? 'Editar Ficha Técnica' : (preset ? 'Duplicar Ficha Técnica' : 'Nova Ficha Técnica');
         document.getElementById('technicalSheetId').value = sheet.id;
         document.getElementById('technicalSheetName').value = sheet.nome;
         document.getElementById('technicalSheetCategory').innerHTML = categoryOptions(sheet.categoria);
@@ -632,6 +653,17 @@
         closeForm(false);
         if (formReturnTarget === 'manager') openManager(); else showView('sheets');
     }
+    async function printLabel(sheetId) {
+        const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida);
+        if (!sheet) return;
+        document.getElementById('modalTechnicalSheetDetail').style.display = 'none';
+        try {
+            if (typeof global.abrirEtiquetaDaFicha !== 'function') throw new Error('O módulo Etiquetas ainda não está pronto.');
+            await global.abrirEtiquetaDaFicha({ fichaId:sheet.id, nome:sheet.nome });
+        } catch (error) {
+            global.AloUiDialog?.notice(error.message || 'Não foi possível abrir a etiqueta.', { title:'Etiqueta não aberta', confirmText:'Entendi' });
+        }
+    }
     function openDetail(sheetId) {
         const sheet = state.sheets.find(item => item.id === sheetId && !item.excluida);
         if (!sheet) return;
@@ -640,6 +672,7 @@
         const preparation = global.AloTasks?.sanitizeRichHtml?.(sheet.preparo || 'Preparo não informado.') || escapeHtml(sheet.preparo || 'Preparo não informado.');
         document.getElementById('technicalSheetDetailBody').innerHTML = `${sheet.fotoReferencia ? '<div id="technicalSheetDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}<div class="technical-detail-summary"><div><small>Rendimento</small><strong>${escapeHtml(sheet.rendimento)} ${escapeHtml(sheet.rendimentoUnidade)}</strong></div><div><small>Custo do lote</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.total)}</strong></div><div><small>Custo por porção</small><strong>${cost.missing.length ? 'Incompleto' : money(cost.portionCost)}</strong></div></div><h3>Ingredientes</h3><ul class="technical-detail-list">${cost.details.map(item => `<li><strong>${escapeHtml(item.nome)}</strong> · ${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)}${item.perda ? ` · perda ${item.perda}%` : ''}${item.cost !== null ? ` · ${money(item.cost)}` : ' · sem custo'}</li>`).join('')}</ul><h3>Preparo</h3><div class="task-procedure-content technical-preparation-content">${preparation}</div>${cost.missing.length ? `<div class="technical-cost-warning">O total não inclui: ${escapeHtml(cost.missing.join(', '))}.</div>` : ''}`;
         if (sheet.fotoReferencia) resolvePhoto(sheet.id).then(url => { const target = document.getElementById('technicalSheetDetailPhoto'); if (!target) return; if (!url) target.remove(); else target.innerHTML = `<img src="${escapeHtml(url)}" alt="Foto da ficha técnica">`; }).catch(() => document.getElementById('technicalSheetDetailPhoto')?.remove());
+        document.getElementById('technicalSheetDetailLabel').onclick = () => printLabel(sheet.id);
         document.getElementById('technicalSheetDetailEdit').onclick = () => { document.getElementById('modalTechnicalSheetDetail').style.display = 'none'; openForm(sheet.id); };
         deps.openModalTop?.('modalTechnicalSheetDetail') || (document.getElementById('modalTechnicalSheetDetail').style.display = 'flex');
     }
@@ -737,8 +770,8 @@
     }
 
     global.AloTechnicalSheets = Object.freeze({
-        configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, closeForm, addIngredient, removeIngredient,
+        configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, getLinkOptions, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, duplicateSheet, closeForm, addIngredient, removeIngredient,
         openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, createPurchaseIngredient, returnFromPurchaseProduct, openPriceEditor, closePriceEditor, savePriceEditor,
-        previewCost, saveForm, deleteCurrent, openDetail, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
+        previewCost, saveForm, deleteCurrent, openDetail, printLabel, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });
 })(window);

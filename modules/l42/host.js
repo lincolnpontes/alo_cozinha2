@@ -127,6 +127,12 @@
         return child.abrirConfiguracaoEtiquetasPeloHost(section);
     }
 
+    async function openProductForPrint(reference) {
+        const child = await waitForChild();
+        if (typeof child.abrirProdutoEtiquetasPeloHost !== 'function') throw new Error('Atualize Etiquetas para abrir produtos a partir da ficha técnica.');
+        return child.abrirProdutoEtiquetasPeloHost(reference || {});
+    }
+
     function backToSettings() {
         global.abrirConfiguracoesEtiquetas?.();
     }
@@ -165,7 +171,7 @@
     global.receberLinkAutenticacaoSupabase = (...args) => deliverNativeCallback('receberLinkAutenticacaoSupabase', args);
 
     global.AloL42Module = Object.freeze({
-        configure, open, getBackup, restoreBackup, clearHistory, mergeCloudData, setCloudStatus, openSettings, backToSettings,
+        configure, open, getBackup, restoreBackup, clearHistory, mergeCloudData, setCloudStatus, openSettings, openProductForPrint, backToSettings,
         getSharedSnapshot, applySharedPeople, applySharedRestaurant, activateSharedPerson, logout,
         getFullData: getBackup
     });

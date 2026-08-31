@@ -124,6 +124,7 @@
             funcionarioNome: activity.funcionarioNome || '',
             permiteRemarcacao: Boolean(activity.permiteRemarcacao),
             registroPop: Boolean(activity.registroPop),
+            fichaTecnicaId: String(activity.fichaTecnicaId || ''),
             procedimento: activity.procedimento || '',
             procedimentoFormato: hasRichMarkup(activity.procedimento) ? 'rico' : normalizeProcedureFormat(activity.procedimentoFormato),
             remarcadoDe: activity.remarcadoDe || '',
@@ -189,6 +190,7 @@
                 intervaloMeses: principal.intervaloMeses,
                 dataInicio: principal.dataInicio,
                 alarme: principal.alarme,
+                fichaTecnicaId: String(task.fichaTecnicaId || ''),
                 procedimentoFormato: hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato)
             };
         });
@@ -244,12 +246,12 @@
             const current = activities.find(activity => activity.id === id);
             if (current) {
                 if (current.status !== 'pendente') return;
-                const refreshed = normalizeActivity({ ...current, nome:task.nome, setorId:task.setorId, funcionarioId:task.funcionarioId || '', horario:schedule.horario, prioridade:task.prioridade, tempoEsperadoMin:task.tempoEsperadoMin, permiteRemarcacao:Boolean(task.permiteRemarcacao), registroPop:Boolean(task.registroPop), procedimento:task.instrucoes || '', procedimentoFormato:hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato), alarmeStatus:schedule.alarme ? current.alarmeStatus : 'desativado' });
-                const changed = ['nome','setorId','funcionarioId','horario','prioridade','tempoEsperadoMin','permiteRemarcacao','registroPop','procedimento','procedimentoFormato','alarmeStatus'].some(field => refreshed[field] !== current[field]);
+                const refreshed = normalizeActivity({ ...current, nome:task.nome, setorId:task.setorId, funcionarioId:task.funcionarioId || '', horario:schedule.horario, prioridade:task.prioridade, tempoEsperadoMin:task.tempoEsperadoMin, permiteRemarcacao:Boolean(task.permiteRemarcacao), registroPop:Boolean(task.registroPop), fichaTecnicaId:task.fichaTecnicaId || '', procedimento:task.instrucoes || '', procedimentoFormato:hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato), alarmeStatus:schedule.alarme ? current.alarmeStatus : 'desativado' });
+                const changed = ['nome','setorId','funcionarioId','horario','prioridade','tempoEsperadoMin','permiteRemarcacao','registroPop','fichaTecnicaId','procedimento','procedimentoFormato','alarmeStatus'].some(field => refreshed[field] !== current[field]);
                 if (changed) queueActivity(refreshed, 'pendente', false);
                 return;
             }
-            const activity = normalizeActivity({ id, tarefaId:task.id, programacaoId:schedule.id, nome:task.nome, setorId:task.setorId, funcionarioId:task.funcionarioId || '', data:key, horario:schedule.horario, prioridade:task.prioridade, tempoEsperadoMin:task.tempoEsperadoMin, permiteRemarcacao:Boolean(task.permiteRemarcacao), registroPop:Boolean(task.registroPop), procedimento:task.instrucoes || '', procedimentoFormato:hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato), alarmeStatus:schedule.alarme ? 'aguardando' : 'desativado', status:'pendente', atualizadoEm:nowIso(), syncState:navigator.onLine ? 'queued' : 'offline' });
+            const activity = normalizeActivity({ id, tarefaId:task.id, programacaoId:schedule.id, nome:task.nome, setorId:task.setorId, funcionarioId:task.funcionarioId || '', data:key, horario:schedule.horario, prioridade:task.prioridade, tempoEsperadoMin:task.tempoEsperadoMin, permiteRemarcacao:Boolean(task.permiteRemarcacao), registroPop:Boolean(task.registroPop), fichaTecnicaId:task.fichaTecnicaId || '', procedimento:task.instrucoes || '', procedimentoFormato:hasRichMarkup(task.instrucoes) ? 'rico' : normalizeProcedureFormat(task.procedimentoFormato), alarmeStatus:schedule.alarme ? 'aguardando' : 'desativado', status:'pendente', atualizadoEm:nowIso(), syncState:navigator.onLine ? 'queued' : 'offline' });
             queueActivity(activity, '', false);
             existing.add(id);
         });
@@ -964,7 +966,9 @@
         pendingPopCompletion = { activityId: activity.id, direct: Boolean(direct) };
         document.getElementById('taskPopName').innerText = activity.nome;
         const procedureFormat = activity.procedimentoFormato || template.procedimentoFormato || 'texto';
-        document.getElementById('taskPopProcedure').innerHTML = `<strong>Procedimento</strong><div class="task-procedure-content">${procedureHtml(activity.procedimento || template.instrucoes || 'Sem procedimento informado.', procedureFormat)}</div>`;
+        document.getElementById('taskPopProcedure').innerHTML = (activity.fichaTecnicaId || template.fichaTecnicaId)
+            ? linkedTechnicalSheetMarkup(activity.fichaTecnicaId || template.fichaTecnicaId)
+            : `<strong>Procedimento</strong><div class="task-procedure-content">${procedureHtml(activity.procedimento || template.instrucoes || 'Sem procedimento informado.', procedureFormat)}</div>`;
         document.getElementById('taskPopEmployee').innerHTML = employees.map(employee => `<option value="${escapeHtml(employee.id)}" ${employee.id === selected ? 'selected' : ''}>${escapeHtml(employee.nome)}</option>`).join('');
         document.getElementById('taskPopObservation').innerHTML = '';
         deps.openModalTop('modalTaskPop');
@@ -1016,6 +1020,7 @@
         const employee = getEmployee(activity.funcionarioId);
         const area = getArea(activity.setorId);
         const procedure = activity.procedimento || template.instrucoes || '';
+        const linkedSheetId = activity.fichaTecnicaId || template.fichaTecnicaId || '';
         const procedureFormat = hasRichMarkup(procedure) ? 'rico' : (activity.procedimentoFormato || template.procedimentoFormato || 'texto');
         const timing = taskTiming(activity);
         const statusText = activity.status === 'em_execucao' ? 'Em execução' : activity.status === 'concluida' ? 'Concluída' : activity.status === 'nao_realizada' ? 'Não realizada' : activity.status === 'cancelada' ? 'Cancelada' : (timing.overdue ? 'Atrasada' : 'Pendente');
@@ -1048,7 +1053,8 @@
                 ${activity.remarcadoDe ? `<div><small>Remarcada da data</small><strong>${escapeHtml(formatDateKey(activity.remarcadoDe))}</strong></div>` : ''}
             </div>
             ${activity.registroPop ? '<div class="task-pop-badge">POP registrado</div>' : ''}
-            ${procedure ? `<div class="task-procedure-box"><strong>Procedimento</strong><div class="task-procedure-content">${procedureHtml(procedure, procedureFormat)}</div></div>` : ''}
+            ${linkedTechnicalSheetMarkup(linkedSheetId)}
+            ${!linkedSheetId && procedure ? `<div class="task-procedure-box"><strong>Procedimento</strong><div class="task-procedure-content">${procedureHtml(procedure, procedureFormat)}</div></div>` : ''}
             ${template.fotoReferencia ? '<div id="taskDetailPhoto" class="task-reference-photo"><span>Carregando foto...</span></div>' : ''}
             ${activity.observacao ? `<div class="task-procedure-box"><strong>Observação</strong><div class="task-procedure-content">${sanitizeRichHtml(activity.observacao)}</div></div>` : ''}`;
         deps.openModalTop('modalTaskFinished');
@@ -1329,7 +1335,7 @@
     }
 
     function closeAllSettings() {
-        ['modalPainelUnificado', 'modalConfigTasksMenu', 'modalTasksManager', 'modalTaskForm', 'modalTaskHygieneLibrary', 'modalTaskQr', 'modalTaskReports', 'modalTaskHistory', 'modalTaskBasicSettings']
+        ['modalPainelUnificado', 'modalConfigTasksMenu', 'modalTasksManager', 'modalTaskForm', 'modalTaskScheduleEditor', 'modalTaskHygieneLibrary', 'modalTaskQr', 'modalTaskReports', 'modalTaskHistory', 'modalTaskBasicSettings']
             .forEach(id => { const element = document.getElementById(id); if (element) element.style.display = 'none'; });
     }
     function openSettingsMenu() {
@@ -1356,8 +1362,8 @@
         }
         backToSettingsMenu();
     }
-    function managerItem(title, subtitle, index, active, qrId = '') {
-        return `<div class="task-manager-item ${active === false ? 'inactive' : ''}"><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle)}</span></div><div class="task-manager-actions">${qrId ? `<button onclick="AloTasks.openTaskQr('${escapeHtml(qrId)}')" aria-label="Gerar QR Code" title="Gerar QR Code">▦</button>` : ''}<button onclick="AloTasks.editManagedItem(${index})" aria-label="Editar" title="Editar">✏️</button></div></div>`;
+    function managerItem(title, subtitle, index, active, qrId = '', canDuplicate = false) {
+        return `<div class="task-manager-item ${active === false ? 'inactive' : ''}"><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle)}</span></div><div class="task-manager-actions">${qrId ? `<button onclick="AloTasks.openTaskQr('${escapeHtml(qrId)}')" aria-label="Gerar QR Code" title="Gerar QR Code">▦</button>` : ''}${canDuplicate ? `<button class="task-duplicate-button" onclick="AloTasks.duplicateTask(${index})" aria-label="Duplicar tarefa" title="Duplicar tarefa">⧉</button>` : ''}<button onclick="AloTasks.editManagedItem(${index})" aria-label="Editar" title="Editar">✏️</button></div></div>`;
     }
     function openManager(type) {
         managerType = type;
@@ -1384,7 +1390,7 @@
             list.innerHTML = db().tarefas.map((task, index) => {
                 const schedules = getTaskSchedules(task);
                 const scheduleSummary = schedules.length === 1 ? `${schedules[0].horario} · ${recurrenceLabel(schedules[0])}` : `${schedules.length} horários cadastrados`;
-                return managerItem(task.nome, `${getArea(task.setorId).nome} · ${scheduleSummary}`, index, task.ativo, task.id);
+                return managerItem(task.nome, `${getArea(task.setorId).nome} · ${scheduleSummary}`, index, task.ativo, task.id, true);
             }).join('');
         }
         if (!list.innerHTML) list.innerHTML = '<div class="tasks-empty">Nenhum cadastro ainda.</div>';
@@ -1397,6 +1403,21 @@
     }
     function manageTemplates() { openManager('templates'); }
     function editManagedItem(index) { openForm(managerType, index); }
+    function duplicateTask(index) {
+        const task = db().tarefas[index];
+        if (!task) return;
+        const copy = JSON.parse(JSON.stringify(task));
+        copy.id = createId('tarefa');
+        copy.nome = `${task.nome} (cópia)`;
+        copy.fotoReferencia = false;
+        copy.programacoes = getTaskSchedules(task).map((schedule, scheduleIndex) => ({
+            ...schedule,
+            id: scheduleIndex === 0 ? 'principal' : createId('horario')
+        }));
+        copy.revisaoDefinicao = 0;
+        copy.atualizadoEm = Date.now();
+        openForm('templates', -1, copy);
+    }
     function areaOptions(selected) {
         return db().setoresTarefas.filter(area => area.ativo !== false || area.id === selected).map(area =>
             `<option value="${escapeHtml(area.id)}" ${area.id === selected ? 'selected' : ''}>${escapeHtml(areaVisualText(area.emoji))} ${escapeHtml(area.nome)}</option>`
@@ -1406,6 +1427,34 @@
         return '<option value="">Todos</option>' + db().funcionarios.filter(employee => employee.ativo !== false && employeeWorksInArea(employee, areaId)).map(employee =>
             `<option value="${escapeHtml(employee.id)}" ${employee.id === selected ? 'selected' : ''}>${escapeHtml(employee.nome)}</option>`
         ).join('');
+    }
+    function technicalSheetOptions(selected) {
+        const sheets = global.AloTechnicalSheets?.getLinkOptions?.() || [];
+        return '<option value="">Selecione uma ficha técnica</option>' + sheets.map(sheet =>
+            `<option value="${escapeHtml(sheet.id)}" ${String(sheet.id) === String(selected || '') ? 'selected' : ''}>${escapeHtml(sheet.nome)}${sheet.categoria ? ` · ${escapeHtml(sheet.categoria)}` : ''}</option>`
+        ).join('');
+    }
+    function technicalSheetSummary(sheetId) {
+        return (global.AloTechnicalSheets?.getLinkOptions?.() || []).find(sheet => String(sheet.id) === String(sheetId || '')) || null;
+    }
+    function linkedTechnicalSheetMarkup(sheetId) {
+        const sheet = technicalSheetSummary(sheetId);
+        if (!sheet) return '';
+        return `<div class="task-linked-sheet"><span><small>Ficha técnica vinculada</small><strong>${escapeHtml(sheet.nome)}</strong></span><button type="button" onclick="AloTasks.openLinkedTechnicalSheet('${escapeHtml(sheet.id)}')">Abrir ficha</button></div>`;
+    }
+    function openLinkedTechnicalSheet(sheetId) {
+        document.getElementById('modalTaskFinished').style.display = 'none';
+        document.getElementById('modalTaskPop').style.display = 'none';
+        global.AloTechnicalSheets?.openDetail?.(sheetId);
+    }
+    function setTaskGuidance(mode) {
+        const selected = mode === 'ficha' ? 'ficha' : 'procedimento';
+        formState.guidanceMode = selected;
+        const procedure = document.getElementById('taskProcedureGuidance');
+        const sheet = document.getElementById('taskSheetGuidance');
+        if (procedure) procedure.style.display = selected === 'procedimento' ? 'block' : 'none';
+        if (sheet) sheet.style.display = selected === 'ficha' ? 'block' : 'none';
+        document.querySelectorAll('#taskGuidanceTabs button').forEach(button => button.classList.toggle('active', button.dataset.guidance === selected));
     }
     function recurrenceLabel(schedule) {
         if (schedule.recorrencia === 'unica') return `Uma vez · ${formatDateKey(schedule.dataUnica)}`;
@@ -1427,7 +1476,7 @@
                 <div class="task-schedule-copy"><strong>${escapeHtml(recurrenceLabel(schedule))}</strong><small>${schedule.alarme === false ? 'Sem alarme' : 'Com alarme'}</small></div>
                 <button type="button" onclick="AloTasks.openScheduleEditor(${index})" aria-label="Editar horário" title="Editar horário">✎</button>
                 <button type="button" class="task-schedule-delete" onclick="AloTasks.deleteScheduleDraft(${index})" aria-label="Excluir horário" title="Excluir horário">🗑️</button>
-            </div>`).join('') : '<div class="task-schedule-empty">Cadastre pelo menos um horário.</div>';
+            </div>`).join('') : '<div class="task-schedule-empty">Nenhum horário cadastrado.</div>';
     }
     function openScheduleEditor(index = -1) {
         const panel = document.getElementById('taskScheduleEditor');
@@ -1436,22 +1485,22 @@
             ? formState.schedules[index]
             : { horario: '', recorrencia: '', dias: [], dataUnica: '', diaMes: 1, intervaloMeses: 2, dataInicio: todayKey(), alarme: false };
         formState.editingSchedule = index;
-        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const daysOfWeek = [[1, 'Seg'], [2, 'Ter'], [3, 'Qua'], [4, 'Qui'], [5, 'Sex'], [6, 'Sáb'], [0, 'Dom']];
         panel.innerHTML = `
             <div class="task-schedule-editor-head"><strong>${index >= 0 ? 'Editar horário' : 'Novo horário'}</strong><button type="button" onclick="AloTasks.cancelScheduleEditor()" aria-label="Fechar">×</button></div>
             <div class="task-form-grid">
                 <div class="form-group"><label>Horário:</label><input id="taskScheduleTime" type="time" value="${escapeHtml(schedule.horario)}"></div>
                 <div class="form-group"><label>Frequência:</label><select id="taskScheduleRecurrence" onchange="AloTasks.toggleScheduleRecurrenceFields()"><option value="" ${!schedule.recorrencia ? 'selected' : ''} disabled>Selecione</option><option value="diaria" ${schedule.recorrencia === 'diaria' ? 'selected' : ''}>Todos os dias</option><option value="semanal" ${schedule.recorrencia === 'semanal' ? 'selected' : ''}>Dias específicos</option><option value="mensal" ${schedule.recorrencia === 'mensal' ? 'selected' : ''}>Todo mês</option><option value="intervalo_meses" ${schedule.recorrencia === 'intervalo_meses' ? 'selected' : ''}>A cada alguns meses</option><option value="unica" ${schedule.recorrencia === 'unica' ? 'selected' : ''}>Uma única vez</option></select></div>
             </div>
-            <div id="taskScheduleWeekDays" class="task-weekdays">${dayNames.map((name, day) => `<label><input type="checkbox" value="${day}" ${(schedule.dias || []).map(Number).includes(day) ? 'checked' : ''}><span>${name}</span></label>`).join('')}</div>
+            <div id="taskScheduleWeekDays" class="task-weekdays">${daysOfWeek.map(([day, name]) => `<label><input type="checkbox" value="${day}" ${(schedule.dias || []).map(Number).includes(day) ? 'checked' : ''}><span>${name}</span></label>`).join('')}</div>
             <div id="taskScheduleOneDate" class="form-group"><label>Data:</label><input id="taskScheduleDate" type="date" value="${escapeHtml(schedule.dataUnica)}"></div>
             <div id="taskScheduleMonthDay" class="form-group"><label>Dia do mês:</label><input id="taskScheduleDayOfMonth" type="number" min="1" max="31" value="${Number(schedule.diaMes || 1)}"></div>
             <div id="taskScheduleMonthInterval" class="task-form-grid"><div class="form-group"><label>Repetir a cada:</label><select id="taskScheduleIntervalMonths"><option value="2" ${Number(schedule.intervaloMeses) === 2 ? 'selected' : ''}>2 meses</option><option value="3" ${Number(schedule.intervaloMeses) === 3 ? 'selected' : ''}>3 meses</option><option value="4" ${Number(schedule.intervaloMeses) === 4 ? 'selected' : ''}>4 meses</option><option value="6" ${Number(schedule.intervaloMeses) === 6 ? 'selected' : ''}>6 meses</option><option value="12" ${Number(schedule.intervaloMeses) === 12 ? 'selected' : ''}>12 meses</option></select></div><div class="form-group"><label>Começando em:</label><input id="taskScheduleStartDate" type="date" value="${escapeHtml(schedule.dataInicio || todayKey())}"></div></div>
             <label class="task-toggle-row task-alarm-toggle"><span class="task-toggle-copy"><b aria-hidden="true">⏰</b><strong>Alarme</strong></span><span class="switch-moderno"><input id="taskScheduleAlarm" type="checkbox" ${schedule.alarme ? 'checked' : ''}><span class="switch-trilho"></span></span></label>
             <div class="task-schedule-editor-actions"><button type="button" class="btn-cancel" onclick="AloTasks.cancelScheduleEditor()">Cancelar</button><button type="button" class="btn-action" onclick="AloTasks.saveScheduleDraft()">Salvar horário</button></div>`;
-        panel.style.display = 'block';
+        document.getElementById('modalTaskForm').style.display = 'none';
+        document.getElementById('modalTaskScheduleEditor').style.display = 'flex';
         toggleScheduleRecurrenceFields();
-        requestAnimationFrame(() => panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
     }
     function toggleScheduleRecurrenceFields() {
         const recurrence = document.getElementById('taskScheduleRecurrence')?.value;
@@ -1494,7 +1543,9 @@
     }
     function cancelScheduleEditor() {
         const panel = document.getElementById('taskScheduleEditor');
-        if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+        if (panel) panel.innerHTML = '';
+        document.getElementById('modalTaskScheduleEditor').style.display = 'none';
+        document.getElementById('modalTaskForm').style.display = 'flex';
         formState.editingSchedule = -1;
     }
     function deleteScheduleDraft(index) {
@@ -1663,22 +1714,24 @@
             body.innerHTML = `<div class="form-group"><label>Nome:</label><input id="taskEmployeeName" value="${escapeHtml(employee.nome)}" placeholder="Nome do funcionário"></div><div class="form-group"><label>Setores em que trabalha:</label><div id="taskEmployeeAreas" class="shared-area-choice-grid">${db().setoresTarefas.filter(area => area.ativo !== false || selectedAreas.has(area.id)).map(area => `<label class="shared-area-choice"><input type="checkbox" value="${escapeHtml(area.id)}" ${selectedAreas.has(area.id) ? 'checked' : ''}><span>${escapeHtml(area.emoji || '📍')} ${escapeHtml(area.nome)}</span></label>`).join('')}</div></div><label class="task-simple-switch"><input id="taskEmployeeActive" type="checkbox" ${employee.ativo !== false ? 'checked' : ''}><span>Funcionário ativo</span></label>`;
         } else {
             const isNewTask = !preset && index < 0;
-            const task = preset || (index >= 0 ? db().tarefas[index] : { id: createId('tarefa'), nome: '', setorId: db().setoresTarefas[0]?.id || '', funcionarioId: '', prioridade: 'normal', tempoEsperadoMin: 0, instrucoes: '', procedimentoFormato: 'rico', permiteRemarcacao: false, registroPop: false, ativo: true });
-            title.innerText = index >= 0 ? 'Editar Tarefa' : 'Nova Tarefa';
+            const task = preset || (index >= 0 ? db().tarefas[index] : { id: createId('tarefa'), nome: '', setorId: db().setoresTarefas[0]?.id || '', funcionarioId: '', prioridade: 'normal', tempoEsperadoMin: 0, instrucoes: '', fichaTecnicaId: '', procedimentoFormato: 'rico', permiteRemarcacao: false, registroPop: false, ativo: true });
+            title.innerText = index >= 0 ? 'Editar Tarefa' : (preset ? 'Duplicar Tarefa' : 'Nova Tarefa');
             formState.taskId = task.id;
             formState.schedules = isNewTask ? [] : getTaskSchedules(task);
+            formState.guidanceMode = task.fichaTecnicaId ? 'ficha' : 'procedimento';
             formState.hasPhoto = Boolean(task.fotoReferencia);
             pendingTaskPhoto = '';
             removeTaskPhoto = false;
             body.innerHTML = `
                 <div class="form-group"><label>Nome curto:</label><input id="taskName" value="${escapeHtml(task.nome)}" placeholder="Ex: Higienizar bancada"></div>
                 <div class="task-form-grid"><div class="form-group"><label>Setor:</label><select id="taskArea" onchange="AloTasks.refreshTaskEmployeeOptions()">${areaOptions(task.setorId)}</select></div><div class="form-group"><label>Responsável:</label><select id="taskEmployee">${employeeOptions(task.funcionarioId, task.setorId)}</select></div></div>
-                <section class="task-schedule-section"><div class="task-form-section-title"><strong>Horários e frequência</strong><button type="button" class="task-add-schedule" onclick="AloTasks.openScheduleEditor()">＋ Cadastrar horário</button></div><div id="taskScheduleList" class="task-schedule-list"></div><div id="taskScheduleEditor" class="task-schedule-editor" style="display:none"></div></section>
+                <section class="task-schedule-section"><div class="task-form-section-title"><strong>Horários e frequência</strong><button type="button" class="task-add-schedule" onclick="AloTasks.openScheduleEditor()">＋ Cadastrar horário</button></div><div id="taskScheduleList" class="task-schedule-list"></div></section>
                 <div class="task-form-grid"><div class="form-group"><label>Prioridade:</label><select id="taskPriority"><option value="normal" ${task.prioridade !== 'urgente' ? 'selected' : ''}>Normal</option><option value="urgente" ${task.prioridade === 'urgente' ? 'selected' : ''}>Urgente</option></select></div><div class="form-group"><label>Tempo esperado (min.):</label><input id="taskExpected" type="number" min="0" inputmode="numeric" value="${Number(task.tempoEsperadoMin || 0)}" onfocus="this.select()" onclick="this.select()"></div></div>
-                <div class="form-group"><label>Procedimento:</label>${richEditorMarkup('taskInstructions', task.instrucoes, task.procedimentoFormato, 'Escreva o procedimento', 1800)}</div>
+                <section class="task-guidance-section"><div id="taskGuidanceTabs" class="task-guidance-tabs" role="tablist" aria-label="Orientação da tarefa"><button type="button" data-guidance="procedimento" onclick="AloTasks.setTaskGuidance('procedimento')">Procedimento</button><button type="button" data-guidance="ficha" onclick="AloTasks.setTaskGuidance('ficha')">Ficha técnica</button></div><div id="taskProcedureGuidance" class="form-group"><label>Procedimento:</label>${richEditorMarkup('taskInstructions', task.instrucoes, task.procedimentoFormato, 'Escreva o procedimento', 1800)}</div><div id="taskSheetGuidance" class="task-sheet-guidance"><div class="form-group"><label for="taskTechnicalSheet">Ficha técnica vinculada:</label><select id="taskTechnicalSheet">${technicalSheetOptions(task.fichaTecnicaId)}</select></div><small>Quem abrir a atividade poderá consultar a ficha completa e imprimir a etiqueta correspondente.</small></div></section>
                 <div class="task-photo-field"><div class="task-form-section-title"><strong>Foto de referência</strong><div class="task-photo-actions"><button type="button" class="task-photo-pick" onclick="document.getElementById('taskCameraInput').click()">📷 Tirar foto</button><button type="button" class="task-photo-pick" onclick="document.getElementById('taskPhotoInput').click()">▣ Anexar</button></div></div><input id="taskCameraInput" type="file" accept="image/*" capture="environment" hidden onchange="AloTasks.handleTaskPhoto(this)"><input id="taskPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="AloTasks.handleTaskPhoto(this)"><div class="task-photo-preview"><span id="taskPhotoPreviewEmpty">Nenhuma foto cadastrada</span><img id="taskPhotoPreviewImage" alt="Prévia da foto de referência" style="display:none"><button type="button" id="taskPhotoRemoveButton" onclick="AloTasks.removeTaskPhotoDraft()" style="display:none">Remover foto</button></div></div>
                 <div class="task-option-grid"><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">📅</b><strong>Permitir remarcar</strong></span><span class="switch-moderno"><input id="taskAllowReschedule" type="checkbox" ${task.permiteRemarcacao ? 'checked' : ''}><span class="switch-trilho"></span></span></label><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">📋</b><strong>Exigir registro POP</strong></span><span class="switch-moderno"><input id="taskPopRequired" type="checkbox" ${task.registroPop ? 'checked' : ''}><span class="switch-trilho"></span></span></label><label class="task-toggle-row"><span class="task-toggle-copy"><b aria-hidden="true">✓</b><strong>Tarefa ativa</strong></span><span class="switch-moderno"><input id="taskActive" type="checkbox" ${task.ativo !== false ? 'checked' : ''}><span class="switch-trilho"></span></span></label></div>`;
             renderTaskSchedules();
+            setTaskGuidance(formState.guidanceMode);
         }
         deps.openModalTop('modalTaskForm');
         if (type === 'templates' && formState.hasPhoto) requestAnimationFrame(() => loadTaskFormPhoto(formState.taskId));
@@ -1713,9 +1766,10 @@
         } else {
             const nome = document.getElementById('taskName').value.trim();
             const setorId = document.getElementById('taskArea').value;
-            if (document.getElementById('taskScheduleEditor')?.style.display !== 'none' && !saveScheduleDraft()) return;
             if (!nome || !setorId) return alert('Informe nome e setor.');
-            if (!formState.schedules.length) return alert('Cadastre pelo menos um horário.');
+            if (!formState.schedules.length) return alert('Adicione um horário antes de salvar.');
+            const fichaTecnicaId = formState.guidanceMode === 'ficha' ? document.getElementById('taskTechnicalSheet')?.value || '' : '';
+            if (formState.guidanceMode === 'ficha' && !fichaTecnicaId) return alert('Escolha a ficha técnica desta tarefa.');
             const current = index >= 0 ? db().tarefas[index] : null;
             const programacoes = formState.schedules.map((schedule, scheduleIndex) => normalizeSchedule(schedule, scheduleIndex));
             const principal = programacoes[0];
@@ -1733,6 +1787,7 @@
                 prioridade: document.getElementById('taskPriority').value,
                 alarme: principal.alarme,
                 tempoEsperadoMin: Number(document.getElementById('taskExpected').value || 0),
+                fichaTecnicaId,
                 instrucoes: richEditorValue('taskInstructions'),
                 procedimentoFormato: 'rico',
                 permiteRemarcacao: document.getElementById('taskAllowReschedule').checked,
@@ -1999,8 +2054,8 @@
         cancelPopCompletion, confirmPopCompletion,
         openAlarmTask, startAlarmTask, completeAlarmTask, dismissAlarm,
         openSettingsMenu, backToControlPanel, backToSettingsMenu, backFromManager,
-        manageTaskAreas, manageEmployees, manageTemplates, editManagedItem,
-        cancelForm, saveCurrentForm, toggleRecurrenceFields, refreshTaskEmployeeOptions,
+        manageTaskAreas, manageEmployees, manageTemplates, editManagedItem, duplicateTask,
+        cancelForm, saveCurrentForm, toggleRecurrenceFields, refreshTaskEmployeeOptions, setTaskGuidance, openLinkedTechnicalSheet,
         openScheduleEditor, saveScheduleDraft, cancelScheduleEditor, deleteScheduleDraft, toggleScheduleRecurrenceFields,
         formatRichEditor, cycleRichEditorAlignment, limitRichEditor, sanitizeRichHtml,
         handleTaskPhoto, removeTaskPhotoDraft,

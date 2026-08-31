@@ -198,6 +198,7 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-person-actions #sharedPersonActiveAction.btn-action { background: #238636; }
         .area-image-picker { display: block; }
         .area-image-current { width: 58px; height: 58px; display: grid; place-items: center; border: 2px solid #247769; border-radius: 7px; background: #f8fbfb; box-sizing: border-box; font-size: 30px; cursor: pointer; }
+        .area-image-current .area-visual-image, .emoji-area-opcoes .area-visual-image { width: 46px; height: 46px; object-fit: contain; }
         .area-image-current:hover, .area-image-current[aria-expanded="true"] { background: #e7f3f0; box-shadow: 0 0 0 3px rgba(36,119,105,.14); }
         #modalFormArea .emoji-area-opcoes { display: none; }
         .emoji-area-opcoes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }

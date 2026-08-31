@@ -163,6 +163,19 @@ function gerarTextoRelatorio() {
     atualizarEnvioWhatsAppRelatorio(forn);
 }
 
+function abrirWhatsAppRelatorio(numero, texto) {
+    if(window.AloNative && typeof window.AloNative.openWhatsApp === 'function') {
+        try {
+            const resposta = JSON.parse(window.AloNative.openWhatsApp(numero || '', texto || ''));
+            if(resposta?.ok) return true;
+        } catch(error) {}
+    }
+    const destino = numero ? `https://wa.me/${numero}?text=${encodeURIComponent(texto)}` : `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    const janela = window.open(destino, '_blank', 'noopener');
+    if(!janela) window.top.location.assign(destino);
+    return true;
+}
+
 function enviarWhatsAppAPI() {
     const texto = document.getElementById('relatTexto').value;
     const fornId = document.getElementById('relatFornecedor').value;
@@ -173,15 +186,11 @@ function enviarWhatsAppAPI() {
     if(tel) {
         let num = tel.replace(/\D/g, '');
         if(num.length === 10 || num.length === 11) num = '55' + num;
-        window.open(`https://wa.me/${num}?text=${encodeURIComponent(texto)}`, '_blank');
+        abrirWhatsAppRelatorio(num, texto);
         registrarPreferenciasRelatorioEnviadas(forn);
         return;
     }
 
-    const txtArea = document.getElementById('relatTexto');
-    txtArea.select();
-    document.execCommand('copy');
-    alert('Copiado! Selecione o contato no WhatsApp manualmente.');
-    window.open('https://wa.me/', '_blank');
+    abrirWhatsAppRelatorio('', texto);
     registrarPreferenciasRelatorioEnviadas(forn);
 }

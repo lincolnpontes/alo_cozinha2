@@ -202,6 +202,15 @@
         return child.registrarPrecoProdutoComprasPeloHost(productId, price);
     }
 
+    async function createProductForIngredient() {
+        global.AloTasks?.openModule('feira');
+        const child = await waitForChild();
+        if (typeof child.abrirNovoProdutoParaFichaPeloHost !== 'function') {
+            throw new Error('Atualize a Lista de Compras para cadastrar ingredientes pela ficha técnica.');
+        }
+        return child.abrirNovoProdutoParaFichaPeloHost();
+    }
+
     async function applySharedPeople(people) {
         const child = await waitForChild();
         if (typeof child.aplicarPessoasCompartilhadasComprasPeloHost !== 'function') throw new Error('Compras ainda não aceita pessoas compartilhadas.');
@@ -260,6 +269,6 @@
         configure, open, syncServerUrl, toggleModePicker, closeModePicker, setMode,
         updateHeader, refreshHeader, openProfile, openManager, prepareLogin, authenticateOperator,
         logout, getBackup, restoreBackup, getSharedSnapshot, getCategories, applySharedPeople, applySharedRestaurant, activateSharedPerson,
-        registerProductPrice, syncNow, clearHistory, backToSettings
+        registerProductPrice, createProductForIngredient, syncNow, clearHistory, backToSettings
     });
 })(window);

@@ -11,7 +11,6 @@ function alterarModo(modo) {
     document.getElementById('metaThemeColor').content = modo === 'pedido' ? '#1565C0' : '#521565';
     document.getElementById('dicasCabecalho').innerHTML = '';
     document.getElementById('btnHistHoje').style.display = modo === 'pedido' ? 'inline-flex' : 'none';
-    document.getElementById('btnLimparComprasBar').style.display = modo === 'compras' ? 'inline-flex' : 'none';
     document.getElementById('btnRelatorioBar').style.display = modo === 'compras' ? 'inline-flex' : 'none';
     if(modo === 'compras') document.getElementById('containerBotoesEnvio').style.display = 'none';
     renderizarFiltros();
@@ -52,7 +51,8 @@ function renderizarMenuFerramentas() {
     let html = `<button type="button" class="menu-ferramentas-item ${compras ? '' : 'ultimo-grupo'}" role="menuitem" onclick="acionarMenuFerramentas('todos')"><span aria-hidden="true">≡</span><span>Mostrar todos os itens</span><span class="menu-estado" id="estadoMostrarTodos">${todosAtivo ? '✓' : ''}</span></button>`;
     if(compras) {
         html += `<button type="button" class="menu-ferramentas-item" id="opcaoAgruparStatus" role="menuitem" onclick="acionarMenuFerramentas('agrupar')"><span aria-hidden="true">🗂️</span><span>Agrupar por status</span><span class="menu-estado" id="estadoAgruparStatus">${agrupamentoCompradoAtivo ? '✓' : ''}</span></button>`;
-        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('fornecedor')"><span aria-hidden="true">🚚</span><span>Filtrar por fornecedor</span><span class="menu-estado" id="estadoFiltroFornecedor">${filtroFornecedorComprasId ? '✓' : ''}</span></button>`;
+        html += `<button type="button" class="menu-ferramentas-item" role="menuitem" onclick="acionarMenuFerramentas('fornecedor')"><span aria-hidden="true">🚚</span><span>Filtrar por fornecedor</span><span class="menu-estado" id="estadoFiltroFornecedor">${filtroFornecedorComprasId ? '✓' : ''}</span></button>`;
+        html += `<button type="button" class="menu-ferramentas-item menu-limpar-comprados ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('limpar')"><span aria-hidden="true">🗃️</span><span class="menu-ferramentas-copy"><strong>Limpar itens comprados</strong><small>Retira comprados, recebidos e cancelados da lista; o histórico permanece.</small></span></button>`;
     }
     html += '<div class="menu-ferramentas-separador" role="separator"></div>';
     html += '<div class="menu-categorias-titulo">Agrupar por categoria:</div>';
@@ -95,6 +95,7 @@ function acionarMenuFerramentas(acao) {
     if(acao === 'todos') mostrarTodosItens();
     else if(acao === 'fornecedor') abrirModalFiltroFornCompras();
     else if(acao === 'agrupar') ativarAgrupamentoCompras();
+    else if(acao === 'limpar') limparComprasAntigas();
 }
 
 function selecionarCategoriaMenu(catId) {
@@ -186,14 +187,12 @@ function atualizarControlesSelecao() {
     const btnPedidoFornecedor = document.getElementById('btnMassaPedForn');
     const btnVincular = document.getElementById('btnMassaVincular');
     const acoesSelecao = document.getElementById('acoesSelecaoCompras');
-    const btnLimpar = document.getElementById('btnLimparComprasBar');
     const btnCancelarSelecao = document.getElementById('btnCancelarSelecaoCompras');
 
     btnComprado.style.display = permiteAcaoEmMassa ? 'inline-flex' : 'none';
     btnPedidoFornecedor.style.display = permissoesCompras.comprar ? 'inline-flex' : 'none';
     btnVincular.style.display = permissoesCompras.comprar ? 'inline-flex' : 'none';
     acoesSelecao.style.display = !pedido && modoSelecaoAtivo && permiteAcaoEmMassa ? 'flex' : 'none';
-    btnLimpar.style.display = !pedido && !modoSelecaoAtivo ? 'inline-flex' : 'none';
     btnRelatorio.style.display = !pedido ? 'inline-flex' : 'none';
     if(btnCancelarSelecao) btnCancelarSelecao.style.display = !pedido && modoSelecaoAtivo ? 'inline-flex' : 'none';
     if(modoSelecaoAtivo) {

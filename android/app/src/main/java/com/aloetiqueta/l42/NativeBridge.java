@@ -51,6 +51,31 @@ public class NativeBridge {
     }
 
     @JavascriptInterface
+    public String openWhatsApp(String phone, String text) {
+        try {
+            String digits = phone == null ? "" : phone.replaceAll("\\D", "");
+            if (digits.length() == 10 || digits.length() == 11) {
+                digits = "55" + digits;
+            }
+            String url = "https://wa.me/" + digits + "?text=" + Uri.encode(text == null ? "" : text);
+            activity.runOnUiThread(() -> {
+                Intent whatsapp = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                whatsapp.setPackage("com.whatsapp");
+                try {
+                    activity.startActivity(whatsapp);
+                } catch (Exception unavailable) {
+                    try {
+                        activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    } catch (Exception ignored) {}
+                }
+            });
+            return ok();
+        } catch (Exception e) {
+            return error(e);
+        }
+    }
+
+    @JavascriptInterface
     public String savePngToGallery(String base64Png, String requestedName) {
         try {
             if (base64Png == null || base64Png.trim().isEmpty()) {

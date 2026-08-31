@@ -214,6 +214,23 @@ function notificarHostCompras() {
     window.parent.AloFeiraModule?.updateHeader(obterEstadoHostCompras());
 }
 
+async function abrirNovoProdutoParaFichaPeloHost() {
+    await comprasProntasHost;
+    abrirFormProduto(null, 'ficha_tecnica');
+    return true;
+}
+
+function retornarProdutoParaFichaTecnicaPeloHost(produto = null) {
+    if (!executandoNoHost || window.parent === window) return false;
+    if (produto?.id) {
+        obterDadosCompartilhadosComprasPeloHost()
+            .then(snapshot => window.parent.AloSharedData?.updateFromModule('compras', snapshot))
+            .catch(() => {});
+    }
+    window.parent.AloTechnicalSheets?.returnFromPurchaseProduct(produto);
+    return true;
+}
+
 function voltarParaConfiguracoesHost() {
     if (executandoNoHost && window.parent !== window) {
         obterDadosCompartilhadosComprasPeloHost().then(snapshot => window.parent.AloSharedData?.updateFromModule('compras', snapshot)).catch(() => {});

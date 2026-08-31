@@ -12,6 +12,7 @@
     let pendingPhoto = '';
     let removePhoto = false;
     let ingredientSearchTargetId = '';
+    let ingredientSearchReturnQuery = '';
     let priceEditorTargetId = '';
     let selectedCategory = 'Todas';
     let managerCategory = 'Todas';
@@ -160,7 +161,7 @@
     }
     function money(value) { return Number(value || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
 
-    function showView(view, acessoConfirmado = false) {
+    function showView(view, acessoConfirmado = false, preservePurchaseProducts = false) {
         if (view === 'documents' && !acessoConfirmado && global.solicitarAcessoChecklist?.('documentos') === false) return;
         const sheets = view === 'sheets';
         const documents = view === 'documents';
@@ -174,7 +175,11 @@
             button?.classList.toggle('active', active);
             button?.setAttribute('aria-selected', String(active));
         });
-        if (sheets) { refreshPurchaseProducts().then(render); syncNow().catch(() => {}); render(); }
+        if (sheets) {
+            if (!preservePurchaseProducts) refreshPurchaseProducts().then(render);
+            syncNow().catch(() => {});
+            render();
+        }
         if (documents) global.AloChecklistDocuments?.activate();
     }
     function openManager() {
@@ -391,6 +396,33 @@
         const modal = document.getElementById('modalTechnicalIngredientSearch');
         if (modal) modal.style.display = 'none';
         ingredientSearchTargetId = '';
+    }
+    async function createPurchaseIngredient() {
+        formIngredients = readIngredients(true);
+        ingredientSearchReturnQuery = String(document.getElementById('technicalIngredientSearch')?.value || '');
+        document.getElementById('modalTechnicalIngredientSearch').style.display = 'none';
+        document.getElementById('modalTechnicalSheet').style.display = 'none';
+        try {
+            if (typeof global.AloFeiraModule?.createProductForIngredient !== 'function') throw new Error('A Lista de Compras ainda não está pronta para cadastrar ingredientes.');
+            await global.AloFeiraModule.createProductForIngredient();
+        } catch (error) {
+            returnFromPurchaseProduct(null);
+            global.AloUiDialog?.notice(error.message || 'Não foi possível abrir o cadastro da Lista de Compras.', { title:'Cadastro não aberto', confirmText:'Entendi' });
+        }
+    }
+    function returnFromPurchaseProduct(product) {
+        if (product?.id && product?.nome) {
+            purchaseProducts = purchaseProducts.filter(item => String(item.id) !== String(product.id)).concat(clone(product));
+            ingredientSearchReturnQuery = String(product.nome);
+        }
+        global.AloTasks?.openModule('tasks');
+        showView('sheets', true, true);
+        document.getElementById('modalTechnicalSheet').style.display = 'flex';
+        const input = document.getElementById('technicalIngredientSearch');
+        if (input) input.value = ingredientSearchReturnQuery;
+        renderIngredientSearch();
+        document.getElementById('modalTechnicalIngredientSearch').style.display = 'flex';
+        setTimeout(() => input?.focus(), 30);
     }
     function openPriceEditor(ingredientId) {
         formIngredients = readIngredients(true);
@@ -706,7 +738,7 @@
 
     global.AloTechnicalSheets = Object.freeze({
         configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openForm, closeForm, addIngredient, removeIngredient,
-        openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, openPriceEditor, closePriceEditor, savePriceEditor,
+        openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, createPurchaseIngredient, returnFromPurchaseProduct, openPriceEditor, closePriceEditor, savePriceEditor,
         previewCost, saveForm, deleteCurrent, openDetail, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
     });
 })(window);

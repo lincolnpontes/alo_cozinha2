@@ -72,7 +72,7 @@
         catch (error) { return fallback; }
     }
     function isAreaImage(value) {
-        return /^assets\/areas\/[a-z0-9-]+\.svg$/.test(String(value || ''));
+        return /^assets\/areas\/[a-z0-9-]+\.(?:svg|png)$/.test(String(value || ''));
     }
     function areaVisualHtml(value) {
         return isAreaImage(value)

@@ -47,6 +47,11 @@
         .menu-ferramentas-item:last-child { border-bottom:0; }
         .menu-ferramentas-item > span:first-child { width:28px; text-align:center; font-size:18px; }
         .menu-ferramentas-item:active { background:#f0f2f4; }
+        .menu-ferramentas-copy { min-width:0; display:grid; gap:2px; }
+        .menu-ferramentas-copy strong { font-size:14px; }
+        .menu-ferramentas-copy small { color:#68757c; font-size:10px; font-weight:600; line-height:1.25; }
+        .menu-ferramentas-item.menu-limpar-comprados { min-height:58px; color:#6e4210; background:#fffaf1; }
+        .menu-ferramentas-item.menu-limpar-comprados > span:first-child { color:#9a5b12; font-size:20px; }
         .menu-estado { margin-left:auto; color:#521565; font-size:17px; font-weight:900; }
         .menu-ferramentas-separador { height:1px; margin:6px 0; background:#cfd5da; }
         .menu-ferramentas-item.ultimo-grupo { border-bottom:0; }

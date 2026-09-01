@@ -25,7 +25,7 @@
     overscroll-behavior-y: none;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
-    background: var(--tasks-bg);
+    background: #dfe9e7;
     color: var(--tasks-ink);
 }
 
@@ -66,27 +66,30 @@
 }
 
 .module-choice {
+    --module-accent: #60717a;
     min-height: 150px;
     display: flex;
     align-items: center;
     gap: 18px;
     padding: 24px;
-    border: 2px solid var(--tasks-line);
+    border: 1px solid rgba(255, 255, 255, .82);
     border-radius: 8px;
-    background: var(--tasks-surface);
+    background: rgba(255, 255, 255, .64);
     color: var(--tasks-ink);
     text-align: left;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(38, 50, 56, .08);
+    box-shadow: inset 4px 0 0 var(--module-accent), inset 0 1px 0 rgba(255, 255, 255, .94), 0 10px 28px rgba(43, 64, 68, .11);
+    -webkit-backdrop-filter: blur(15px) saturate(115%);
+    backdrop-filter: blur(15px) saturate(115%);
 }
 
 .module-choice:active { transform: translateY(1px); }
-.module-choice-kds { border-top: 5px solid #1565c0; }
-.module-choice-tasks { border-top: 5px solid var(--tasks-green); }
-.module-choice-feira { border-top: 5px solid #d77913; }
-.module-choice-l42 { border-top: 5px solid #008b8b; }
-.module-choice-settings { grid-column: 1 / -1; min-height: 112px; border-top: 5px solid #5b6573; }
-.module-choice-icon { width: 66px; height: 66px; display: grid; flex: 0 0 66px; place-items: center; object-fit: contain; font-size: 44px; }
+.module-choice-kds { --module-accent: #1565c0; }
+.module-choice-tasks { --module-accent: var(--tasks-green); }
+.module-choice-feira { --module-accent: #d77913; }
+.module-choice-l42 { --module-accent: #008b8b; }
+.module-choice-settings { --module-accent: #4f6068; grid-column: 1 / -1; min-height: 112px; }
+.module-choice-icon { width: 66px; height: 66px; display: grid; flex: 0 0 66px; place-items: center; object-fit: contain; font-size: 44px; filter: drop-shadow(0 4px 6px rgba(31, 49, 53, .12)); }
 .module-choice strong { display: block; min-width: 0; font-size: 18px; white-space: nowrap; }
 
 .module-nav-button {
@@ -1064,7 +1067,7 @@
 .technical-sheet-card-cost { color: #33464d; font-size: 12px; font-weight: 900; text-align: right; }
 .technical-sheet-card-cost.incomplete { color: #b45309; }
 .technical-sheet-modal { width: min(760px, calc(100vw - 20px)); }
-.technical-category-sector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.technical-category-sector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .technical-identification-grid { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 10px; }
 .technical-identification-grid .form-group { min-width: 0; }
 .technical-identification-grid select { width: 100%; min-width: 0; }
@@ -1139,6 +1142,8 @@
 .technical-detail-list li { margin-bottom: 6px; }
 .technical-detail-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 8px; }
 .technical-detail-section-heading h3 { margin: 0; }
+.technical-detail-section-heading > div { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.technical-detail-section-heading > div > span { color: #397268; font-size: 10px; font-weight: 850; white-space: nowrap; }
 .technical-detail-section-heading button { min-height: 34px; padding: 0 10px; border: 1px solid #a8c9c1; border-radius: 6px; background: #eef7f5; color: #176b5d; font-size: 11px; font-weight: 850; cursor: pointer; }
 .technical-preparation-content { margin-bottom: 12px; }
 .technical-sheets-manager-modal { width: min(720px, calc(100vw - 20px)); }
@@ -1168,12 +1173,10 @@
 .technical-category-item > div { display: flex; gap: 5px; }
 .technical-category-item button { width: 36px; height: 36px; border: 0; border-radius: 6px; background: #eef1f3; cursor: pointer; }
 .technical-category-item button:disabled { opacity: .35; cursor: default; }
-.technical-category-name { min-width: 0; max-width: calc(100% - 128px); display: inline-flex; align-items: center; padding: 7px 11px; border-radius: 6px; background: var(--category-color); color: var(--category-text-color); }
+.technical-category-name { min-width: 0; max-width: calc(100% - 87px); display: inline-flex; align-items: center; padding: 7px 11px; border-radius: 6px; background: var(--category-color); color: var(--category-text-color); }
 .technical-category-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.technical-category-item .technical-category-color-button { display: grid; place-items: center; border: 1px solid #d9e0e2; background: #fff; }
-.technical-category-color-button span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 5px; background: var(--category-color); color: var(--category-text-color); font-size: 10px; font-weight: 900; }
 .technical-category-color-modal { width: min(430px, calc(100vw - 24px)); }
-.technical-category-color-name { display: block; margin-bottom: 8px; color: #66777d; font-size: 12px; }
+.technical-category-edit-name { margin-bottom: 9px; }
 .technical-category-color-preview { min-height: 44px; display: grid; place-items: center; margin-bottom: 12px; padding: 0 12px; border-radius: 6px; font-size: 15px; font-weight: 900; text-align: center; }
 .technical-category-color-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .technical-category-color-fields input[type="color"] { width: 100%; height: 44px; padding: 4px; border: 1px solid #cfd8da; border-radius: 6px; background: #fff; cursor: pointer; }
@@ -1192,15 +1195,18 @@
 .technical-label-picker-option > b { color: #66777d; font-size: 19px; text-align: center; }
 .technical-label-picker-option.avulsa { --label-category-color: #79878c; --label-category-text: #fff; }
 .technical-recipe-scaler { margin-bottom: 10px; padding: 9px; border: 1px solid #cfdcda; border-radius: 7px; background: #f4f9f8; }
-.technical-recipe-scaler-controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(120px, .7fr) auto; align-items: end; gap: 7px; }
+.technical-recipe-scaler-controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(120px, .7fr); align-items: end; gap: 7px; }
 .technical-recipe-scaler .form-group { min-width: 0; margin: 0; }
 .technical-recipe-scaler select, .technical-recipe-scaler input { width: 100%; height: 40px; box-sizing: border-box; border: 1px solid #bdcdca; border-radius: 6px; background: #fff; }
 .technical-scale-quantity { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .technical-scale-quantity input { border-radius: 6px 0 0 6px; }
 .technical-scale-quantity span { min-width: 42px; height: 40px; display: grid; place-items: center; box-sizing: border-box; border: 1px solid #bdcdca; border-left: 0; border-radius: 0 6px 6px 0; background: #e7f0ee; color: #395e57; font-size: 11px; font-weight: 900; }
-.technical-scale-apply { min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #087f68; color: #fff; font-weight: 900; }
-.technical-scale-result { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; color: #315f57; font-size: 11px; font-weight: 800; }
+.technical-scale-apply { min-height: 34px; padding: 0 12px; border: 0 !important; border-radius: 6px; background: #087f68 !important; color: #fff !important; font-weight: 900; }
+.technical-scale-result { min-height: 34px; display: flex; align-items: center; justify-content: flex-end; gap: 7px; margin-top: 7px; color: #315f57; font-size: 10px; font-weight: 800; }
+.technical-scale-result > span { margin-left: auto; }
+.technical-scale-result > div { display: flex; align-items: center; gap: 5px; }
 .technical-scale-result button { min-height: 30px; padding: 0 9px; border: 1px solid #a8c9c1; border-radius: 6px; background: #fff; color: #176b5d; font-size: 10px; font-weight: 850; }
+.technical-scale-result .technical-scale-reset { min-height: 28px; padding-inline: 7px; font-size: 9px; }
 .technical-sheet-actions { align-items: center; }
 .technical-sheet-delete { width: auto; min-width: 104px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto 0 0; padding: 0 13px; border: 1px solid #c92d2d !important; border-radius: 6px; background: #c92d2d !important; color: #fff !important; font-weight: 900; text-align: center; }
 
@@ -1264,7 +1270,7 @@
 .document-viewer-controls output { width: 58px; text-align: center; font-size: 12px; font-weight: 900; }
 .document-viewer-controls .document-viewer-share { width: 40px; flex: 0 0 40px; padding: 0; border: 1px solid #536267; background: #253135; color: #f3f7f8; font-size: 21px; display: grid; place-items: center; }
 .document-viewer-controls .document-viewer-share .document-share-icon { width: 22px; height: 22px; margin: 0; background: currentColor; }
-@media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 48px 58px; } .technical-ingredient-cost-row { grid-template-columns: 48px minmax(145px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 9px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .technical-detail-summary, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-recipe-scaler-controls { grid-template-columns: minmax(0, 1fr) 116px; } .technical-scale-apply { grid-column: 1 / -1; } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
+@media (max-width: 620px) { .technical-four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-ingredient-main { grid-template-columns: minmax(0, 1fr) 48px 58px; } .technical-ingredient-cost-row { grid-template-columns: 48px minmax(145px, 1fr) auto; } .technical-ingredient-remove { padding-inline: 9px; font-size: 10px; } .technical-manager-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; } .technical-manager-toolbar > button { padding-inline: 9px; font-size: 11px; } .technical-cost-preview, .technical-detail-summary, .document-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .technical-recipe-scaler-controls { grid-template-columns: minmax(0, 1fr) 116px; } .checklist-view-switch button { padding-inline: 3px; font-size: 12px; } }
 @media (max-width: 620px) {
     .tasks-dashboard-sector { grid-template-columns: minmax(62px, 1fr) minmax(48px, 1.2fr) auto; gap: 5px; padding: 7px 6px; }
     .tasks-dashboard-sector strong { font-size: 11px; }

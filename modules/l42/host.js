@@ -78,7 +78,7 @@
         if (event.data.type === 'show-home') global.AloModuleHost?.showHome();
         if (event.data.type === 'data-changed') global.AloEtiquetasCloud?.markDirty?.();
         if (event.data.type === 'product-reference-changed') global.AloTechnicalSheets?.updateLabelProductReference?.(event.data.payload || {});
-        if (event.data.type === 'label-flow-closed') openTechnicalSheet(event.data.payload?.fichaId || '');
+        if (event.data.type === 'label-flow-closed') openTechnicalSheet(event.data.payload?.fichaId || '', { returnTo:event.data.payload?.returnTo || '' });
         if (event.data.type === 'open-settings') global.abrirLoginAdmin?.('etiquetas');
         if (event.data.type === 'switch-person') global.abrirLoginAdmin?.('trocar_l42');
     }
@@ -161,12 +161,12 @@
         return result;
     }
 
-    function openTechnicalSheet(sheetId) {
+    function openTechnicalSheet(sheetId, options = {}) {
         const id = String(sheetId || '');
         if (!id) return false;
         global.AloTasks?.openModule?.('tasks');
         global.AloTechnicalSheets?.showView?.('sheets', true, true);
-        global.AloTechnicalSheets?.openDetail?.(id);
+        global.AloTechnicalSheets?.openDetail?.(id, { returnTo:String(options.returnTo || '') });
         return true;
     }
 

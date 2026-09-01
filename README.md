@@ -1,9 +1,11 @@
-# Alô Cozinha v2.1.38
+# Alô Cozinha v2.1.39
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
+- A v2.1.39 alinha o controle Inverter com a seleção de preto e dá a Funcionários e Acessos um ícone próprio no padrão visual das configurações.
+- A v2.1.39 remove o atalho duplicado de categorias e impede que os retornos de Produtos e Categorias abram o painel legado do antigo L42.
 - A v2.1.38 centraliza o botão de escolher logomarca nos Dados do Restaurante.
 - A v2.1.38 posiciona a logomarca abaixo do controle por QR Code e alinha corretamente o controle Inverter em Etiquetas.
 - A v2.1.38 simplifica os ícones de Dados do Restaurante, Setores e Módulos para símbolos diretos e legíveis.

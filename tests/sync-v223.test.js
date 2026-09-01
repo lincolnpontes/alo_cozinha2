@@ -67,5 +67,5 @@ async function testAnotherDeviceReceiptDoesNotConfirm() {
 }
 
 Promise.all([testReceiptConfirmsTheExactPublication(), testAnotherDeviceReceiptDoesNotConfirm()])
-    .then(() => console.log('Recibo de sincronização do KDS v2.1.38 validado.'))
+    .then(() => console.log('Recibo de sincronização do KDS v2.1.39 validado.'))
     .catch(error => { console.error(error); process.exitCode = 1; });

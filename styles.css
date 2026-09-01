@@ -227,7 +227,7 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-restaurant-logo-preview { height: 82px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px dashed #aebdba; border-radius: 6px; background: #fff; color: #7a8582; font-size: 12px; }
         .shared-restaurant-logo-preview img { display: block; max-width: 90%; max-height: 68px; object-fit: contain; }
         .shared-restaurant-logo-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 9px; }
-        .shared-restaurant-logo-actions button { min-height: 42px; margin: 0; }
+        .shared-restaurant-logo-actions button { min-height: 42px; margin: 0; display: flex !important; align-items: center; justify-content: center; text-align: center; }
         .module-settings-entry { min-height: 48px; display: flex !important; align-items: center; justify-content: flex-start; gap: 10px; padding-block: 5px !important; border-color: #2b6f62 !important; color: #174f46 !important; text-align: left; }
         .module-settings-entry img { width: 29px; height: 29px; flex: 0 0 29px; object-fit: contain; }
         .module-settings-entry span { min-width: 0; font-weight: 850; }

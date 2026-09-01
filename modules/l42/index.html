@@ -437,10 +437,11 @@ body{color:#20242a;background:var(--fundo)}
 .logo-source-option{min-height:42px;margin:0!important;padding:7px 9px!important;border:1px solid #cbd2da!important;border-radius:8px!important;background:#fff!important;color:#3f4852!important;font-size:12px!important;font-weight:850!important}
 .logo-source-option.active{border-color:var(--primaria)!important;background:#edf6f4!important;color:var(--primaria)!important;box-shadow:inset 0 0 0 1px var(--primaria)}
 .logo-source-option:disabled{opacity:.45;cursor:not-allowed}
-.logo-config-tuning{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #e2e6eb}
+.logo-config-tuning{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:10px;padding-top:10px;border-top:1px solid #e2e6eb}
 .logo-config-tuning label{font-size:12px;color:#58616c;margin:0 0 5px!important;display:block}
 .logo-config-tuning select{height:42px;padding:0 10px;font-size:14px}
 .logo-invert-toggle{height:42px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid #cbd2da;border-radius:9px;background:#fff;font-size:12px;font-weight:800;white-space:nowrap}
+.logo-config-tuning .logo-invert-toggle{margin:0!important}
 .logo-invert-toggle input{width:18px;height:18px;margin:0;accent-color:var(--primaria)}
 .logo-prompt-button{width:100%;min-height:44px;margin:9px 0 0!important;border-style:dashed!important}
 .label-preview-logo{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -483,7 +484,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.37";
+const APP_VERSION="2.1.38";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1944,7 +1945,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.37" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.38" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -2848,7 +2849,8 @@ function garantirCampoLogomarca(){
     grupo.id='cfgLogoEtiquetaBox';
     grupo.className='form-group logo-config-card';
     grupo.innerHTML='<div class="logo-config-head"><label>Logomarca nas etiquetas</label><button type="button" class="logo-help-button" onclick="abrirAjudaLogomarca()" aria-label="Ajuda sobre a imagem">?</button></div><div class="logo-source-options"><button id="btnLogoFonteRestaurante" type="button" class="logo-source-option" onclick="selecionarFonteLogomarca(\'restaurante\')">Do restaurante</button><button id="btnLogoFontePropria" type="button" class="logo-source-option" onclick="selecionarFonteLogomarca(\'propria\')">Outra logomarca</button></div><div id="cfgLogoEtiquetaPreview" class="logo-config-preview"></div><div class="logo-config-actions"><button type="button" class="btn-outline" onclick="document.getElementById(\'cfgLogoEtiquetaArquivo\').click()">Escolher outra</button><button type="button" id="btnRemoverLogoEtiqueta" class="btn-cancel" onclick="removerLogomarcaEtiqueta()">Remover</button></div><div class="logo-config-tuning"><div><label for="cfgLogoPretoNivel">Quantidade de preto</label><select id="cfgLogoPretoNivel" onchange="alterarTratamentoLogomarca()"><option value="leve">Leve · mais nítida</option><option value="normal">Normal</option><option value="forte">Forte</option></select></div><label class="logo-invert-toggle"><input id="cfgLogoInverter" type="checkbox" onchange="alterarTratamentoLogomarca()"> Inverter</label></div><button type="button" class="btn-outline logo-prompt-button" onclick="copiarPromptLogomarcaIA()">✨ Copiar prompt para criar com IA</button><input id="cfgLogoEtiquetaArquivo" type="file" accept="image/png,image/jpeg" hidden onchange="processarLogomarcaEtiqueta(event)">';
-    estabelecimento.closest('.form-group').insertAdjacentElement('afterend',grupo);
+    const qr=document.getElementById('cfgQrGlobalGeralBox');
+    (qr||estabelecimento.closest('.form-group')).insertAdjacentElement('afterend',grupo);
     atualizarPreviewLogomarca();
 }
 
@@ -7529,7 +7531,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.37" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.38" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7555,7 +7557,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.37" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.38" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

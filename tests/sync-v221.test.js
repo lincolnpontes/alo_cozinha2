@@ -55,5 +55,5 @@ async function testServerNewerTaskIsConfirmedAndPreserved() {
 }
 
 testServerNewerTaskIsConfirmedAndPreserved()
-    .then(() => console.log('Conflito de revisao do KDS v2.1.35 validado.'))
+    .then(() => console.log('Conflito de revisao do KDS v2.1.36 validado.'))
     .catch(error => { console.error(error); process.exitCode = 1; });

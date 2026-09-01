@@ -1243,6 +1243,9 @@
 .document-card-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 7px; background: #edf3f4; font-size: 22px; }
 .document-card-icon.empty { border: 1px dashed #c7a6b2; background: #fbf5f7; color: #7d1838; font-family: Arial, sans-serif; font-size: 31px; font-weight: 900; }
 .document-card-icon img { width: 100%; height: 100%; border-radius: 7px; object-fit: cover; }
+.document-manager-item.missing-document { grid-template-columns: 38px minmax(0, 1fr) auto; display: grid; border-left-color: #a26a7d; }
+.document-manager-empty { width: 36px; height: 36px; display: grid !important; place-items: center; box-sizing: border-box; border: 1px dashed #c7a6b2; border-radius: 6px; background: #fbf5f7; color: #7d1838; font-family: Arial, sans-serif; font-size: 27px; font-weight: 900; line-height: 1; }
+.document-manager-copy { min-width: 0; }
 .document-card-copy { min-width: 0; }
 .document-card-copy strong, .document-card-copy span, .document-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .document-card-copy strong { color: #27363c; font-size: 14px; }

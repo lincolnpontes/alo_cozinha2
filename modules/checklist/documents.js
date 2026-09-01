@@ -133,16 +133,13 @@
         const target = document.getElementById('checklistDocumentsList');
         if (!target) return;
         const query = normalizeSearch(document.getElementById('checklistDocumentsSearch')?.value);
-        const documents = visibleDocuments().filter(document => !query || normalizeSearch(`${document.nome} ${document.orgao} ${taskName(document.tarefaId)}`).includes(query))
+        const documents = visibleDocuments().filter(document => Boolean(document.arquivo) && (!query || normalizeSearch(`${document.nome} ${document.orgao} ${taskName(document.tarefaId)}`).includes(query)))
             .sort((left, right) => left.nome.localeCompare(right.nome));
         target.innerHTML = documents.length ? documents.map(document => {
             const status = statusFor(document);
             const linkedTask = taskName(document.tarefaId);
-            const hasFile = Boolean(document.arquivo);
-            const fileState = hasFile ? 'Documento cadastrado' : 'Documento ainda não cadastrado';
-            const icon = hasFile ? '📄' : '∅';
-            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openDetail('${escapeHtml(document.id)}')"><span class="document-card-icon ${hasFile ? 'registered' : 'empty'}" aria-hidden="true">${icon}</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small class="${hasFile ? 'registered' : ''}">${escapeHtml(fileState)}</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
-        }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
+            return `<button type="button" class="document-card ${status.key}" onclick="AloChecklistDocuments.openDetail('${escapeHtml(document.id)}')"><span class="document-card-icon registered" aria-hidden="true">📄</span><span class="document-card-copy"><strong>${escapeHtml(document.nome)}</strong>${linkedTask ? `<span>Atividade: ${escapeHtml(linkedTask)}</span>` : ''}<small class="registered">Documento cadastrado</small></span><span class="document-status ${status.key}">${escapeHtml(status.label)}</span></button>`;
+        }).join('') : '<div class="tasks-empty">Nenhum documento cadastrado.</div>';
     }
     function activate() { render(); syncNow().catch(() => {}); }
     function findDocument(documentId) { return visibleDocuments().find(document => document.id === documentId); }
@@ -177,7 +174,8 @@
             .sort((left, right) => left.nome.localeCompare(right.nome));
         target.innerHTML = documents.length ? documents.map(document => {
             const linkedTask = taskName(document.tarefaId);
-            return `<button type="button" class="technical-manager-item document-manager-item" onclick="AloChecklistDocuments.openForm('${escapeHtml(document.id)}', 'manager')"><span><strong>${escapeHtml(document.nome)}</strong><small>${linkedTask ? `Atividade: ${escapeHtml(linkedTask)}` : statusFor(document).label}</small></span><b aria-hidden="true">✎</b></button>`;
+            const missingFile = !document.arquivo;
+            return `<button type="button" class="technical-manager-item document-manager-item ${missingFile ? 'missing-document' : ''}" onclick="AloChecklistDocuments.openForm('${escapeHtml(document.id)}', 'manager')">${missingFile ? '<span class="document-manager-empty" aria-hidden="true">∅</span>' : ''}<span class="document-manager-copy"><strong>${escapeHtml(document.nome)}</strong><small>${linkedTask ? `Atividade: ${escapeHtml(linkedTask)}` : statusFor(document).label}</small></span><b aria-hidden="true">✎</b></button>`;
         }).join('') : '<div class="tasks-empty">Nenhum documento encontrado.</div>';
     }
     function formatDate(value) {

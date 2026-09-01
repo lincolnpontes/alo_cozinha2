@@ -948,9 +948,17 @@
     function resetDetailScale() {
         const sheet = state.sheets.find(item => item.id === detailScaleSheetId && !item.excluida);
         if (!sheet) return;
-        detailScaleRatio = 1;
-        detailScaleOpen = false;
-        renderDetailBody(sheet);
+        const ingredient = sheet.ingredientes.find(item => item.id === (document.getElementById('technicalScaleIngredient')?.value || detailScaleIngredientId)) || sheet.ingredientes[0];
+        if (!ingredient) return;
+        detailScaleIngredientId = ingredient.id;
+        const input = document.getElementById('technicalScaleQuantity');
+        const unit = document.getElementById('technicalScaleUnit');
+        if (input) {
+            input.value = Number(Number(ingredient.quantidade || 0).toFixed(3));
+            input.focus();
+            input.select();
+        }
+        if (unit) unit.textContent = ingredient.unidade;
     }
     function closeDetail() {
         document.getElementById('modalTechnicalSheetDetail').style.display = 'none';

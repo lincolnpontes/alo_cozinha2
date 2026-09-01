@@ -724,6 +724,12 @@
 .task-toggle-copy { min-width: 0; display: inline-flex; align-items: center; gap: 9px; }
 .task-toggle-copy b { width: 26px; flex: 0 0 26px; color: var(--tasks-green-dark); font-size: 22px; line-height: 1; text-align: center; }
 .task-toggle-copy strong { font-size: 14px; font-weight: 900; }
+.task-toggle-row.module-login-setting { min-height: 28px; margin: 4px 1px 0; padding: 1px 3px; gap: 8px; border: 0; border-top: 1px solid #e1e7e6; border-radius: 0; background: transparent; }
+.task-toggle-row.module-login-setting .task-toggle-copy strong { color: #4e605d; font-size: 13px; line-height: 1.15; }
+.task-toggle-row.module-login-setting .switch-moderno { width: 38px; height: 20px; flex-basis: 38px; }
+.task-toggle-row.module-login-setting .switch-trilho { border-radius: 10px; }
+.task-toggle-row.module-login-setting .switch-trilho::after { width: 14px; height: 14px; }
+.task-toggle-row.module-login-setting .switch-moderno input:checked + .switch-trilho::after { transform: translateX(18px); }
 .task-alarm-toggle { margin-bottom: 2px; background: #f3f0f8; border-color: rgba(120, 69, 161, .28); }
 .task-alarm-toggle .task-toggle-copy b { font-size: 27px; }
 .task-toggle-row .switch-moderno input:checked + .switch-trilho { border-color: #6f3f97; background: #7b49a5; }

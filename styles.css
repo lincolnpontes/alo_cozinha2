@@ -191,7 +191,7 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-category-choice input:checked + span { border-color: #087466; background: #087466; color: #fff; box-shadow: 0 2px 7px rgba(8, 116, 102, .2); }
         .shared-category-empty { padding: 12px; color: #68777d; font-size: 12px; text-align: center; }
         .module-login-setting { min-height: 30px; margin: 6px 1px 0; padding: 2px; border: 0; border-top: 1px solid #e1e7e6; border-radius: 0; background: transparent; }
-        .module-login-setting .task-toggle-copy strong { font-size: 11px; color: #5d6c69; }
+        .module-login-setting .task-toggle-copy strong { font-size: 12px; color: #5d6c69; }
         .module-login-setting .switch-moderno { width: 40px; height: 22px; flex-basis: 40px; }
         .module-login-setting .switch-trilho { border-radius: 11px; }
         .module-login-setting .switch-trilho::after { width: 16px; height: 16px; }

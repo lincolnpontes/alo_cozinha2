@@ -52,7 +52,7 @@ function renderizarMenuFerramentas() {
     if(compras) {
         html += `<button type="button" class="menu-ferramentas-item" id="opcaoAgruparStatus" role="menuitem" onclick="acionarMenuFerramentas('agrupar')"><span aria-hidden="true">🗂️</span><span>Agrupar por status</span><span class="menu-estado" id="estadoAgruparStatus">${agrupamentoCompradoAtivo ? '✓' : ''}</span></button>`;
         html += `<button type="button" class="menu-ferramentas-item" role="menuitem" onclick="acionarMenuFerramentas('fornecedor')"><span aria-hidden="true">🚚</span><span>Filtrar por fornecedor</span><span class="menu-estado" id="estadoFiltroFornecedor">${filtroFornecedorComprasId ? '✓' : ''}</span></button>`;
-        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('limpar')"><span aria-hidden="true"><img class="menu-ferramentas-icon-image" src="clear-completed.png?v=2.1.36" alt=""></span><span>Limpar itens comprados</span></button>`;
+        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('limpar')"><span aria-hidden="true"><img class="menu-ferramentas-icon-image" src="clear-completed.png?v=2.1.37" alt=""></span><span>Limpar itens comprados</span></button>`;
     }
     html += '<div class="menu-ferramentas-separador" role="separator"></div>';
     html += '<div class="menu-categorias-titulo">Agrupar por categoria:</div>';

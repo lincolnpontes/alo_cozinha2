@@ -433,6 +433,10 @@ body{color:#20242a;background:var(--fundo)}
 .logo-config-preview img{max-width:88%;max-height:52px;object-fit:contain;image-rendering:pixelated}
 .logo-config-actions{display:flex;gap:8px;margin-top:9px}
 .logo-config-actions button{min-height:42px;margin:0;flex:1}
+.logo-source-options{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px}
+.logo-source-option{min-height:42px;margin:0!important;padding:7px 9px!important;border:1px solid #cbd2da!important;border-radius:8px!important;background:#fff!important;color:#3f4852!important;font-size:12px!important;font-weight:850!important}
+.logo-source-option.active{border-color:var(--primaria)!important;background:#edf6f4!important;color:var(--primaria)!important;box-shadow:inset 0 0 0 1px var(--primaria)}
+.logo-source-option:disabled{opacity:.45;cursor:not-allowed}
 .logo-config-tuning{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #e2e6eb}
 .logo-config-tuning label{font-size:12px;color:#58616c;margin:0 0 5px!important;display:block}
 .logo-config-tuning select{height:42px;padding:0 10px;font-size:14px}
@@ -479,7 +483,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.36";
+const APP_VERSION="2.1.37";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -983,7 +987,7 @@ function criarBancoPadrao({vazio=!1,configLocal={}}={}){
         produtos:[{codigo:1,nome:"Hambúrguer",categoria:"Carnes",validadeDias:5,armazenamento:"Não informar",precoPadrao:"",marcas:[],acaoPadrao:"Manipulado",usaQR:!1}],
         categorias:[{nome:"Carnes",cor:"#ffcccc",corTexto:"#000000"}],
         operadores:[{nome:"Admin",senha:"",tema:"",permissoes:permissoesPadraoOperador(!0)}],
-        configs:{modo:"rede",estabelecimento:"Restaurante",urlAppScript:"",tamanhoEtiqueta:"60x40",modeloEtiqueta:"60_classica",logoEtiqueta:null,logoPretoNivel:"leve",logoInverter:!1,ajusteVerticalEtiqueta:0,destaqueProd:!1,destaqueVal:!1,controleQR:!1,senhaAdmin:"",ultimoWipe:0,ajusteGapPx:0,ajusteGapPx2:0,alternarGap:!1,estadoGapAtual:0,printerHost:"",printerPort:"9100",printerGapMm:"3",printerMediaMode:"gap",printerCommandMode:"tspl",printerTsplBaseVersion:"2.9.1",labelLayout:layoutEtiquetaPadrao(),acoes:["Manipulado","Aberto","Produzido","Fracionado"],conservacoes:["Não informar","Congelado","Refrigerado","Ambiente","Resfriado","Após aberto refrigerar"],tema:"azul",serverClockOffset:0,serverClockSyncedAt:0,ultimaModificacaoLocal:0,ultimaModificacaoEstrutura:0,ultimaModificacaoHistorico:0,mestreAtivo:!1},
+        configs:{modo:"rede",estabelecimento:"Restaurante",urlAppScript:"",tamanhoEtiqueta:"60x40",modeloEtiqueta:"60_classica",logoEtiqueta:null,logoFonte:"propria",logoRestauranteEtiqueta:null,logoRestauranteCompartilhada:null,logoPretoNivel:"leve",logoInverter:!1,ajusteVerticalEtiqueta:0,destaqueProd:!1,destaqueVal:!1,controleQR:!1,senhaAdmin:"",ultimoWipe:0,ajusteGapPx:0,ajusteGapPx2:0,alternarGap:!1,estadoGapAtual:0,printerHost:"",printerPort:"9100",printerGapMm:"3",printerMediaMode:"gap",printerCommandMode:"tspl",printerTsplBaseVersion:"2.9.1",labelLayout:layoutEtiquetaPadrao(),acoes:["Manipulado","Aberto","Produzido","Fracionado"],conservacoes:["Não informar","Congelado","Refrigerado","Ambiente","Resfriado","Após aberto refrigerar"],tema:"azul",serverClockOffset:0,serverClockSyncedAt:0,ultimaModificacaoLocal:0,ultimaModificacaoEstrutura:0,ultimaModificacaoHistorico:0,mestreAtivo:!1},
         historico:[]
     };
     if(vazio){
@@ -1940,7 +1944,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.36" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.37" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -2843,7 +2847,7 @@ function garantirCampoLogomarca(){
     const grupo=document.createElement('div');
     grupo.id='cfgLogoEtiquetaBox';
     grupo.className='form-group logo-config-card';
-    grupo.innerHTML='<div class="logo-config-head"><label>Logomarca nas etiquetas</label><button type="button" class="logo-help-button" onclick="abrirAjudaLogomarca()" aria-label="Ajuda sobre a imagem">?</button></div><div id="cfgLogoEtiquetaPreview" class="logo-config-preview"></div><div class="logo-config-actions"><button type="button" class="btn-outline" onclick="document.getElementById(\'cfgLogoEtiquetaArquivo\').click()">Escolher imagem</button><button type="button" id="btnRemoverLogoEtiqueta" class="btn-cancel" onclick="removerLogomarcaEtiqueta()">Remover</button></div><div class="logo-config-tuning"><div><label for="cfgLogoPretoNivel">Quantidade de preto</label><select id="cfgLogoPretoNivel" onchange="alterarTratamentoLogomarca()"><option value="leve">Leve · mais nítida</option><option value="normal">Normal</option><option value="forte">Forte</option></select></div><label class="logo-invert-toggle"><input id="cfgLogoInverter" type="checkbox" onchange="alterarTratamentoLogomarca()"> Inverter</label></div><button type="button" class="btn-outline logo-prompt-button" onclick="copiarPromptLogomarcaIA()">✨ Copiar prompt para criar com IA</button><input id="cfgLogoEtiquetaArquivo" type="file" accept="image/png,image/jpeg" hidden onchange="processarLogomarcaEtiqueta(event)">';
+    grupo.innerHTML='<div class="logo-config-head"><label>Logomarca nas etiquetas</label><button type="button" class="logo-help-button" onclick="abrirAjudaLogomarca()" aria-label="Ajuda sobre a imagem">?</button></div><div class="logo-source-options"><button id="btnLogoFonteRestaurante" type="button" class="logo-source-option" onclick="selecionarFonteLogomarca(\'restaurante\')">Do restaurante</button><button id="btnLogoFontePropria" type="button" class="logo-source-option" onclick="selecionarFonteLogomarca(\'propria\')">Outra logomarca</button></div><div id="cfgLogoEtiquetaPreview" class="logo-config-preview"></div><div class="logo-config-actions"><button type="button" class="btn-outline" onclick="document.getElementById(\'cfgLogoEtiquetaArquivo\').click()">Escolher outra</button><button type="button" id="btnRemoverLogoEtiqueta" class="btn-cancel" onclick="removerLogomarcaEtiqueta()">Remover</button></div><div class="logo-config-tuning"><div><label for="cfgLogoPretoNivel">Quantidade de preto</label><select id="cfgLogoPretoNivel" onchange="alterarTratamentoLogomarca()"><option value="leve">Leve · mais nítida</option><option value="normal">Normal</option><option value="forte">Forte</option></select></div><label class="logo-invert-toggle"><input id="cfgLogoInverter" type="checkbox" onchange="alterarTratamentoLogomarca()"> Inverter</label></div><button type="button" class="btn-outline logo-prompt-button" onclick="copiarPromptLogomarcaIA()">✨ Copiar prompt para criar com IA</button><input id="cfgLogoEtiquetaArquivo" type="file" accept="image/png,image/jpeg" hidden onchange="processarLogomarcaEtiqueta(event)">';
     estabelecimento.closest('.form-group').insertAdjacentElement('afterend',grupo);
     atualizarPreviewLogomarca();
 }
@@ -2852,9 +2856,12 @@ function atualizarPreviewLogomarca(){
     const preview=document.getElementById('cfgLogoEtiquetaPreview');
     const remover=document.getElementById('btnRemoverLogoEtiqueta');
     if(!preview)return;
-    const logo=db.configs.logoEtiqueta;
+    const logo=obterLogomarcaEtiquetaAtiva(),fonte=db.configs.logoFonte==='restaurante'?'restaurante':'propria';
     preview.innerHTML=logo&&logo.dataUrl?`<img src="${logo.dataUrl}" alt="Logomarca preparada para impressão">`:'Nenhuma imagem adicionada';
-    if(remover)remover.disabled=!(logo&&logo.dataUrl);
+    if(remover)remover.disabled=fonte!=='propria'||!(db.configs.logoEtiqueta&&db.configs.logoEtiqueta.dataUrl);
+    const fonteRestaurante=document.getElementById('btnLogoFonteRestaurante'),fontePropria=document.getElementById('btnLogoFontePropria');
+    if(fonteRestaurante){fonteRestaurante.disabled=!(db.configs.logoRestauranteEtiqueta&&db.configs.logoRestauranteEtiqueta.dataUrl);fonteRestaurante.classList.toggle('active',fonte==='restaurante')}
+    if(fontePropria)fontePropria.classList.toggle('active',fonte==='propria');
     const nivel=document.getElementById('cfgLogoPretoNivel');
     const inverter=document.getElementById('cfgLogoInverter');
     if(nivel)nivel.value=db.configs.logoPretoNivel||'leve';
@@ -2883,7 +2890,7 @@ function fonteCompactaLogomarca(imagem){
     return canvas.toDataURL('image/png');
 }
 
-async function prepararLogomarcaEtiqueta(dataUrl,nome){
+async function prepararLogomarcaEtiqueta(dataUrl,nome,destino){
     const imagem=await carregarImagemLogomarca(dataUrl),maxW=112,maxH=48,pad=2;
     const escala=Math.min((maxW-(pad*2))/imagem.naturalWidth,(maxH-(pad*2))/imagem.naturalHeight);
     const conteudoW=Math.max(8,Math.round(imagem.naturalWidth*escala)),conteudoH=Math.max(8,Math.round(imagem.naturalHeight*escala));
@@ -2914,7 +2921,8 @@ async function prepararLogomarcaEtiqueta(dataUrl,nome){
     }
     ctx.putImageData(pixels,0,0);
     let binario='';bytes.forEach(b=>binario+=String.fromCharCode(b));
-    db.configs.logoEtiqueta={dataUrl:canvas.toDataURL('image/png'),originalDataUrl:dataUrl,width:largura,height:altura,widthBytes:largura/8,bytesBase64:btoa(binario),nome:nome||'logomarca.png'};
+    const chave=destino==='restaurante'?'logoRestauranteEtiqueta':'logoEtiqueta';
+    db.configs[chave]={dataUrl:canvas.toDataURL('image/png'),originalDataUrl:dataUrl,width:largura,height:altura,widthBytes:largura/8,bytesBase64:btoa(binario),nome:nome||'logomarca.png'};
     marcarAlteracaoEstrutura();salvarBancoLocal();sincronizarComNuvemSilencioso();atualizarPreviewLogomarca();renderizarEditorLayoutEtiqueta();
 }
 
@@ -2926,7 +2934,7 @@ async function processarLogomarcaEtiqueta(event){
     try{
         const dataUrl=await new Promise((resolve,reject)=>{const leitor=new FileReader();leitor.onload=()=>resolve(leitor.result);leitor.onerror=reject;leitor.readAsDataURL(arquivo)});
         const imagem=await carregarImagemLogomarca(dataUrl),fonte=fonteCompactaLogomarca(imagem);
-        await prepararLogomarcaEtiqueta(fonte,arquivo.name);mostrarToast('Logomarca preparada com menos tinta.');
+        db.configs.logoFonte='propria';await prepararLogomarcaEtiqueta(fonte,arquivo.name,'propria');mostrarToast('Logomarca preparada com menos tinta.');
     }catch(e){mostrarToast('Não foi possível preparar essa imagem.')}
     event.target.value='';
 }
@@ -2934,9 +2942,9 @@ async function processarLogomarcaEtiqueta(event){
 async function alterarTratamentoLogomarca(){
     const nivel=document.getElementById('cfgLogoPretoNivel'),inverter=document.getElementById('cfgLogoInverter');
     db.configs.logoPretoNivel=(nivel&&nivel.value)||'leve';db.configs.logoInverter=!!(inverter&&inverter.checked);
-    const logo=db.configs.logoEtiqueta;
+    const fonte=db.configs.logoFonte==='restaurante'?'restaurante':'propria',logo=obterLogomarcaEtiquetaAtiva();
     if(logo&&logo.originalDataUrl){
-        try{await prepararLogomarcaEtiqueta(logo.originalDataUrl,logo.nome);mostrarToast('Visual da logomarca atualizado.')}catch(e){mostrarToast('Não foi possível atualizar a logomarca.')}
+        try{await prepararLogomarcaEtiqueta(logo.originalDataUrl,logo.nome,fonte);mostrarToast('Visual da logomarca atualizado.')}catch(e){mostrarToast('Não foi possível atualizar a logomarca.')}
     }else{
         marcarAlteracaoEstrutura();salvarBancoLocal();sincronizarComNuvemSilencioso();
         if(logo)mostrarToast('Escolha a imagem novamente para aplicar este ajuste.');
@@ -2963,7 +2971,7 @@ async function removerLogomarcaEtiqueta(){
     if(!db.configs.logoEtiqueta)return;
     const ok=await confirmarNoApp({titulo:'Remover logomarca?',mensagem:'A imagem deixará de aparecer no modelo com logomarca.',confirmar:'Remover',cancelar:'Manter',tom:'danger',icone:'🗑️'});
     if(!ok)return;
-    db.configs.logoEtiqueta=null;marcarAlteracaoEstrutura();salvarBancoLocal();sincronizarComNuvemSilencioso();atualizarPreviewLogomarca();renderizarEditorLayoutEtiqueta();
+    db.configs.logoEtiqueta=null;if(db.configs.logoRestauranteEtiqueta)db.configs.logoFonte='restaurante';marcarAlteracaoEstrutura();salvarBancoLocal();sincronizarComNuvemSilencioso();atualizarPreviewLogomarca();renderizarEditorLayoutEtiqueta();
 }
 
 function abrirConfigGeraisModal(){
@@ -5639,7 +5647,7 @@ function criarPlanoEtiquetaSimplesCozinha(p,ac,mB,vB,ma){
     const tam=tsplTamanhoAtual(),w=tsplDots(tam.largura),h=tsplDots(tam.altura);
     const left=20,right=w-20,top=14,bottom=14,elementos=[],warnings=[];
     const dados=dadosEtiquetaSimplesCozinha(p,ac,mB,vB,ma);
-    const logo=db.configs.logoEtiqueta&&db.configs.logoEtiqueta.bytesBase64?db.configs.logoEtiqueta:null;
+    const logoAtiva=obterLogomarcaEtiquetaAtiva(),logo=logoAtiva&&logoAtiva.bytesBase64?logoAtiva:null;
     const logoW=logo?(Number(logo.width)||112):112;
     const logoH=logo?(Number(logo.height)||48):48;
     const logoX=right-logoW,logoY=top+4;
@@ -5732,7 +5740,7 @@ function criarPlanoEtiquetaPorZonas(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,opcoes,mod
     });
 
     if(modelo.logo&&geometria.zones.logo){
-        const z=zone("logo"),logo=db.configs.logoEtiqueta&&db.configs.logoEtiqueta.bytesBase64?db.configs.logoEtiqueta:null;
+        const z=zone("logo"),logoAtiva=obterLogomarcaEtiquetaAtiva(),logo=logoAtiva&&logoAtiva.bytesBase64?logoAtiva:null;
         if(logo){
             const lw=Math.min(z.r-z.l,Number(logo.width)||112),lh=Math.min(z.h,Number(logo.height)||40);
             elementos.push({type:"logo",x:Math.round(z.l+((z.r-z.l-lw)/2)),y:Math.round(z.y+((z.h-lh)/2)),width:lw,height:lh,dataUrl:logo.dataUrl,widthBytes:logo.widthBytes,bytesBase64:logo.bytesBase64});
@@ -5808,7 +5816,7 @@ function criarPlanoEtiqueta(p,ac,ps,mB,vB,op,es,prN,ma,lo,sku,opcoes={}){
         elementos.push(e);
         return e;
     };
-    const logo=modelo.logo&&db.configs.logoEtiqueta&&db.configs.logoEtiqueta.bytesBase64?db.configs.logoEtiqueta:null;
+    const logoAtiva=obterLogomarcaEtiquetaAtiva(),logo=modelo.logo&&logoAtiva&&logoAtiva.bytesBase64?logoAtiva:null;
     const logoW=logo?Math.min(112,Number(logo.width)||112):(modelo.logo?88:0);
     const logoH=logo?Math.min(48,Number(logo.height)||40):(modelo.logo?34:0);
     const titleLeft=modelo.logo?Math.min(right-90,left+logoW+12):left;
@@ -6730,7 +6738,7 @@ function gerarPDFEtiquetaSimplesCozinha(p,ac,mB,vB,q,ma){
         ["Válido até",dados.validade]
     ];
     const linhas=campos.map(([rotulo,valor],indice)=>`<div class="linha${indice===0?' produto':''}"><strong>${htmlSeguro(rotulo)}</strong><span>${htmlSeguro(valorEtiquetaSimples(valor))||'&nbsp;'}</span></div>`).join('');
-    const logo=db.configs.logoEtiqueta&&db.configs.logoEtiqueta.dataUrl?`<img class="logo" src="${db.configs.logoEtiqueta.dataUrl}" alt="">`:'';
+    const logoAtiva=obterLogomarcaEtiquetaAtiva(),logo=logoAtiva&&logoAtiva.dataUrl?`<img class="logo" src="${logoAtiva.dataUrl}" alt="">`:'';
     let html=`<html><head><meta charset="utf-8"><style>@page{margin:0;size:60mm 40mm}html,body{margin:0;width:60mm;height:40mm;background:#fff;color:#000;font-family:Arial,sans-serif}.etiqueta{position:relative;box-sizing:border-box;width:60mm;height:40mm;padding:1.6mm 2.2mm;display:grid;grid-template-rows:1.05fr .9fr 1.02fr 1.05fr;gap:.35mm;overflow:hidden}.linha{min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;line-height:1;overflow:hidden}.linha.produto{padding-right:15.5mm}.linha strong{display:block;font-size:9pt;font-weight:900;line-height:1;text-transform:uppercase;white-space:nowrap;margin-bottom:.45mm}.linha span{display:block;max-width:100%;font-size:12.5pt;font-weight:900;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.linha.produto span{font-size:14pt}.logo{position:absolute;right:2.2mm;top:2mm;width:14mm;height:6.8mm;object-fit:contain}</style></head><body>`;
     const total=Math.max(1,parseInt(q,10)||1);
     for(let i=0;i<total;i++)html+=`<div class="etiqueta"${i<total-1?' style="page-break-after:always"':''}>${logo}${linhas}</div>`;
@@ -7181,6 +7189,16 @@ function obterProdutosEtiquetasPeloHost(){
     }))));
 }
 
+function obterLogomarcaEtiquetaAtiva(){
+    return db.configs.logoFonte==='restaurante'?(db.configs.logoRestauranteEtiqueta||null):(db.configs.logoEtiqueta||null);
+}
+
+function selecionarFonteLogomarca(fonte){
+    if(fonte==='restaurante'&&!(db.configs.logoRestauranteEtiqueta&&db.configs.logoRestauranteEtiqueta.dataUrl))return mostrarToast('Cadastre a logomarca em Dados do Restaurante.');
+    db.configs.logoFonte=fonte==='restaurante'?'restaurante':'propria';
+    marcarAlteracaoEstrutura();salvarBancoLocal();sincronizarComNuvemSilencioso();atualizarPreviewLogomarca();renderizarEditorLayoutEtiqueta();
+}
+
 function abrirFichaTecnicaVinculada(event,fichaIdCodificado){
     event?.preventDefault?.();
     event?.stopPropagation?.();
@@ -7229,7 +7247,7 @@ function vincularFichaTecnicaPeloHost(referencia){
 
 function obterDadosCompartilhadosL42PeloHost(){
     return{
-        restaurant:{nome:db.configs&&db.configs.estabelecimento||"",atualizadoEm:Number(db.configs&&db.configs.estabelecimentoAtualizadoEm||0)},
+        restaurant:Object.assign({nome:db.configs&&db.configs.estabelecimento||"",atualizadoEm:Number(db.configs&&db.configs.estabelecimentoAtualizadoEm||0)},db.configs&&db.configs.logoRestauranteCompartilhada?{logo:JSON.parse(JSON.stringify(db.configs.logoRestauranteCompartilhada))}:{}),
         people:JSON.parse(JSON.stringify((db.operadores||[]).map((operador,indice)=>Object.assign({},operador,{isAdmin:indice===0||textoComparacao(operador.nome)==='admin'})))),
         products:JSON.parse(JSON.stringify(db.produtos||[])),
         categories:JSON.parse(JSON.stringify(db.categorias||[])),
@@ -7280,9 +7298,20 @@ async function aplicarRestauranteCompartilhadoL42PeloHost(restaurante){
     if(!restaurante||!restaurante.nome)return!1;
     const recebido=Number(restaurante.atualizadoEm||0),atual=Number(db.configs.estabelecimentoAtualizadoEm||0);
     if(db.configs.estabelecimento&&recebido<atual)return!1;
-    if(db.configs.estabelecimento===restaurante.nome&&recebido===atual)return!1;
+    const logoRecebida=restaurante.logo&&restaurante.logo.dataUrl?restaurante.logo:null;
+    const logoAtual=db.configs.logoRestauranteCompartilhada&&db.configs.logoRestauranteCompartilhada.dataUrl?db.configs.logoRestauranteCompartilhada:null;
+    const logoMudou=JSON.stringify(logoRecebida||null)!==JSON.stringify(logoAtual||null);
+    if(db.configs.estabelecimento===restaurante.nome&&recebido===atual&&!logoMudou)return!1;
     db.configs.estabelecimento=String(restaurante.nome);
     db.configs.estabelecimentoAtualizadoEm=recebido;
+    db.configs.logoRestauranteCompartilhada=logoRecebida?JSON.parse(JSON.stringify(logoRecebida)):null;
+    if(logoMudou&&logoRecebida){
+        try{await prepararLogomarcaEtiqueta(logoRecebida.dataUrl,logoRecebida.nome||'logomarca-restaurante.webp','restaurante')}catch(e){db.configs.logoRestauranteEtiqueta=null}
+        if(!db.configs.logoEtiqueta)db.configs.logoFonte='restaurante';
+    }else if(logoMudou){
+        db.configs.logoRestauranteEtiqueta=null;
+        if(db.configs.logoFonte==='restaurante')db.configs.logoFonte='propria';
+    }
     marcarAlteracaoEstrutura();
     salvarBancoLocal();
     sincronizarComNuvemSilencioso();
@@ -7500,7 +7529,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.36" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.37" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7526,7 +7555,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.36" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.37" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

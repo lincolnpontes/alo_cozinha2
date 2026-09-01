@@ -1,12 +1,12 @@
-# Alô Cozinha v2.1.36
+# Alô Cozinha v2.1.37
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
-- A v2.1.36 preserva a sessão ao abrir uma Ficha Técnica por Etiquetas e devolve o usuário diretamente ao módulo de origem ao fechar.
-- A v2.1.36 compacta "Alterar quantidade", seleciona automaticamente o valor para digitação e reúne nome, fundo e texto da categoria no lápis de edição.
-- A v2.1.36 redesenha a tela de módulos com cartões brancos translúcidos e uma imagem própria para Configurações, além de compactar os switches de login.
+- A v2.1.37 move Dados do Restaurante para o núcleo compartilhado, sem abrir a Lista de Compras por trás.
+- A v2.1.37 adiciona a logomarca central do restaurante e permite usar essa imagem ou outra própria nas etiquetas.
+- A v2.1.37 troca os emojis de Dados do Restaurante, Setores e Módulos por imagens próprias e leves.
 - A v2.1.28 permite ocultar módulos não utilizados por restaurante, mantendo o painel central sempre acessível para reativá-los.
 - A v2.1.28 liga tarefas a fichas técnicas e fichas a Etiquetas, com abertura direta do produto correspondente para impressão.
 - A v2.1.28 adiciona duplicação de tarefas e fichas, transforma o cadastro de horários em uma janela própria e reforça a legibilidade da etiqueta simples 60x40.

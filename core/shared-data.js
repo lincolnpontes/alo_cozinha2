@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.36';
+    const VERSION = '2.1.37';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -22,6 +22,7 @@
     let refreshPromise = null;
     let sourcesLoaded = Boolean(state.migration?.identitiesMerged);
     let comprasCategorySnapshot = [];
+    let restaurantLogoDraft;
 
     function clone(value) {
         return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -473,6 +474,135 @@
     async function ensureReady() {
         if (!sourcesLoaded) await refreshSources({ includeFrames: true, push: true });
         return describe();
+    }
+
+    function restaurantField(id, value) {
+        const element = document.getElementById(id);
+        if (element) element.value = value == null ? '' : String(value);
+    }
+
+    function renderRestaurantLogo() {
+        const preview = document.getElementById('sharedRestaurantLogoPreview');
+        const remove = document.getElementById('sharedRestaurantLogoRemove');
+        if (!preview) return;
+        const logo = restaurantLogoDraft === undefined ? state.restaurant?.logo : restaurantLogoDraft;
+        preview.innerHTML = logo?.dataUrl
+            ? `<img src="${escapeHtml(logo.dataUrl)}" alt="Logomarca do restaurante">`
+            : '<span>Nenhuma logomarca cadastrada</span>';
+        if (remove) remove.disabled = !logo?.dataUrl;
+    }
+
+    function renderRestaurantForm() {
+        const restaurant = state.restaurant || {};
+        restaurantField('sharedRestaurantName', restaurant.nome);
+        restaurantField('sharedRestaurantCnpj', restaurant.cnpj);
+        restaurantField('sharedRestaurantStreet', restaurant.rua);
+        restaurantField('sharedRestaurantNumber', restaurant.numero);
+        restaurantField('sharedRestaurantDistrict', restaurant.bairro);
+        restaurantField('sharedRestaurantCity', restaurant.cidade);
+        restaurantField('sharedRestaurantUf', restaurant.uf || 'PB');
+        restaurantField('sharedRestaurantReference', restaurant.ponto);
+        restaurantLogoDraft = undefined;
+        renderRestaurantLogo();
+    }
+
+    async function openRestaurantManager() {
+        global.fecharModal?.('modalPainelUnificado');
+        const modal = document.getElementById('modalDadosRestaurante');
+        if (!modal) return;
+        deps.openModalTop?.('modalDadosRestaurante') || (modal.style.display = 'flex');
+        try { await ensureReady(); }
+        catch (error) { console.warn('Dados compartilhados do restaurante:', error); }
+        renderRestaurantForm();
+    }
+
+    function closeRestaurantManager() {
+        global.fecharModal?.('modalDadosRestaurante');
+        restaurantLogoDraft = undefined;
+        global.abrirPainelControle?.();
+    }
+
+    function maskRestaurantCnpj(input) {
+        if (!input) return;
+        const digits = input.value.replace(/\D/g, '').slice(0, 14);
+        input.value = digits
+            .replace(/^(\d{2})(\d)/, '$1.$2')
+            .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/\.(\d{3})(\d)/, '.$1/$2')
+            .replace(/(\d{4})(\d)/, '$1-$2');
+    }
+
+    function loadRestaurantLogo(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = reject;
+            reader.onload = () => {
+                const image = new Image();
+                image.onerror = reject;
+                image.onload = () => resolve(image);
+                image.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function processRestaurantLogo(event) {
+        const input = event?.target;
+        const file = input?.files?.[0];
+        if (!file) return;
+        try {
+            if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) throw new Error('Escolha uma imagem PNG, JPG ou WebP.');
+            if (file.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.');
+            const image = await loadRestaurantLogo(file);
+            const scale = Math.min(1, 640 / image.naturalWidth, 320 / image.naturalHeight);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+            restaurantLogoDraft = {
+                dataUrl: canvas.toDataURL('image/webp', 0.84),
+                nome: file.name || 'logomarca.webp',
+                atualizadoEm: Date.now()
+            };
+            renderRestaurantLogo();
+        } catch (error) {
+            if (global.alertaBonito) global.alertaBonito('Não foi possível usar a imagem', error.message || 'Escolha outra logomarca.');
+            else global.alert(error.message || 'Não foi possível usar essa imagem.');
+        }
+        input.value = '';
+    }
+
+    function removeRestaurantLogo() {
+        restaurantLogoDraft = null;
+        renderRestaurantLogo();
+    }
+
+    async function saveRestaurantForm() {
+        const value = id => String(document.getElementById(id)?.value || '').trim();
+        const nome = value('sharedRestaurantName');
+        if (!nome) {
+            if (global.alertaBonito) global.alertaBonito('Nome obrigatório', 'Informe o nome fantasia do restaurante.');
+            else global.alert('Informe o nome fantasia do restaurante.');
+            document.getElementById('sharedRestaurantName')?.focus();
+            return;
+        }
+        const previous = state.restaurant || {};
+        state.restaurant = {
+            ...previous,
+            nome,
+            cnpj: value('sharedRestaurantCnpj'),
+            rua: value('sharedRestaurantStreet'),
+            numero: value('sharedRestaurantNumber'),
+            bairro: value('sharedRestaurantDistrict'),
+            cidade: value('sharedRestaurantCity'),
+            uf: value('sharedRestaurantUf') || 'PB',
+            ponto: value('sharedRestaurantReference'),
+            logo: restaurantLogoDraft === undefined ? (previous.logo || null) : restaurantLogoDraft,
+            atualizadoEm: Date.now()
+        };
+        persist('restaurant-updated');
+        closeRestaurantManager();
+        await syncPeopleToModules();
     }
 
     function safePerson(person) {
@@ -1030,6 +1160,7 @@
         updatePersonPinDraft, removePersonPinDraft, confirmPersonPinDraft, cancelPersonPinDraft, toggleComprasCategories,
         saveComprasCategories, cancelComprasCategories, updateComprasCategorySummary, toggleAccessFields, toggleEmployeeFields, backToManager,
         savePersonForm, toggleCurrentPersonActive, renderPeopleManager,
+        openRestaurantManager, closeRestaurantManager, maskRestaurantCnpj, processRestaurantLogo, removeRestaurantLogo, saveRestaurantForm,
         getModuleData, getUnifiedData, getCatalogIndex,
         getBackup, getCloudData, applyCloudState, restoreBackup
     });

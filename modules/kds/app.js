@@ -1871,7 +1871,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.39',
+                version: '2.1.40',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1889,19 +1889,15 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             const dataStr = JSON.stringify(dataToExport, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const data = new Date();
-            const nomeArquivo = `alo_cozinha_backup_completo_${data.getDate()}_${data.getMonth()+1}_${data.getFullYear()}.json`;
+            const carimbo = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}_${String(data.getHours()).padStart(2, '0')}-${String(data.getMinutes()).padStart(2, '0')}`;
+            const nomeArquivo = `alo_cozinha_backup_completo_${carimbo}.json`;
+            const resultado = await salvarBackupCompleto(blob, nomeArquivo);
 
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], nomeArquivo, {type: 'application/json'})] })) {
-                const file = new File([blob], nomeArquivo, {type: 'application/json'});
-                navigator.share({
-                    title: 'Backup Alô Cozinha',
-                    text: 'Backup completo do KDS, Checklist, Lista de Compras e Etiquetas.',
-                    files: [file]
-                }).catch(err => { baixarComoArquivo(blob, nomeArquivo); });
-            } else {
-                baixarComoArquivo(blob, nomeArquivo);
+            if (status) {
+                status.innerText = resultado.destino === 'android'
+                    ? `Backup salvo em Downloads/Alo Cozinha: ${resultado.nome}`
+                    : `Download iniciado: ${resultado.nome}`;
             }
-            if (status) status.innerText = 'Backup completo gerado.';
         } catch(error) {
             if (status) status.innerText = '';
             await AloUiDialog.notice(error.message || 'Não foi possível gerar o backup completo.', {
@@ -1912,6 +1908,39 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         }
     }
 
+    function arrayBufferParaBase64Backup(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binario = '';
+        const bloco = 0x8000;
+        for (let i = 0; i < bytes.length; i += bloco) {
+            binario += String.fromCharCode(...bytes.subarray(i, Math.min(i + bloco, bytes.length)));
+        }
+        return btoa(binario);
+    }
+
+    async function salvarBackupCompleto(blob, nomeArquivo) {
+        if (window.AloNative && typeof window.AloNative.saveDocumentBase64 === 'function') {
+            const resposta = window.AloNative.saveDocumentBase64(
+                arrayBufferParaBase64Backup(await blob.arrayBuffer()),
+                blob.type || 'application/json',
+                nomeArquivo
+            );
+            let resultado;
+            try {
+                resultado = JSON.parse(resposta);
+            } catch (_) {
+                throw new Error('O Android não confirmou o salvamento do backup.');
+            }
+            if (!resultado.ok) {
+                throw new Error(resultado.error || 'Não foi possível salvar o backup em Downloads.');
+            }
+            return { destino: 'android', nome: resultado.name || nomeArquivo };
+        }
+
+        baixarComoArquivo(blob, nomeArquivo);
+        return { destino: 'navegador', nome: nomeArquivo };
+    }
+
     function baixarComoArquivo(blob, nomeArquivo) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -1920,7 +1949,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         a.download = nomeArquivo;
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 1000);
+        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 1500);
     }
 
     function bancoPreparadoDoBackup(importedData) {
@@ -3197,7 +3226,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.39').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.40').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

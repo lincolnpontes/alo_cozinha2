@@ -164,7 +164,7 @@ public class NativeBridge {
                 ContentValues values = new ContentValues();
                 values.put(MediaStore.Downloads.DISPLAY_NAME, name);
                 values.put(MediaStore.Downloads.MIME_TYPE, safeMime);
-                values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Alo Etiqueta");
+                values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Alo Cozinha");
                 values.put(MediaStore.Downloads.IS_PENDING, 1);
                 Uri uri = resolver.insert(
                         MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
@@ -192,7 +192,7 @@ public class NativeBridge {
 
             File folder = new File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "Alo Etiqueta"
+                    "Alo Cozinha"
             );
             if (!folder.exists() && !folder.mkdirs()) {
                 throw new IllegalStateException("Nao foi possivel criar a pasta Downloads.");

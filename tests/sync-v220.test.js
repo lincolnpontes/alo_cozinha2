@@ -38,5 +38,5 @@ async function testCatalogPublicationAndConcurrentEdit() {
 }
 
 testCatalogPublicationAndConcurrentEdit()
-    .then(() => console.log('Sincronização de catálogo do KDS v2.1.39 validada.'))
+    .then(() => console.log('Sincronização de catálogo do KDS v2.1.40 validada.'))
     .catch(error => { console.error(error); process.exitCode = 1; });

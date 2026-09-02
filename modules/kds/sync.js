@@ -118,6 +118,9 @@
                 action: 'reconhecer_alerta',
                 id: updated.id,
                 reconhecidoEm: now,
+                expectedStatus: current.status,
+                expectedOrderRevision: current.revisao,
+                receiptAttempt: 0,
                 operationId
             }, operationId);
             await global.AloStorage.putOrderAndOperation(updated, operation);
@@ -426,8 +429,21 @@
                     return;
                 }
                 if (operation.type === 'acknowledgement') {
-                    if (remote.alertaReconhecidoEm || !['buscar', 'cancelado'].includes(remote.status)) {
+                    if (remote.alertaReconhecidoEm || ['concluido', 'enviado'].includes(remote.status)) {
                         confirmed.push(operation.operationId);
+                    } else if (['pendente', 'fazendo'].includes(remote.status) && operation.attempts > 0) {
+                        rebased.push({
+                            ...operation,
+                            payload: {
+                                ...operation.payload,
+                                expectedStatus: remote.status,
+                                expectedOrderRevision: Number(remote.revisao || 0),
+                                receiptAttempt: Number(operation.payload.receiptAttempt || 0) + 1
+                            },
+                            submittedAt: 0,
+                            nextAttemptAt: 0,
+                            lastError: ''
+                        });
                     }
                     return;
                 }
@@ -463,6 +479,7 @@
             });
             await Promise.all(rebased.map(operation => global.AloStorage.updateOperation(operation)));
             await global.AloStorage.removeOperations(confirmed);
+            if (rebased.length) this.queueImmediateFlush();
         }
 
         async mergeRemoteOrders(remoteOrders, fullPull = false) {

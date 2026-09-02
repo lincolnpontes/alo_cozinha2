@@ -1130,6 +1130,10 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 emoji = '✔️'; isFinal = true; classeRiscar = "riscar";
                 statusTxt = 'Aguardando retirada';
             }
+            else if (p.status === 'concluido') {
+                emoji = '✔️'; isFinal = true; classeRiscar = "riscar";
+                statusTxt = 'Retirado';
+            }
             else if (p.status === 'cancelado') {
                 emoji = '❌'; isFinal = true; classeRiscar = "riscar";
                 statusTxt = p.motivo ? `Cancelado: ${p.motivo}` : 'Cancelado';
@@ -1872,7 +1876,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.41',
+                version: '2.1.42',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -3186,7 +3190,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.41').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.42').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

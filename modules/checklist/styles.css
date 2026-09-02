@@ -52,6 +52,54 @@
     font-weight: 800;
 }
 
+.cloud-access-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: clamp(24px, 7vh, 62px) 16px 28px;
+    background: #edf2f1;
+    color: var(--tasks-ink);
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+
+.cloud-access-shell { width: min(410px, 100%); margin: 0 auto; }
+.cloud-access-brand { margin-bottom: 18px; text-align: center; }
+.cloud-access-brand img { width: 86px; height: 86px; object-fit: contain; }
+.cloud-access-brand h1 { margin: 7px 0 1px; color: #184f46; font-size: 29px; }
+.cloud-access-brand > span { color: #647579; font-size: 13px; font-weight: 800; }
+.cloud-access-form { padding: 18px; border: 1px solid #d1dcda; border-radius: 8px; background: #fff; box-shadow: 0 12px 32px rgba(31, 56, 53, .1); }
+.cloud-access-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 17px; padding: 4px; border-radius: 7px; background: #e9efee; }
+.cloud-access-mode button { min-height: 42px; border: 0; border-radius: 5px; background: transparent; color: #53666a; font-size: 14px; font-weight: 900; cursor: pointer; }
+.cloud-access-mode button.active { background: #fff; color: #096c59; box-shadow: 0 1px 4px rgba(38, 60, 58, .13); }
+.cloud-access-field { margin-bottom: 13px; }
+.cloud-access-field label, .cloud-access-challenge legend { color: #34494d; font-size: 13px; font-weight: 900; }
+.cloud-access-field input { width: 100%; height: 49px; box-sizing: border-box; margin-top: 6px; padding: 0 13px; border: 1px solid #b8c7c8; border-radius: 6px; background: #fbfcfc; color: #223438; font-size: 16px; outline: none; }
+.cloud-access-field input:focus { border-color: #087f68; box-shadow: 0 0 0 3px rgba(8, 127, 104, .13); }
+.cloud-access-label-row { display: flex; align-items: center; justify-content: space-between; }
+.cloud-access-label-row button { min-height: 28px; padding: 0 3px; border: 0; background: transparent; color: #087f68; font-size: 12px; font-weight: 900; cursor: pointer; }
+.cloud-access-challenge { margin: 3px 0 12px; padding: 9px 11px 11px; border: 1px solid #d4dfdd; border-radius: 7px; background: #f7f9f9; }
+.cloud-access-challenge-line { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 10px; margin-top: 5px; }
+.cloud-access-challenge-line > strong { color: #28423e; font-size: 18px; text-align: center; }
+#cloudAccessChallengeOptions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+#cloudAccessChallengeOptions button { min-width: 0; min-height: 40px; border: 1px solid #b9c8c6; border-radius: 6px; background: #fff; color: #344a4d; font-size: 15px; font-weight: 900; cursor: pointer; }
+#cloudAccessChallengeOptions button.selected { border-color: #087f68; background: #dff2ed; color: #075e54; box-shadow: inset 0 0 0 1px #087f68; }
+.cloud-access-feedback { min-height: 17px; margin: 0 0 8px; color: #b3261e; font-size: 12px; line-height: 1.35; text-align: center; }
+.cloud-access-submit { width: 100%; min-height: 49px; border: 0; border-radius: 6px; background: #087f68; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; }
+.cloud-access-submit:disabled { opacity: .65; cursor: wait; }
+.cloud-access-link { width: 100%; min-height: 40px; margin-top: 5px; border: 0; background: transparent; color: #356b63; font-size: 13px; font-weight: 800; cursor: pointer; }
+.cloud-access-divider { display: flex; align-items: center; gap: 10px; margin: 13px 0; color: #778688; font-size: 12px; }
+.cloud-access-divider::before, .cloud-access-divider::after { content: ''; height: 1px; flex: 1; background: #cbd6d4; }
+.cloud-demo-button { width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid #8ea8a3; border-radius: 7px; background: rgba(255, 255, 255, .72); color: #23564d; font-size: 15px; cursor: pointer; }
+.cloud-demo-button > span { font-size: 13px; }
+.demo-mode-notice { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -8px auto 15px; padding: 7px 8px 7px 12px; box-sizing: border-box; border: 1px solid #bdcfcc; border-radius: 7px; background: rgba(255,255,255,.75); text-align: left; }
+.demo-mode-notice span { display: grid; }
+.demo-mode-notice strong { color: #275b52; font-size: 13px; }
+.demo-mode-notice small { color: #6d7d80; font-size: 11px; }
+.demo-mode-notice button { min-height: 34px; padding: 0 15px; border: 1px solid #a8b8b6; border-radius: 5px; background: #fff; color: #42595d; font-size: 12px; font-weight: 900; cursor: pointer; }
+
 .module-choice-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

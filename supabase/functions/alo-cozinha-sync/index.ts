@@ -45,15 +45,31 @@ function dateMs(value: unknown): number {
   return Number.isFinite(result) ? result : 0;
 }
 
+function operationFingerprint(item: JsonObject, id: unknown): string {
+  const hasAttemptFingerprint = item?.novoStatus !== undefined
+    || item?.expectedOrderRevision !== undefined
+    || item?.expectedStatus !== undefined
+    || item?.receiptAttempt !== undefined;
+  if (!hasAttemptFingerprint) return String(id);
+  return [id, item.expectedOrderRevision ?? "", item.expectedStatus ?? "", item.novoStatus ?? "", item.receiptAttempt ?? ""]
+    .map((part) => String(part).replace(/[|@]/g, "-"))
+    .join("@");
+}
+
 function operationId(payload: JsonObject, prefix: string): string {
   const direct = payload.operationId || payload.operacaoId;
-  if (direct) return String(direct).slice(0, 240);
+  if (direct) return operationFingerprint(payload, direct).slice(0, 240);
   const nested = [
     ...(Array.isArray(payload.updates) ? payload.updates : []),
     ...(Array.isArray(payload.reconhecimentos) ? payload.reconhecimentos : []),
+    ...(Array.isArray(payload.pedidos) ? payload.pedidos : []),
     ...(Array.isArray(payload.atividades) ? payload.atividades : []),
     ...(Array.isArray(payload.operacoes) ? payload.operacoes : []),
-  ].map((item) => item?.operationId || item?.operacaoId || item?.id).filter(Boolean);
+  ].map((item) => {
+    const id = item?.operationId || item?.operacaoId || item?.id;
+    if (!id) return "";
+    return operationFingerprint(item, id);
+  }).filter(Boolean);
   return nested.length ? `${prefix}:${nested.join("|")}`.slice(0, 240) : "";
 }
 

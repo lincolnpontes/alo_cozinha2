@@ -10,6 +10,17 @@
     let initializing = null;
     let realtimeClient = null;
     let lastStatus = session ? 'connecting' : 'local';
+    let accessMode = 'signin';
+    let accessChallenge = { answer: 0, selected: null, options: [] };
+
+    function isDemoMode() {
+        return global.AloDemo?.isActive?.() === true;
+    }
+
+    function isPublicTaskView() {
+        const params = new URLSearchParams(global.location.search);
+        return params.get('consulta') === 'tarefa';
+    }
 
     function readSession() {
         try {
@@ -156,11 +167,19 @@
         if (initializing) return initializing;
         initializing = (async () => {
             renderAccountSettings();
+            renderDemoState();
+            if (isDemoMode()) {
+                hideAccessScreen();
+                emitStatus('local', 'Modo demonstração isolado da nuvem');
+                return false;
+            }
             if (!session) {
                 emitStatus('local', 'Dados somente neste aparelho até conectar uma conta');
+                if (!isPublicTaskView()) showAccessScreen();
                 return false;
             }
             try {
+                hideAccessScreen();
                 await ensureSession();
                 await rpc('bootstrap_account', { p_display_name: session.user?.user_metadata?.display_name || null });
                 await startRealtime();
@@ -210,7 +229,7 @@
     }
 
     function getEndpoint() {
-        return session ? ENDPOINT : '';
+        return session && !isDemoMode() ? ENDPOINT : '';
     }
 
     function isEndpoint(url) {
@@ -225,7 +244,7 @@
     }
 
     function isConnected() {
-        return Boolean(session?.access_token && session?.refresh_token);
+        return !isDemoMode() && Boolean(session?.access_token && session?.refresh_token);
     }
 
     function setFeedback(message, error = false) {
@@ -245,6 +264,139 @@
         disconnected.style.display = isConnected() ? 'none' : 'block';
         if (email) email.textContent = session?.user?.email || 'Conta conectada';
         if (status) status.textContent = message || ({ online:'Sincronização instantânea ativa', connecting:'Conectando...', warning:'Conferindo alterações', error:'Falha de sincronização', local:'Somente neste aparelho' }[lastStatus] || 'Conectando...');
+    }
+
+    function renderDemoState() {
+        const notice = document.getElementById('demoModeNotice');
+        if (notice) notice.style.display = isDemoMode() ? 'flex' : 'none';
+    }
+
+    function createAccessChallenge() {
+        const left = 2 + Math.floor(Math.random() * 7);
+        const right = 1 + Math.floor(Math.random() * 6);
+        const answer = left + right;
+        const options = [...new Set([answer, answer + 1 + Math.floor(Math.random() * 2), Math.max(1, answer - 1 - Math.floor(Math.random() * 2))])];
+        while (options.length < 3) options.push(answer + options.length + 1);
+        options.sort(() => Math.random() - 0.5);
+        accessChallenge = { question: `${left} + ${right}`, answer, selected: null, options };
+        renderAccessChallenge();
+    }
+
+    function renderAccessChallenge() {
+        const question = document.getElementById('cloudAccessChallengeQuestion');
+        const container = document.getElementById('cloudAccessChallengeOptions');
+        if (!question || !container) return;
+        question.textContent = accessChallenge.question || '2 + 3';
+        container.replaceChildren(...accessChallenge.options.map(value => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = String(value);
+            button.className = accessChallenge.selected === value ? 'selected' : '';
+            button.setAttribute('aria-pressed', String(accessChallenge.selected === value));
+            button.addEventListener('click', () => selectAccessChallenge(value));
+            return button;
+        }));
+    }
+
+    function selectAccessChallenge(value) {
+        accessChallenge.selected = Number(value);
+        renderAccessChallenge();
+        setAccessFeedback('');
+    }
+
+    function setAccessFeedback(message, error = false) {
+        const element = document.getElementById('cloudAccessFeedback');
+        if (!element) return;
+        element.textContent = message || '';
+        element.style.color = error ? '#b3261e' : '#0b6b57';
+    }
+
+    function setAccessMode(mode) {
+        accessMode = mode === 'signup' ? 'signup' : 'signin';
+        const signInTab = document.getElementById('cloudAccessSignInTab');
+        const signUpTab = document.getElementById('cloudAccessSignUpTab');
+        const nameGroup = document.getElementById('cloudAccessNameGroup');
+        const submit = document.getElementById('cloudAccessSubmit');
+        const recoverButton = document.getElementById('cloudAccessRecover');
+        const password = document.getElementById('cloudAccessPassword');
+        signInTab?.classList.toggle('active', accessMode === 'signin');
+        signUpTab?.classList.toggle('active', accessMode === 'signup');
+        signInTab?.setAttribute('aria-selected', String(accessMode === 'signin'));
+        signUpTab?.setAttribute('aria-selected', String(accessMode === 'signup'));
+        if (nameGroup) nameGroup.style.display = accessMode === 'signup' ? 'block' : 'none';
+        if (submit) submit.textContent = accessMode === 'signup' ? 'Criar conta' : 'Entrar';
+        if (recoverButton) recoverButton.style.display = accessMode === 'signin' ? 'block' : 'none';
+        if (password) password.autocomplete = accessMode === 'signup' ? 'new-password' : 'current-password';
+        setAccessFeedback('');
+        createAccessChallenge();
+    }
+
+    function showAccessScreen() {
+        const screen = document.getElementById('cloudAccessScreen');
+        if (!screen) return;
+        screen.style.display = 'block';
+        setAccessMode('signin');
+        setTimeout(() => document.getElementById('cloudAccessEmail')?.focus({ preventScroll: true }), 2200);
+    }
+
+    function hideAccessScreen() {
+        const screen = document.getElementById('cloudAccessScreen');
+        if (screen) screen.style.display = 'none';
+    }
+
+    function toggleAccessPassword() {
+        const input = document.getElementById('cloudAccessPassword');
+        const button = document.getElementById('cloudAccessPasswordToggle');
+        if (!input || !button) return;
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        button.textContent = show ? 'Ocultar' : 'Mostrar';
+    }
+
+    async function submitAccess(event) {
+        event?.preventDefault?.();
+        const name = document.getElementById('cloudAccessName')?.value.trim() || '';
+        const email = document.getElementById('cloudAccessEmail')?.value.trim() || '';
+        const password = document.getElementById('cloudAccessPassword')?.value || '';
+        const submit = document.getElementById('cloudAccessSubmit');
+        if (!email || password.length < 6) return setAccessFeedback('Informe o e-mail e uma senha com pelo menos 6 caracteres.', true);
+        if (accessChallenge.selected !== accessChallenge.answer) {
+            createAccessChallenge();
+            return setAccessFeedback('Conclua a verificação rápida.', true);
+        }
+        if (submit) submit.disabled = true;
+        setAccessFeedback(accessMode === 'signup' ? 'Criando sua conta...' : 'Entrando...');
+        try {
+            if (accessMode === 'signup') {
+                const data = await signUp(name, email, password);
+                if (isConnected()) global.location.reload();
+                else {
+                    setAccessMode('signin');
+                    document.getElementById('cloudAccessEmail').value = email;
+                    setAccessFeedback('Conta criada. Confirme o e-mail recebido e depois entre.');
+                }
+            } else {
+                await signIn(email, password);
+                global.location.reload();
+            }
+        } catch (error) {
+            createAccessChallenge();
+            setAccessFeedback(errorMessage(error), true);
+        } finally {
+            if (submit) submit.disabled = false;
+        }
+    }
+
+    async function recoverFromAccess() {
+        const email = document.getElementById('cloudAccessEmail')?.value.trim() || '';
+        if (!email) return setAccessFeedback('Digite o e-mail da sua conta.', true);
+        setAccessFeedback('Enviando o link...');
+        try {
+            await recover(email);
+            setAccessFeedback('Enviamos o link para trocar sua senha.');
+        } catch (error) {
+            setAccessFeedback(errorMessage(error), true);
+        }
     }
 
     async function connectFromSettings(create = false) {
@@ -297,7 +449,12 @@
         connectFromSettings,
         recoverFromSettings,
         renderAccountSettings,
-        errorMessage
+        errorMessage,
+        setAccessMode,
+        selectAccessChallenge,
+        toggleAccessPassword,
+        submitAccess,
+        recoverFromAccess
     });
 
     if (document.readyState === 'loading') {

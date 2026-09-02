@@ -1,12 +1,14 @@
-# Alô Cozinha v2.1.41
+# Alô Cozinha v2.1.42
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
-- A v2.1.41 migra os quatro módulos para um backend Supabase único e configurado no aplicativo, com autenticação persistente, atualização em tempo real e isolamento de dados por conta.
-- A v2.1.41 preserva o funcionamento local sem exigir login ao abrir o app, mantém os PINs internos dos operadores e adiciona conexão, criação de conta e recuperação por e-mail nas configurações avançadas.
-- A v2.1.41 importa a operação existente para o novo banco, usa armazenamento privado para fotos e documentos e retira a configuração manual da URL do antigo backend.
+- A v2.1.42 migra os quatro módulos para um backend Supabase único e configurado no aplicativo, com autenticação persistente, atualização em tempo real e isolamento de dados por conta.
+- A v2.1.42 abre instalações novas em uma tela própria de acesso, com criação de conta, recuperação por e-mail e verificação rápida; os PINs internos dos operadores continuam independentes.
+- A v2.1.42 adiciona um Modo Demonstração isolado da conta e da nuvem, com exemplos fictícios nos quatro módulos e saída sem alterar os dados reais.
+- A v2.1.42 corrige corridas de sincronização do KDS: comandos rebaseados não reutilizam recibos antigos, o ciente permanece na fila até confirmação e pedidos retirados aparecem concluídos na Cozinha.
+- A v2.1.42 importa a operação existente para o novo banco, usa armazenamento privado para fotos e documentos e retira a configuração manual da URL do antigo backend.
 - A v2.1.40 corrige a exportação do backup completo: no APK, o arquivo é salvo em Downloads/Alo Cozinha; no navegador, o JSON é baixado diretamente.
 - A v2.1.39 alinha o controle Inverter com a seleção de preto e dá a Funcionários e Acessos um ícone próprio no padrão visual das configurações.
 - A v2.1.39 remove o atalho duplicado de categorias e impede que os retornos de Produtos e Categorias abram o painel legado do antigo L42.
@@ -110,7 +112,7 @@ Aplicativo para operação de restaurante com quatro módulos: pedidos entre ár
 
 ## Atualizar sem perder dados
 
-A v2 preserva pedidos, produtos, categorias, observações, áreas, configurações e históricos locais. Na v2.1.41, a operação existente também foi importada para o Supabase antes da troca do adaptador.
+A v2 preserva pedidos, produtos, categorias, observações, áreas, configurações e históricos locais. Na v2.1.42, a operação existente também foi importada para o Supabase antes da troca do adaptador.
 
 1. Publique os arquivos web desta branch ou instale o APK da mesma versão.
 2. Abra `Configurações avançadas > Conta e sincronização` e conecte a conta já usada no Etiquetas.

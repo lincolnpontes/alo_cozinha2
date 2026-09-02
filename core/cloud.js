@@ -403,7 +403,7 @@
                 size: 'flexible',
                 language: 'pt-BR',
                 action: accessMode === 'signup' ? 'signup' : 'signin',
-                appearance: 'interaction-only',
+                appearance: 'always',
                 callback: token => {
                     accessCaptchaToken = token || '';
                     if (!applyLoginGuard()) setAccessFeedback('');

@@ -1,5 +1,5 @@
 const VERSION = '2.1.45';
-const CACHE_NAME = `alo-cozinha-${VERSION}`;
+const CACHE_NAME = `alo-cozinha-${VERSION}-turnstile`;
 const APP_SHELL = [
   './',
   './index.html',

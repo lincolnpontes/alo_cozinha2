@@ -21,6 +21,7 @@ test('login combina Turnstile com bloqueio depois de tres senhas incorretas', ()
     assert.match(page, /alo-turnstile-site-key/);
     assert.match(page, /id="cloudAccessTurnstile"/);
     assert.match(cloud, /gotrue_meta_security:\s*\{ captcha_token: token \}/);
+    assert.match(cloud, /appearance: 'always'/);
     assert.match(cloud, /const LOGIN_MAX_ATTEMPTS = 3/);
     assert.match(cloud, /const LOGIN_LOCK_MS = 5 \* 60 \* 1000/);
     assert.match(cloud, /function registerInvalidLogin\(\)/);

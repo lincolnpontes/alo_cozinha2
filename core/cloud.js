@@ -4,6 +4,9 @@
     const ENDPOINT = `${SUPABASE_URL}/functions/v1/alo-cozinha-sync`;
     const SESSION_KEY = 'alo_supabase_session_v1';
     const DEVICE_KEY = 'alo_cloud_device_id_v1';
+    const LOGIN_GUARD_KEY = 'alo_auth_login_guard_v1';
+    const LOGIN_MAX_ATTEMPTS = 3;
+    const LOGIN_LOCK_MS = 5 * 60 * 1000;
     const ACCOUNT_SITE = 'https://lincolnpontes.github.io/alo-etiqueta-conta/';
     let session = readSession();
     let channel = null;
@@ -14,7 +17,10 @@
     let realtimeClient = null;
     let lastStatus = session ? 'connecting' : 'local';
     let accessMode = 'signin';
-    let accessChallenge = { answer: 0, selected: null, options: [] };
+    let loginGuardTimer = null;
+    let accessCaptchaToken = '';
+    let turnstileWidgetId = null;
+    let turnstileLoader = null;
 
     function isDemoMode() {
         return global.AloDemo?.isActive?.() === true;
@@ -95,6 +101,7 @@
             [/user already registered/i, 'Este e-mail já possui uma conta.'],
             [/password should be at least/i, 'A senha precisa ter pelo menos 6 caracteres.'],
             [/unable to validate email/i, 'Digite um e-mail válido.'],
+            [/too many requests|rate limit/i, 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.'],
             [/failed to fetch|networkerror|load failed/i, 'Sem conexão com a nuvem. Seus dados locais continuam seguros.']
         ];
         return translations.find(([pattern]) => pattern.test(raw))?.[1] || raw;
@@ -105,7 +112,10 @@
         let data = null;
         try { data = text ? JSON.parse(text) : null; } catch (error) { data = text; }
         if (!response.ok) {
-            throw new Error(data?.message || data?.msg || data?.error_description || data?.error || `Falha no servidor (${response.status}).`);
+            const error = new Error(data?.message || data?.msg || data?.error_description || data?.error || `Falha no servidor (${response.status}).`);
+            error.status = response.status;
+            error.retryAfter = response.headers.get('Retry-After') || '';
+            throw error;
         }
         return data;
     }
@@ -262,25 +272,30 @@
         return initializing;
     }
 
-    async function signIn(email, password) {
-        const data = await authRequest('/auth/v1/token?grant_type=password', { email, password });
+    function captchaSecurity(token) {
+        return token ? { gotrue_meta_security: { captcha_token: token } } : {};
+    }
+
+    async function signIn(email, password, captchaToken = '') {
+        const data = await authRequest('/auth/v1/token?grant_type=password', { email, password, ...captchaSecurity(captchaToken) });
         saveSession(data);
         await initialize();
         return data;
     }
 
-    async function signUp(name, email, password) {
+    async function signUp(name, email, password, captchaToken = '') {
         const data = await authRequest(`/auth/v1/signup?redirect_to=${encodeURIComponent(ACCOUNT_SITE)}`, {
             email, password,
-            data: { display_name: name || '' }
+            data: { display_name: name || '' },
+            ...captchaSecurity(captchaToken)
         });
         if (data?.session?.access_token) saveSession(data.session);
         else if (data?.access_token) saveSession(data);
         return data;
     }
 
-    async function recover(email) {
-        return authRequest(`/auth/v1/recover?redirect_to=${encodeURIComponent(ACCOUNT_SITE)}`, { email });
+    async function recover(email, captchaToken = '') {
+        return authRequest(`/auth/v1/recover?redirect_to=${encodeURIComponent(ACCOUNT_SITE)}`, { email, ...captchaSecurity(captchaToken) });
     }
 
     async function signOut() {
@@ -342,37 +357,133 @@
         if (notice) notice.style.display = isDemoMode() ? 'flex' : 'none';
     }
 
-    function createAccessChallenge() {
-        const left = 2 + Math.floor(Math.random() * 7);
-        const right = 1 + Math.floor(Math.random() * 6);
-        const answer = left + right;
-        const options = [...new Set([answer, answer + 1 + Math.floor(Math.random() * 2), Math.max(1, answer - 1 - Math.floor(Math.random() * 2))])];
-        while (options.length < 3) options.push(answer + options.length + 1);
-        options.sort(() => Math.random() - 0.5);
-        accessChallenge = { question: `${left} + ${right}`, answer, selected: null, options };
-        renderAccessChallenge();
+    function turnstileSiteKey() {
+        return document.querySelector('meta[name="alo-turnstile-site-key"]')?.content?.trim() || '';
     }
 
-    function renderAccessChallenge() {
-        const question = document.getElementById('cloudAccessChallengeQuestion');
-        const container = document.getElementById('cloudAccessChallengeOptions');
-        if (!question || !container) return;
-        question.textContent = accessChallenge.question || '2 + 3';
-        container.replaceChildren(...accessChallenge.options.map(value => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = String(value);
-            button.className = accessChallenge.selected === value ? 'selected' : '';
-            button.setAttribute('aria-pressed', String(accessChallenge.selected === value));
-            button.addEventListener('click', () => selectAccessChallenge(value));
-            return button;
-        }));
+    function loadTurnstile() {
+        if (global.turnstile?.render) return Promise.resolve(global.turnstile);
+        if (turnstileLoader) return turnstileLoader;
+        turnstileLoader = new Promise((resolve, reject) => {
+            const ready = () => global.turnstile?.render
+                ? resolve(global.turnstile)
+                : reject(new Error('A verificação de segurança não foi carregada.'));
+            const script = document.createElement('script');
+            script.id = 'aloTurnstileScript';
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=aloTurnstileReady&render=explicit';
+            script.async = true;
+            script.defer = true;
+            script.addEventListener('error', () => reject(new Error('A verificação de segurança não foi carregada.')), { once: true });
+            global.aloTurnstileReady = ready;
+            document.head.appendChild(script);
+        });
+        return turnstileLoader;
     }
 
-    function selectAccessChallenge(value) {
-        accessChallenge.selected = Number(value);
-        renderAccessChallenge();
-        setAccessFeedback('');
+    function resetTurnstile() {
+        accessCaptchaToken = '';
+        if (turnstileWidgetId !== null && global.turnstile?.reset) {
+            try { global.turnstile.reset(turnstileWidgetId); } catch (error) {}
+        }
+    }
+
+    function renderTurnstile() {
+        const container = document.getElementById('cloudAccessTurnstile');
+        const sitekey = turnstileSiteKey();
+        if (!container || !sitekey) return;
+        accessCaptchaToken = '';
+        loadTurnstile().then(turnstile => {
+            if (turnstileWidgetId !== null) {
+                try { turnstile.remove(turnstileWidgetId); } catch (error) {}
+            }
+            container.replaceChildren();
+            turnstileWidgetId = turnstile.render(container, {
+                sitekey,
+                theme: 'light',
+                size: 'flexible',
+                language: 'pt-BR',
+                action: accessMode === 'signup' ? 'signup' : 'signin',
+                appearance: 'interaction-only',
+                callback: token => {
+                    accessCaptchaToken = token || '';
+                    if (!applyLoginGuard()) setAccessFeedback('');
+                },
+                'expired-callback': () => { accessCaptchaToken = ''; },
+                'error-callback': () => {
+                    accessCaptchaToken = '';
+                    setAccessFeedback('Não foi possível concluir a verificação de segurança.', true);
+                },
+                'refresh-expired': 'auto'
+            });
+        }).catch(error => setAccessFeedback(error.message, true));
+    }
+
+    function readLoginGuard() {
+        try {
+            const value = JSON.parse(localStorage.getItem(LOGIN_GUARD_KEY) || 'null');
+            if (!value) return { attempts: 0, lockedUntil: 0 };
+            if (Number(value.lockedUntil || 0) <= Date.now()) {
+                localStorage.removeItem(LOGIN_GUARD_KEY);
+                return { attempts: 0, lockedUntil: 0 };
+            }
+            return {
+                attempts: Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, Number(value.attempts || 0))),
+                lockedUntil: Number(value.lockedUntil || 0)
+            };
+        } catch (error) {
+            localStorage.removeItem(LOGIN_GUARD_KEY);
+            return { attempts: 0, lockedUntil: 0 };
+        }
+    }
+
+    function saveLoginGuard(value) {
+        localStorage.setItem(LOGIN_GUARD_KEY, JSON.stringify(value));
+        return value;
+    }
+
+    function clearLoginGuard() {
+        localStorage.removeItem(LOGIN_GUARD_KEY);
+        if (loginGuardTimer) global.clearTimeout(loginGuardTimer);
+        loginGuardTimer = null;
+    }
+
+    function isInvalidCredentials(error) {
+        return /invalid login credentials|email ou senha incorretos/i.test(String(error?.message || error || ''));
+    }
+
+    function registerInvalidLogin() {
+        const current = readLoginGuard();
+        const attempts = Math.min(LOGIN_MAX_ATTEMPTS, current.attempts + 1);
+        return saveLoginGuard({
+            attempts,
+            lockedUntil: Date.now() + LOGIN_LOCK_MS
+        });
+    }
+
+    function formatLoginLock(milliseconds) {
+        const seconds = Math.max(1, Math.ceil(milliseconds / 1000));
+        const minutes = Math.floor(seconds / 60);
+        return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+    }
+
+    function applyLoginGuard() {
+        if (loginGuardTimer) global.clearTimeout(loginGuardTimer);
+        loginGuardTimer = null;
+        const submit = document.getElementById('cloudAccessSubmit');
+        if (accessMode !== 'signin') {
+            if (submit) submit.disabled = false;
+            return false;
+        }
+        const guard = readLoginGuard();
+        const remaining = guard.attempts >= LOGIN_MAX_ATTEMPTS ? guard.lockedUntil - Date.now() : 0;
+        if (remaining <= 0) {
+            if (submit) submit.disabled = false;
+            return false;
+        }
+        if (submit) submit.disabled = true;
+        setAccessFeedback(`Login bloqueado temporariamente. Tente novamente em ${formatLoginLock(remaining)}.`, true);
+        loginGuardTimer = global.setTimeout(applyLoginGuard, 1000);
+        return true;
     }
 
     function setAccessFeedback(message, error = false) {
@@ -399,7 +510,8 @@
         if (recoverButton) recoverButton.style.display = accessMode === 'signin' ? 'block' : 'none';
         if (password) password.autocomplete = accessMode === 'signup' ? 'new-password' : 'current-password';
         setAccessFeedback('');
-        createAccessChallenge();
+        applyLoginGuard();
+        renderTurnstile();
     }
 
     function showAccessScreen() {
@@ -430,16 +542,16 @@
         const email = document.getElementById('cloudAccessEmail')?.value.trim() || '';
         const password = document.getElementById('cloudAccessPassword')?.value || '';
         const submit = document.getElementById('cloudAccessSubmit');
+        const requestedMode = accessMode;
+        if (requestedMode === 'signin' && applyLoginGuard()) return;
         if (!email || password.length < 6) return setAccessFeedback('Informe o e-mail e uma senha com pelo menos 6 caracteres.', true);
-        if (accessChallenge.selected !== accessChallenge.answer) {
-            createAccessChallenge();
-            return setAccessFeedback('Conclua a verificação rápida.', true);
-        }
+        const captchaToken = accessCaptchaToken;
+        if (!captchaToken) return setAccessFeedback('Conclua a verificação de segurança.', true);
         if (submit) submit.disabled = true;
-        setAccessFeedback(accessMode === 'signup' ? 'Criando sua conta...' : 'Entrando...');
+        setAccessFeedback(requestedMode === 'signup' ? 'Criando sua conta...' : 'Entrando...');
         try {
-            if (accessMode === 'signup') {
-                const data = await signUp(name, email, password);
+            if (requestedMode === 'signup') {
+                const data = await signUp(name, email, password, captchaToken);
                 if (isConnected()) global.location.reload();
                 else {
                     setAccessMode('signin');
@@ -447,59 +559,66 @@
                     setAccessFeedback('Conta criada. Confirme o e-mail recebido e depois entre.');
                 }
             } else {
-                await signIn(email, password);
+                await signIn(email, password, captchaToken);
+                clearLoginGuard();
                 global.location.reload();
             }
         } catch (error) {
-            createAccessChallenge();
-            setAccessFeedback(errorMessage(error), true);
+            resetTurnstile();
+            if (requestedMode === 'signin' && isInvalidCredentials(error)) {
+                const guard = registerInvalidLogin();
+                const attemptsLeft = Math.max(0, LOGIN_MAX_ATTEMPTS - guard.attempts);
+                if (!applyLoginGuard()) {
+                    setAccessFeedback(`E-mail ou senha incorretos. ${attemptsLeft === 1 ? 'Resta 1 tentativa.' : `Restam ${attemptsLeft} tentativas.`}`, true);
+                }
+            } else {
+                setAccessFeedback(errorMessage(error), true);
+            }
         } finally {
-            if (submit) submit.disabled = false;
+            if (submit && !applyLoginGuard()) submit.disabled = false;
         }
     }
 
     async function recoverFromAccess() {
         const email = document.getElementById('cloudAccessEmail')?.value.trim() || '';
         if (!email) return setAccessFeedback('Digite o e-mail da sua conta.', true);
+        if (!accessCaptchaToken) return setAccessFeedback('Conclua a verificação de segurança.', true);
         setAccessFeedback('Enviando o link...');
         try {
-            await recover(email);
+            await recover(email, accessCaptchaToken);
+            resetTurnstile();
             setAccessFeedback('Enviamos o link para trocar sua senha.');
         } catch (error) {
+            resetTurnstile();
             setAccessFeedback(errorMessage(error), true);
         }
     }
 
-    async function connectFromSettings(create = false) {
+    function continueAccountActionFromAccess({ create = false, recoverPassword = false } = {}) {
         const name = document.getElementById('cloudAccountName')?.value.trim() || '';
         const email = document.getElementById('cloudAccountEmailInput')?.value.trim() || '';
         const password = document.getElementById('cloudAccountPassword')?.value || '';
-        if (!email || password.length < 6) return setFeedback('Informe o e-mail e uma senha com pelo menos 6 caracteres.', true);
-        setFeedback(create ? 'Criando conta...' : 'Conectando...');
-        try {
-            if (create) {
-                const data = await signUp(name, email, password);
-                if (!isConnected()) setFeedback('Conta criada. Confirme o e-mail recebido e depois toque em Entrar.');
-                else setFeedback('Conta criada e conectada.');
-            } else {
-                await signIn(email, password);
-                setFeedback('Conta conectada. Os módulos já podem sincronizar.');
-                global.location.reload();
-            }
-        } catch (error) {
-            setFeedback(errorMessage(error), true);
-        }
+        if (typeof global.fecharModal === 'function') global.fecharModal('modalConfigAvancadas');
+        showAccessScreen();
+        setAccessMode(create ? 'signup' : 'signin');
+        const accessName = document.getElementById('cloudAccessName');
+        const accessEmail = document.getElementById('cloudAccessEmail');
+        const accessPassword = document.getElementById('cloudAccessPassword');
+        if (accessName) accessName.value = name;
+        if (accessEmail) accessEmail.value = email;
+        if (accessPassword && !recoverPassword) accessPassword.value = password;
+        setAccessFeedback(recoverPassword
+            ? 'Toque em Esqueci minha senha para receber o link.'
+            : '');
+        setTimeout(() => (recoverPassword ? accessEmail : accessPassword)?.focus({ preventScroll: true }), 120);
     }
 
-    async function recoverFromSettings() {
-        const email = document.getElementById('cloudAccountEmailInput')?.value.trim() || '';
-        if (!email) return setFeedback('Digite o e-mail da conta.', true);
-        try {
-            await recover(email);
-            setFeedback('Enviamos o link para trocar a senha.');
-        } catch (error) {
-            setFeedback(errorMessage(error), true);
-        }
+    function connectFromSettings(create = false) {
+        continueAccountActionFromAccess({ create });
+    }
+
+    function recoverFromSettings() {
+        continueAccountActionFromAccess({ recoverPassword: true });
     }
 
     global.AloCloud = Object.freeze({
@@ -522,7 +641,6 @@
         renderAccountSettings,
         errorMessage,
         setAccessMode,
-        selectAccessChallenge,
         toggleAccessPassword,
         submitAccess,
         recoverFromAccess

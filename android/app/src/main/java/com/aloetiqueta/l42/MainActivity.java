@@ -20,15 +20,17 @@ import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.webkit.ValueCallback;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import androidx.activity.ComponentActivity;
 import androidx.core.content.FileProvider;
+import androidx.webkit.WebViewAssetLoader;
+import androidx.webkit.WebViewClientCompat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -78,7 +80,7 @@ public class MainActivity extends ComponentActivity {
         webView.addJavascriptInterface(new PrinterBridge(), "AloPrinter");
         webView.addJavascriptInterface(new NativeBridge(this), "AloNative");
         captureAuthIntent(getIntent());
-        webView.loadUrl("file:///android_asset/index.html");
+        webView.loadUrl("https://appassets.androidplatform.net/assets/index.html");
     }
 
     void openNativeScanner() {
@@ -269,7 +271,22 @@ public class MainActivity extends ComponentActivity {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         }
 
-        webView.setWebViewClient(new WebViewClient() {
+        final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
+
+        webView.setWebViewClient(new WebViewClientCompat() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                return assetLoader.shouldInterceptRequest(request.getUrl());
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+                return assetLoader.shouldInterceptRequest(Uri.parse(url));
+            }
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -296,7 +313,7 @@ public class MainActivity extends ComponentActivity {
                         for (String resource : request.getResources()) {
                             if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)
                                     && request.getOrigin() != null
-                                    && "file".equals(request.getOrigin().getScheme())) {
+                                    && "appassets.androidplatform.net".equals(request.getOrigin().getHost())) {
                                 request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
                                 return;
                             }
@@ -396,6 +413,9 @@ public class MainActivity extends ComponentActivity {
         }
         String scheme = uri.getScheme();
         if (scheme == null || "file".equals(scheme) || "about".equals(scheme)) {
+            return false;
+        }
+        if ("https".equals(scheme) && "appassets.androidplatform.net".equals(uri.getHost())) {
             return false;
         }
         if ("aloetiqueta".equals(scheme)) {

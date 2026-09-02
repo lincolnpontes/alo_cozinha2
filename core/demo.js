@@ -186,16 +186,16 @@
         };
         const documents = {
             revision: 0, outbox: [], documents: [
-                { id: 'demo_doc_alvara', templateId: 'alvara-sanitario', nome: 'Alvará sanitário', categoria: 'Licenças', orgao: 'Vigilância Sanitária Municipal', numero: 'DEMO-2026/001', emitidoEm: today, venceEm: `${new Date().getFullYear() + 1}-12-31`, observacoes: 'Exemplo fictício criado somente para apresentar o módulo.', arquivo: { nome:'alvara-sanitario-ficticio.png', mime:'image/png', tamanho:145000, atualizadoEm:now, demoUrl:'assets/demo/alvara-sanitario-ficticio.png?v=2.1.44' }, atualizadoEm: now, revisao: 1 },
-                { id: 'demo_doc_contrato', templateId: 'ato-constitutivo', nome: 'Contrato social ou ato constitutivo', categoria: 'Empresa e Fiscal', orgao: 'Junta Comercial', numero: 'DEMO-NIRE-0001', emitidoEm: today, venceEm: '', observacoes: 'Documento totalmente fictício para demonstração.', arquivo: { nome:'contrato-social-ficticio.png', mime:'image/png', tamanho:138000, atualizadoEm:now, demoUrl:'assets/demo/contrato-social-ficticio.png?v=2.1.44' }, atualizadoEm: now, revisao: 1 }
+                { id: 'demo_doc_alvara', templateId: 'alvara-sanitario', nome: 'Alvará sanitário', categoria: 'Licenças', orgao: 'Vigilância Sanitária Municipal', numero: 'DEMO-2026/001', emitidoEm: today, venceEm: `${new Date().getFullYear() + 1}-12-31`, observacoes: 'Exemplo fictício criado somente para apresentar o módulo.', arquivo: { nome:'alvara-sanitario-ficticio.png', mime:'image/png', tamanho:145000, atualizadoEm:now, demoUrl:'assets/demo/alvara-sanitario-ficticio.png?v=2.1.45' }, atualizadoEm: now, revisao: 1 },
+                { id: 'demo_doc_contrato', templateId: 'ato-constitutivo', nome: 'Contrato social ou ato constitutivo', categoria: 'Empresa e Fiscal', orgao: 'Junta Comercial', numero: 'DEMO-NIRE-0001', emitidoEm: today, venceEm: '', observacoes: 'Documento totalmente fictício para demonstração.', arquivo: { nome:'contrato-social-ficticio.png', mime:'image/png', tamanho:138000, atualizadoEm:now, demoUrl:'assets/demo/contrato-social-ficticio.png?v=2.1.45' }, atualizadoEm: now, revisao: 1 }
             ]
         };
         const labels = {
             produtos: [
-                { codigo: '1', nome: 'Pudim de leite', categoria: 'Sobremesas', validadeDias: 5, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'produzido', usaQR: true, fichaTecnicaId: 'demo_sheet_pudim' },
-                { codigo: '2', nome: 'Molho de tomate', categoria: 'Preparos', validadeDias: 3, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'produzido', usaQR: true },
-                { codigo: '3', nome: 'Frango temperado', categoria: 'Preparos', validadeDias: 2, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'aberto', usaQR: true, fichaTecnicaId: 'demo_sheet_frango' },
-                { codigo: '4', nome: 'Feijão cozido', categoria: 'Preparos', validadeDias: 3, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'produzido', usaQR: true }
+                { codigo: '1', nome: 'Pudim de leite', categoria: 'Sobremesas', validadeDias: 5, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'Produzido', usaQR: true, fichaTecnicaId: 'demo_sheet_pudim' },
+                { codigo: '2', nome: 'Molho de tomate', categoria: 'Preparos', validadeDias: 3, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'Produzido', usaQR: true },
+                { codigo: '3', nome: 'Frango temperado', categoria: 'Preparos', validadeDias: 2, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'Aberto', usaQR: true, fichaTecnicaId: 'demo_sheet_frango' },
+                { codigo: '4', nome: 'Feijão cozido', categoria: 'Preparos', validadeDias: 3, armazenamento: 'Refrigerado', precoPadrao: 0, marcas: [], acaoPadrao: 'Produzido', usaQR: true }
             ],
             categorias: [{ nome: 'Sobremesas', cor: '#8a4f7d', corTexto: '#ffffff' }, { nome: 'Preparos', cor: '#337a62', corTexto: '#ffffff' }],
             operadores: [{ nome: 'Ana', emoji: '👩‍🍳', ativo: true, admin: true }],

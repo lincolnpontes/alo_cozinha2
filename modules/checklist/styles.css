@@ -75,19 +75,13 @@
 .cloud-access-mode button { min-height: 37px; border: 0; border-radius: 5px; background: transparent; color: #53666a; font-size: 14px; font-weight: 900; cursor: pointer; }
 .cloud-access-mode button.active { background: #fff; color: #096c59; box-shadow: 0 1px 4px rgba(38, 60, 58, .13); }
 .cloud-access-field { margin-bottom: 8px; }
-.cloud-access-field label, .cloud-access-challenge legend { color: #34494d; font-size: 12px; font-weight: 900; }
+.cloud-access-field label { color: #34494d; font-size: 12px; font-weight: 900; }
 .cloud-access-field input { width: 100%; height: 43px; box-sizing: border-box; margin-top: 4px; padding: 0 12px; border: 1px solid #b8c7c8; border-radius: 6px; background: #fbfcfc; color: #223438; font-size: 16px; outline: none; }
 .cloud-access-field input:focus { border-color: #087f68; box-shadow: 0 0 0 3px rgba(8, 127, 104, .13); }
 .cloud-access-label-row { display: flex; align-items: center; justify-content: space-between; }
 .cloud-access-label-row button { min-height: 28px; padding: 0 3px; border: 0; background: transparent; color: #087f68; font-size: 12px; font-weight: 900; cursor: pointer; }
-.cloud-access-challenge { margin: 2px 0 6px; padding: 6px 8px 8px; border: 1px solid #c8d2d1; border-radius: 6px; background: #f8faf9; }
-.cloud-access-challenge legend { padding: 0 5px; color: #526468; font-size: 11px; letter-spacing: 0; }
-.cloud-access-challenge-line { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: center; gap: 7px; }
-.cloud-access-challenge-line > strong { min-height: 37px; display: flex; align-items: center; justify-content: center; gap: 5px; color: #243a3e; font-size: 18px; text-align: center; }
-.cloud-access-challenge-line > strong small { color: #718084; font-size: 14px; }
-#cloudAccessChallengeOptions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 3px; border: 1px solid #d2d9d8; border-radius: 6px; background: #e9eeee; }
-#cloudAccessChallengeOptions button { min-width: 0; min-height: 33px; border: 0; border-radius: 4px; background: transparent; color: #344a4d; font-size: 15px; font-weight: 900; cursor: pointer; }
-#cloudAccessChallengeOptions button.selected { background: #fff; color: #076853; box-shadow: 0 1px 4px rgba(35, 61, 57, .18), inset 0 0 0 1px #78a99f; }
+.cloud-access-turnstile-shell { min-height: 44px; display: flex; align-items: center; justify-content: center; margin: 1px 0 5px; overflow: hidden; }
+.cloud-access-turnstile-shell > div { width: 100%; display: flex; justify-content: center; }
 .cloud-access-feedback { min-height: 13px; margin: 0 0 3px; color: #b3261e; font-size: 11px; line-height: 1.2; text-align: center; }
 .cloud-access-submit { width: 100%; min-height: 44px; border: 0; border-radius: 6px; background: #087f68; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; }
 .cloud-access-submit:disabled { opacity: .65; cursor: wait; }
@@ -515,9 +509,10 @@
 .task-card-side { display: flex; align-items: flex-end; flex-direction: column; gap: 6px; }
 .task-urgent-label { padding: 3px 6px; border-radius: 4px; background: #ffebee; color: var(--tasks-red); font-size: 10px; }
 
-.task-card-actions { position: relative; grid-column: 2; grid-row: 2; min-height: 34px; display: flex; align-items: center; justify-content: center; }
+.task-card-actions { position: relative; grid-column: 1 / -1; grid-row: 2; min-height: 34px; display: flex; align-items: center; justify-content: center; }
 .task-card-actions-center,
 .task-card-actions-side { display: flex; align-items: center; gap: 5px; }
+.task-card-actions-center { position: absolute; left: 50%; transform: translateX(-50%); }
 .task-card-actions-side { position: absolute; right: 0; }
 .task-primary-action,
 .task-complete-action,

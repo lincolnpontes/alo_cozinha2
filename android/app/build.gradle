@@ -27,8 +27,8 @@ android {
         applicationId "com.aloetiqueta.l42"
         minSdk 23
         targetSdk 36
-        versionCode 74
-        versionName "2.1.44"
+        versionCode 75
+        versionName "2.1.45"
     }
 
     signingConfigs {
@@ -72,6 +72,7 @@ tasks.named("preBuild").configure {
 
 dependencies {
     implementation "androidx.activity:activity:1.12.3"
+    implementation "androidx.webkit:webkit:1.15.0"
     implementation "androidx.camera:camera-core:1.6.1"
     implementation "androidx.camera:camera-camera2:1.6.1"
     implementation "androidx.camera:camera-lifecycle:1.6.1"

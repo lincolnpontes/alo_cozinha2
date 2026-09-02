@@ -31,7 +31,7 @@
     </div>
 </div>
 
-<script src="../../core/demo.js?v=2.1.44"></script>
+<script src="../../core/demo.js?v=2.1.45"></script>
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/qrcode.min.js"></script>
 <script src="vendor/html5-qrcode.min.js"></script>
@@ -488,7 +488,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.44";
+const APP_VERSION="2.1.45";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1913,6 +1913,10 @@ function responderConfirmacaoV29(valor){
 }
 
 function aprimorarCabecalhoHome(){
+ if(window.ALO_L42_EMBEDDED){
+    if(typeof window.garantirInterfaceEtiquetasIntegrada==='function')window.garantirInterfaceEtiquetasIntegrada();
+    return;
+ }
  const h=document.querySelector('.header');if(!h)return;
  const m=h.firstElementChild;
  if(m){m.className='app-wordmark';m.removeAttribute('style');m.innerHTML='<img class="app-wordmark-icon" src="icon.png" alt="" onerror="this.remove()"><span class="app-wordmark-copy"><span class="app-wordmark-main">Alô</span><span class="app-wordmark-sub">ETIQUETA</span></span>'}
@@ -1961,7 +1965,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.44" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.45" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -4083,6 +4087,7 @@ function abrirGerenciar(t){
         });
     }
     abrirModal('modalListagem');
+    if(window.ALO_L42_EMBEDDED)configurarVoltaEtiquetasHost('modalListagem');
 }
 
 function voltarGerenciamento(){
@@ -7221,6 +7226,10 @@ function configurarVoltaEtiquetasHost(modalId){
     const botoes=Array.from(modal.querySelectorAll('.modal-actions .btn-cancel'));
     const voltar=botoes[botoes.length-1];
     if(!voltar)return;
+    if(modalId==='modalListagem'){
+        voltar.onclick=voltarGerenciamento;
+        return;
+    }
     voltar.onclick=()=>{
         fecharModal(modalId);
         if(window.parent&&window.parent!==window)window.parent.AloL42Module?.backToSettings?.();
@@ -7299,7 +7308,11 @@ if(!window.ALO_L42_EMBEDDED){
 }
 </script>
 <style>
-html.alo-l42-embedded #splash-screen,html.alo-l42-embedded #login-screen{display:none!important}
+html.alo-l42-embedded #splash-screen,
+html.alo-l42-embedded #login-screen,
+html.alo-l42-embedded #supabaseAccountScreen,
+html.alo-l42-embedded #supabaseRecoveryScreen,
+html.alo-l42-embedded #modalPainelUnificado{display:none!important;visibility:hidden!important;pointer-events:none!important}
 html,body{overscroll-behavior:none}
 html.alo-l42-embedded .app-container{max-width:none;box-shadow:none}
 html.alo-l42-embedded .header{width:100%;box-sizing:border-box}
@@ -7328,25 +7341,6 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
 (function(){
     if(!window.ALO_L42_EMBEDDED)return;
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
-    const brand=document.querySelector('.header > div:first-child');
-    if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.44" alt=""><strong>Etiquetas</strong></button>';
-        brand.style.flex='0 0 auto';
-        brand.querySelector('button').addEventListener('click',showHome);
-    }
-    const seletor=document.getElementById('seletorOperador');
-    const centro=seletor&&seletor.parentElement&&seletor.parentElement.parentElement;
-    if(centro){
-        seletor.parentElement.style.display='none';
-        const botao=document.createElement('button');
-        botao.type='button';
-        botao.id='perfilEtiquetasButton';
-        botao.className='alo-l42-profile-button';
-        botao.setAttribute('aria-label','Trocar operador');
-        botao.innerHTML='<span id="perfilEtiquetasEmoji" aria-hidden="true">👤</span><strong id="perfilEtiquetasNome">Perfil</strong>';
-        botao.addEventListener('click',()=>parent.postMessage({source:'alo-l42',type:'switch-person'},'*'));
-        centro.appendChild(botao);
-    }
     window.atualizarCabecalhoOperadorEtiquetas=()=>{
         const operador=typeof operadorAtual==='function'?operadorAtual():null;
         const emoji=document.getElementById('perfilEtiquetasEmoji');
@@ -7354,9 +7348,40 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
         if(emoji)emoji.textContent=operador&&operador.emoji||'👤';
         if(nome)nome.textContent=operador&&operador.nome||'Perfil';
     };
-    window.atualizarCabecalhoOperadorEtiquetas();
+    window.garantirInterfaceEtiquetasIntegrada=()=>{
+        ['splash-screen','login-screen','supabaseAccountScreen','supabaseRecoveryScreen','modalPainelUnificado'].forEach(id=>{
+            const legacy=document.getElementById(id);
+            if(!legacy)return;
+            legacy.style.display='none';
+            legacy.setAttribute('aria-hidden','true');
+        });
+        const brand=document.querySelector('.header > div:first-child');
+        if(brand&&!brand.querySelector('.alo-l42-module-back')){
+            brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.45" alt=""><strong>Etiquetas</strong></button>';
+            brand.style.flex='0 0 auto';
+            brand.querySelector('button').addEventListener('click',showHome);
+        }
+        const seletor=document.getElementById('seletorOperador');
+        const centro=seletor&&seletor.parentElement&&seletor.parentElement.parentElement;
+        if(centro){
+            seletor.parentElement.style.display='none';
+            let botao=document.getElementById('perfilEtiquetasButton');
+            if(!botao){
+                botao=document.createElement('button');
+                botao.type='button';
+                botao.id='perfilEtiquetasButton';
+                botao.className='alo-l42-profile-button';
+                botao.setAttribute('aria-label','Trocar operador');
+                botao.innerHTML='<span id="perfilEtiquetasEmoji" aria-hidden="true">👤</span><strong id="perfilEtiquetasNome">Perfil</strong>';
+                botao.addEventListener('click',()=>parent.postMessage({source:'alo-l42',type:'switch-person'},'*'));
+                centro.appendChild(botao);
+            }
+        }
+        window.atualizarCabecalhoOperadorEtiquetas();
+    };
+    window.garantirInterfaceEtiquetasIntegrada();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.44" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.45" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

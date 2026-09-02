@@ -41,7 +41,7 @@ Cada módulo possui um `module.js` com identidade, tela, namespace, exigência d
 | Catálogo, pedidos de compra e fornecedores | Compras | `alofeira_v1` e módulo `compras` no Supabase | `compras_*` |
 | Etiquetas, estoque e impressão | Etiquetas | `etiquetadora_*`, fila local e módulo `etiquetas` no Supabase | `l42_*` |
 
-As chaves existentes são um contrato de compatibilidade. A v2.1.44 não renomeia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local. A sessão anterior do Etiquetas é reaproveitada como sessão única do produto.
+As chaves existentes são um contrato de compatibilidade. A v2.1.45 não renomeia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local. A sessão anterior do Etiquetas é reaproveitada como sessão única do produto.
 
 ## Regras entre módulos
 

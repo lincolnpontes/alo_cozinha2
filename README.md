@@ -1,9 +1,12 @@
-# Alô Cozinha v2.1.43
+# Alô Cozinha v2.1.44
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
+- A v2.1.44 deixa a verificação de acesso mais sóbria e compacta, sem apresentar o cálculo local como um CAPTCHA real.
+- A v2.1.44 corrige a abertura das etiquetas fictícias e conduz direto à configuração da impressora quando o IP ainda não foi informado.
+- A v2.1.44 centraliza o horário e as ações dos cartões de atividade e faz os cinco módulos caberem na tela inicial móvel mais comum.
 - A v2.1.43 compacta e refina a tela inicial de acesso para celular, mantendo login, verificação e demonstração em uma única tela.
 - A v2.1.43 amplia o Modo Demonstração com pedidos acionáveis, quantidades padrão, fichas, etiquetas e documentos fictícios, todos isolados dos dados reais.
 - A v2.1.43 reorganiza as atividades do Checklist: o painel Geral não mistura cartões e cada atividade usa o título inteiro com ações na linha inferior.

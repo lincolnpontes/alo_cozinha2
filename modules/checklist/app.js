@@ -862,18 +862,25 @@
             const template = db().tarefas.find(item => item.id === activity.tarefaId) || {};
             const canReschedule = activity.permiteRemarcacao || template.permiteRemarcacao;
             const stateClass = activity.status === 'em_execucao' ? 'running' : (timing.overdue ? 'late' : activity.status);
-            let actions = '';
+            let centerActions = '';
+            let sideActions = '';
             if (activity.status === 'pendente') {
-                actions = `<button class="task-primary-action" onclick="event.stopPropagation();AloTasks.startTask('${activity.id}')">▶ Iniciar</button><button class="task-complete-action" onclick="event.stopPropagation();AloTasks.completeTask('${activity.id}', true)">✓ Concluído</button>${canReschedule ? `<button class="task-reschedule-action" onclick="event.stopPropagation();AloTasks.openReschedule('${activity.id}')" aria-label="Remarcar atividade" title="Remarcar">📅</button>` : ''}<button class="task-skip-action" onclick="event.stopPropagation();AloTasks.markTaskNotDone('${activity.id}')" aria-label="Marcar como não realizada" title="Não foi feita">❌</button>`;
+                centerActions = `<button class="task-primary-action" onclick="event.stopPropagation();AloTasks.startTask('${activity.id}')">▶ Iniciar</button><button class="task-complete-action" onclick="event.stopPropagation();AloTasks.completeTask('${activity.id}', true)">✓ Concluído</button>`;
+                sideActions = `${canReschedule ? `<button class="task-reschedule-action" onclick="event.stopPropagation();AloTasks.openReschedule('${activity.id}')" aria-label="Remarcar atividade" title="Remarcar">📅</button>` : ''}<button class="task-skip-action" onclick="event.stopPropagation();AloTasks.markTaskNotDone('${activity.id}')" aria-label="Marcar como não realizada" title="Não foi feita">❌</button>`;
             } else if (activity.status === 'em_execucao') {
-                actions = `<button class="task-complete-action" onclick="event.stopPropagation();AloTasks.completeTask('${activity.id}', false)">✓ Concluído</button>${canReschedule ? `<button class="task-reschedule-action" onclick="event.stopPropagation();AloTasks.openReschedule('${activity.id}')" aria-label="Remarcar atividade" title="Remarcar">📅</button>` : ''}`;
+                centerActions = `<button class="task-complete-action" onclick="event.stopPropagation();AloTasks.completeTask('${activity.id}', false)">✓ Concluído</button>`;
+                sideActions = canReschedule ? `<button class="task-reschedule-action" onclick="event.stopPropagation();AloTasks.openReschedule('${activity.id}')" aria-label="Remarcar atividade" title="Remarcar">📅</button>` : '';
             }
+            const actions = centerActions || sideActions
+                ? `<div class="task-card-actions"><div class="task-card-actions-center">${centerActions}</div>${sideActions ? `<div class="task-card-actions-side">${sideActions}</div>` : ''}</div>`
+                : '';
             const detailsAction = ` onclick="AloTasks.openTaskDetails('${activity.id}')" onkeydown="if(event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();AloTasks.openTaskDetails('${activity.id}')}" tabindex="0" aria-label="Abrir detalhes de ${escapeHtml(activity.nome)}"`;
             const urgent = activity.prioridade === 'urgente' ? '<b class="task-urgent-label">URGENTE</b>' : '';
             return `<article class="task-card ${stateClass} details-clickable" id="task-${escapeHtml(activity.id)}"${detailsAction}>
                 <div class="task-card-main">
-                    <div class="task-card-heading"><div class="task-time">${formatTime(activity.horario)}</div><div class="task-card-copy"><strong>${escapeHtml(activity.nome)}</strong></div>${urgent}</div>
-                    ${actions ? `<div class="task-card-actions">${actions}</div>` : ''}
+                    <div class="task-time">${formatTime(activity.horario)}</div>
+                    <div class="task-card-heading"><div class="task-card-copy"><strong>${escapeHtml(activity.nome)}</strong></div>${urgent}</div>
+                    ${actions}
                 </div>
             </article>`;
         };

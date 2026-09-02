@@ -27,8 +27,8 @@ android {
         applicationId "com.aloetiqueta.l42"
         minSdk 23
         targetSdk 36
-        versionCode 73
-        versionName "2.1.43"
+        versionCode 74
+        versionName "2.1.44"
     }
 
     signingConfigs {

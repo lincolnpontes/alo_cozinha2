@@ -31,7 +31,7 @@
     </div>
 </div>
 
-<script src="../../core/demo.js?v=2.1.43"></script>
+<script src="../../core/demo.js?v=2.1.44"></script>
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/qrcode.min.js"></script>
 <script src="vendor/html5-qrcode.min.js"></script>
@@ -488,7 +488,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.43";
+const APP_VERSION="2.1.44";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1070,7 +1070,7 @@ let db=carregarBanco(),categoriaAtual=null,quantidadeAtual=1,qtdPers=1,operadorA
 let tipoGerenciarAtual='',origemGerenciarCategorias='painel',origemMovimentacaoDiaria='painel',validadePaginaAtual=1,validadeItensPorPagina=10,validadeCache=[],validadeFiltroAtual='todos',scannerProcessando=!1,ultimoQrLido='',ultimoQrLidoEm=0,scannerNativoPausadoParaConfirmacao=!1,qrsPendentesSelecao=[],previewEtiquetaResizeObserver=null,appEventosIniciados=!1,syncIntervalId=null,confirmacaoResolverV29=null;
 let filaImagensRawBT = [], filaAtualIdx = 0;
 let supabaseSession=null,supabaseProfile=null,supabaseEntitlement=null,supabaseSyncConflict=null,supabaseAuthMode="login",supabaseGoogleDisponivel=!1,syncAplicandoRemoto=!1,supabaseInicializado=!1,syncPendente=!1,syncPendenteOpcoes={};
-let controleEtiquetaEmAndamento=!1,impressaoRedeEmAndamento=!1,processandoImpressao=!1,ultimoControleEtiquetaEm=0;
+let controleEtiquetaEmAndamento=!1,impressaoRedeEmAndamento=!1,processandoImpressao=!1,ultimoControleEtiquetaEm=0,retornoImpressaoAposConfig="";
 
 function salvarBancoLocal(){
     localStorage.setItem('etiquetadora_db',JSON.stringify(db));
@@ -1961,7 +1961,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.43" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.44" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -2941,7 +2941,8 @@ async function removerLogomarcaEtiqueta(){
     db.configs.logoEtiqueta=null;if(db.configs.logoRestauranteEtiqueta)db.configs.logoFonte='restaurante';marcarAlteracaoEstrutura();salvarBancoLocal();sincronizarComNuvemSilencioso();atualizarPreviewLogomarca();renderizarEditorLayoutEtiqueta();
 }
 
-function abrirConfigGeraisModal(){
+function abrirConfigGeraisModal(retornoImpressao=""){
+    retornoImpressaoAposConfig=retornoImpressao||"";
     fecharModal('modalPainelUnificado');
     garantirCamposImpressoraRede();
     garantirCampoLogomarca();
@@ -2954,6 +2955,27 @@ function abrirConfigGeraisModal(){
     atualizarVisibilidadeConfigImpressora();
     atualizarPreviewLogomarca();
     abrirModal('modalConfigGerais');
+    const voltar=document.querySelector('#modalConfigGerais .modal-actions .btn-cancel');
+    if(retornoImpressaoAposConfig&&voltar)voltar.onclick=voltarDaConfigParaImpressao;
+}
+
+function voltarDaConfigParaImpressao(){
+    const retorno=retornoImpressaoAposConfig;
+    retornoImpressaoAposConfig="";
+    fecharModal('modalConfigGerais');
+    if(retorno)abrirModal(retorno);
+}
+
+function abrirConfigImpressoraParaImpressao(modalOrigem){
+    if(db.configs.modo==='galeria'||obterConfigImpressora().host)return!1;
+    fecharModal(modalOrigem);
+    abrirConfigGeraisModal(modalOrigem);
+    mostrarToast('Informe o IP da impressora para continuar.');
+    setTimeout(()=>{
+        const host=document.getElementById('cfgPrinterHost');
+        if(host){host.focus();host.select()}
+    },80);
+    return!0;
 }
 
 function salvarConfigGerais(){
@@ -2973,6 +2995,13 @@ function salvarConfigGerais(){
     atualizarEngrenagem();
     sincronizarComNuvemSilencioso();
     fecharModal('modalConfigGerais');
+    if(retornoImpressaoAposConfig){
+        const retorno=retornoImpressaoAposConfig;
+        retornoImpressaoAposConfig="";
+        abrirModal(retorno);
+        mostrarToast('Impressora configurada. Continue a impressão.');
+        return;
+    }
     if(window.ALO_L42_EMBEDDED&&window.parent&&window.parent!==window){
         window.parent.AloL42Module?.backToSettings?.();
     }else{
@@ -4766,7 +4795,8 @@ function abrirModalImprimir(c){
     if(!temPermissao('imprimir'))return mostrarToast("Seu perfil não tem permissão para imprimir.");
     if(!document.getElementById('seletorOperador').value)return alert("Selecione um Operador(a)!");
     popularSelectGenerico('imprimirAcao',db.configs.acoes);
-    const p=db.produtos.find(x=>x.codigo===c);
+    const p=db.produtos.find(x=>String(x.codigo)===String(c));
+    if(!p)return mostrarToast("Produto não encontrado.");
     quantidadeAtual=1;document.getElementById('imprimirQtd').innerText=quantidadeAtual;
     let d=new Date();d.setDate(d.getDate()+p.validadeDias);
     document.getElementById('imprimirCodigoProduto').value=p.codigo;
@@ -4860,11 +4890,14 @@ function criarIdentificadorRegistro(prefixo="SKU"){
 }
 
 async function processarImpressao(){
+    if(abrirConfigImpressoraParaImpressao('modalImprimir'))return;
     if(processandoImpressao)return mostrarToast("A impressão já está sendo processada.");
     processandoImpressao=!0;
     const btn=document.getElementById('btnProcessarImpressao');
     btn.innerText="Aguarde...";btn.disabled=!0;
-    const p=db.produtos.find(x=>x.codigo===parseInt(document.getElementById('imprimirCodigoProduto').value)),acS=document.getElementById('imprimirAcao').value,ps=document.getElementById('imprimirPeso').value.trim(),prN=getValorMoeda('imprimirPreco'),op=document.getElementById('seletorOperador').value,est=db.configs.estabelecimento,ma=document.getElementById('imprimirMarca').value,lo=document.getElementById('imprimirLote').value.trim(),vS=document.getElementById('imprimirValidade').value.split('-'),vB=`${vS[2]}/${vS[1]}/${vS[0]}`,mB=getDataHoraAtual();
+    const codigoProduto=document.getElementById('imprimirCodigoProduto').value;
+    const p=db.produtos.find(x=>String(x.codigo)===String(codigoProduto)),acS=document.getElementById('imprimirAcao').value,ps=document.getElementById('imprimirPeso').value.trim(),prN=getValorMoeda('imprimirPreco'),op=document.getElementById('seletorOperador').value,est=db.configs.estabelecimento,ma=document.getElementById('imprimirMarca').value,lo=document.getElementById('imprimirLote').value.trim(),vS=document.getElementById('imprimirValidade').value.split('-'),vB=`${vS[2]}/${vS[1]}/${vS[0]}`,mB=getDataHoraAtual();
+    if(!p){processandoImpressao=!1;btn.innerText="🖨️ IMPRIMIR";btn.disabled=!1;return mostrarToast("Produto não encontrado.")}
     let acI=rotuloAcaoImpressao(acS),sks=[],registros=[];
     for(let i=0;i<quantidadeAtual;i++){
         const sk=criarIdentificadorRegistro("SKU");
@@ -4902,6 +4935,7 @@ async function processarImpressaoPers(){
     const nm=document.getElementById('impPersNome').value.trim();
     if(!nm)return alert("Digite nome!");
     if(!document.getElementById('seletorOperador').value)return alert("Selecione Operador!");
+    if(abrirConfigImpressoraParaImpressao('modalImprimirPers'))return;
     if(processandoImpressao)return mostrarToast("A impressão já está sendo processada.");
     processandoImpressao=!0;
     const btn=document.getElementById('btnPersImprimir');
@@ -7296,7 +7330,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.43" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.44" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7322,7 +7356,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.43" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.44" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

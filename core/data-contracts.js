@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.40';
+    const VERSION = '2.1.41';
     const SHARED_SCHEMA_VERSION = 2;
 
     const contracts = Object.freeze({
@@ -7,7 +7,7 @@
             owner: 'core',
             fields: Object.freeze(['restaurant', 'people', 'catalog', 'sourceStats', 'migration']),
             localStorage: Object.freeze(['alo_core_shared_v2']),
-            persistence: 'núcleo local, cópia compacta no Apps Script e adaptadores dos módulos',
+            persistence: 'núcleo local com estado isolado por conta no Supabase',
             futureTablePrefix: 'core_'
         }),
         kds: Object.freeze({
@@ -33,7 +33,7 @@
             owner: 'l42',
             localStorage: Object.freeze(['etiquetadora_db', 'etiquetadora_operadorAtual', 'alo_supabase_session_v1']),
             cloudNamespace: 'etiquetas',
-            persistence: 'localStorage com sincronização no mesmo Google Apps Script dos demais módulos',
+            persistence: 'localStorage com sincronização autenticada no Supabase dos demais módulos',
             futureTablePrefix: 'l42_'
         })
     });

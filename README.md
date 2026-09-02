@@ -1,9 +1,12 @@
-# Alô Cozinha v2.1.40
+# Alô Cozinha v2.1.41
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
+- A v2.1.41 migra os quatro módulos para um backend Supabase único e configurado no aplicativo, com autenticação persistente, atualização em tempo real e isolamento de dados por conta.
+- A v2.1.41 preserva o funcionamento local sem exigir login ao abrir o app, mantém os PINs internos dos operadores e adiciona conexão, criação de conta e recuperação por e-mail nas configurações avançadas.
+- A v2.1.41 importa a operação existente para o novo banco, usa armazenamento privado para fotos e documentos e retira a configuração manual da URL do antigo backend.
 - A v2.1.40 corrige a exportação do backup completo: no APK, o arquivo é salvo em Downloads/Alo Cozinha; no navegador, o JSON é baixado diretamente.
 - A v2.1.39 alinha o controle Inverter com a seleção de preto e dá a Funcionários e Acessos um ícone próprio no padrão visual das configurações.
 - A v2.1.39 remove o atalho duplicado de categorias e impede que os retornos de Produtos e Categorias abram o painel legado do antigo L42.
@@ -101,20 +104,20 @@ Aplicativo para operação de restaurante com quatro módulos: pedidos entre ár
 - `index.html`: composição da interface principal e das configurações.
 - `styles.css`: shell visual e estilos históricos do KDS.
 - `service-worker.js`: cache para abertura offline.
-- `google-apps-script.gs`: backend unificado ligado à planilha.
+- `supabase/`: schema, RLS, Storage e Edge Function do backend unificado.
 - `docs/ARCHITECTURE.md`: propriedade dos dados, limites dos módulos e arquitetura integrada.
-- `docs/SUPABASE-MIGRATION.md`: plano para levar os quatro módulos a um único banco físico.
+- `docs/SUPABASE-MIGRATION.md`: registro e critérios da migração dos quatro módulos.
 
 ## Atualizar sem perder dados
 
-A v2 preserva pedidos, produtos, categorias, observações, áreas, configurações e histórico já existentes. O Google Apps Script cria a aba `Atividades` quando necessário e acrescenta as novas colunas de POP e remarcação ao fim da aba existente.
+A v2 preserva pedidos, produtos, categorias, observações, áreas, configurações e históricos locais. Na v2.1.41, a operação existente também foi importada para o Supabase antes da troca do adaptador.
 
-1. Substitua o conteúdo do projeto no Google Apps Script pelo arquivo `google-apps-script.gs` desta branch.
-2. Em `Implantar > Gerenciar implantações`, edite a implantação atual e selecione `Nova versão`.
-3. Implante mantendo o acesso como já estava configurado. A URL permanece a mesma.
-4. Publique os arquivos web desta branch e abra o app conectado uma vez em cada aparelho.
-5. Confira `Funcionários e Acessos`; funcionários sem permissão protegida permanecem disponíveis no Checklist e não aparecem na autenticação.
-6. Abra Etiquetas em dois aparelhos e confirme que produtos, estoque e histórico chegam pela mesma URL de nuvem.
+1. Publique os arquivos web desta branch ou instale o APK da mesma versão.
+2. Abra `Configurações avançadas > Conta e sincronização` e conecte a conta já usada no Etiquetas.
+3. Aguarde a indicação verde e abra cada módulo uma vez no primeiro aparelho.
+4. Confira `Funcionários e Acessos`; funcionários sem permissão protegida permanecem disponíveis no Checklist e não aparecem na autenticação.
+5. Em outro aparelho, conecte a mesma conta e confirme a atualização de KDS, Checklist, Compras e Etiquetas.
+6. Gere um backup completo antes de qualquer limpeza ou troca de conta.
 
 ## Teste recomendado
 

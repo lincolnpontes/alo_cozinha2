@@ -408,7 +408,9 @@
         url.searchParams.set('action', 'sincronizar_documentos');
         if (revision !== '') url.searchParams.set('revision', String(revision));
         url.searchParams.set('cb', String(Date.now()));
-        const response = await fetch(url.toString(), { cache:'no-store' });
+        const response = global.AloCloud?.isEndpoint?.(url.toString())
+            ? await global.AloCloud.fetch(url.toString(), { cache:'no-store' })
+            : await fetch(url.toString(), { cache:'no-store' });
         if (!response.ok) throw new Error('Servidor indisponível.');
         const result = await response.json();
         if (result.status !== 'ok') throw new Error(result.message || 'Documentos não sincronizados.');
@@ -420,13 +422,13 @@
         if (state.outbox.length) {
             await global.AloApi.post(deps.getUrl(), { action:'salvar_documentos_lote', operacoes:state.outbox.slice(0, 30) });
             const confirmation = await getRemote('');
-            if (!Array.isArray(confirmation.documentos)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar documentos.');
+            if (!Array.isArray(confirmation.documentos)) throw new Error('A nuvem não devolveu os documentos esperados.');
             mergeRemote(confirmation.documentos);
             state.revision = Number(confirmation.revision || state.revision);
             if (state.outbox.length) throw new Error('A nuvem não confirmou as alterações dos documentos.');
         }
         const result = await getRemote(state.revision);
-        if (result.changed && !Array.isArray(result.documentos)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar documentos.');
+        if (result.changed && !Array.isArray(result.documentos)) throw new Error('A nuvem não devolveu os documentos esperados.');
         if (result.changed) mergeRemote(result.documentos);
         state.revision = Number(result.revision || state.revision);
         saveState(); render();

@@ -13,7 +13,7 @@ def generatedWebAssets = layout.buildDirectory.dir("generated/webAssets")
 tasks.register("syncWebAssets", Sync) {
     from(webRoot) {
         include "index.html", "styles.css", "manifest.json", "icon.png", "service-worker.js"
-        include "assets/**", "core/**", "modules/**"
+        include "assets/**", "core/**", "modules/**", "vendor/**"
         exclude "**/*.md", "modules/l42/backend/**"
     }
     into(generatedWebAssets)
@@ -27,8 +27,8 @@ android {
         applicationId "com.aloetiqueta.l42"
         minSdk 23
         targetSdk 36
-        versionCode 70
-        versionName "2.1.40"
+        versionCode 71
+        versionName "2.1.41"
     }
 
     signingConfigs {

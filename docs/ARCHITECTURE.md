@@ -11,7 +11,8 @@ core/
   module-host.js       navegação e ciclo de vida dos módulos
   data-contracts.js    propriedade e namespaces dos dados
   shared-data.js       pessoas, acessos, restaurante e índice compartilhado
-  api.js               transporte compartilhado com o backend atual
+  cloud.js             sessão Supabase, Realtime e endpoint único
+  api.js               transporte autenticado compartilhado
   catalog-sync.js      publicação confirmada de cadastros
   ui-dialog.js         diálogos consistentes do produto
 
@@ -25,7 +26,7 @@ android/               shell Android, CameraX, ML Kit e ponte da impressora
 
 index.html             composição da interface principal
 service-worker.js      shell offline do produto
-google-apps-script.gs  backend unificado atual
+supabase/              migrações, políticas RLS e Edge Functions
 ```
 
 Cada módulo possui um `module.js` com identidade, tela, namespace, exigência de login e capacidades. `core/module-host.js` é o único responsável por mostrar ou ocultar módulos. Os aliases `tasks` e `feira` continuam aceitos para não quebrar chamadas antigas, mas os nomes canônicos são `checklist` e `compras`.
@@ -34,13 +35,13 @@ Cada módulo possui um `module.js` com identidade, tela, namespace, exigência d
 
 | Domínio | Proprietário | Persistência atual | Namespace futuro |
 | --- | --- | --- | --- |
-| Restaurante, pessoas, acessos e índice de produtos | Core | `alo_core_shared_v2`, cópia compacta no Apps Script e adaptadores | `core_*` |
-| Pedidos e alertas KDS | KDS | IndexedDB, fila local e Apps Script | `kds_*` |
-| Atividades, POP, agenda, fichas técnicas e documentos | Checklist | localStorage, filas locais, planilhas e Drive privado pelo Apps Script | `checklist_*` |
-| Catálogo, pedidos de compra e fornecedores | Compras | `alofeira_v1` e Apps Script | `compras_*` |
-| Etiquetas, estoque e impressão | Etiquetas | `etiquetadora_*`, fila local e Apps Script unificado | `l42_*` |
+| Restaurante, pessoas, acessos e índice de produtos | Core | armazenamento local e módulo `catalog` isolado por conta | `core_*` |
+| Pedidos e alertas KDS | KDS | IndexedDB, fila local e módulo `kds` no Supabase | `kds_*` |
+| Atividades, POP, agenda, fichas técnicas e documentos | Checklist | filas locais, módulos próprios e Storage privado | `checklist_*` |
+| Catálogo, pedidos de compra e fornecedores | Compras | `alofeira_v1` e módulo `compras` no Supabase | `compras_*` |
+| Etiquetas, estoque e impressão | Etiquetas | `etiquetadora_*`, fila local e módulo `etiquetas` no Supabase | `l42_*` |
 
-As chaves existentes são um contrato de compatibilidade. A v2.1.40 não renomeia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local. As chaves antigas do Supabase ficam apenas para compatibilidade com instalações anteriores e não são usadas como fonte remota no módulo incorporado.
+As chaves existentes são um contrato de compatibilidade. A v2.1.41 não renomeia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local. A sessão anterior do Etiquetas é reaproveitada como sessão única do produto.
 
 ## Regras entre módulos
 
@@ -68,38 +69,41 @@ Na primeira execução do núcleo compartilhado, o Core mescla pessoas antigas p
 
 O Core mantém um índice de produtos por nome normalizado e registra de qual módulo veio cada representação. Ele não força KDS, Compras e Etiquetas a usarem o mesmo formato de produto, pois validade, rota, unidade e etiqueta pertencem a domínios diferentes. O método `AloSharedData.getUnifiedData()` expõe, sob demanda, a visão completa dos quatro módulos; `getCatalogIndex()` expõe apenas os vínculos compactos.
 
-O índice completo é reconstruível e fica local. A cópia enviada ao Apps Script contém pessoas, permissões, vínculos, restaurante e metadados, sem duplicar catálogos e históricos pesados no `PropertiesService`.
+O índice completo é reconstruível e fica local. A cópia remota usa estados separados por domínio e conta, sem permitir leitura cruzada entre restaurantes.
 
 ## Backend atual
 
-O aplicativo usa uma URL única de Google Apps Script:
+O aplicativo usa um projeto Supabase configurado no próprio cliente:
 
-- KDS, Checklist, Compras, Etiquetas e a identidade central usam a mesma implantação;
-- Etiquetas mantém uma cópia local e grava seu banco compactado em uma aba própria, usando slots A/B, checksum, revisão e operação idempotente;
-- o backup único contém todas as seções e a identidade compartilhada.
+- a conta da nuvem é opcional para abrir o aplicativo e fica persistida após a primeira conexão;
+- KDS, Checklist, Compras, Etiquetas e a identidade central usam uma única Edge Function autenticada;
+- `api.module_states` separa os domínios e todas as leituras são limitadas a `auth.uid()` por RLS forçada;
+- cada gravação usa revisão otimista e recibo idempotente, enquanto Realtime avisa os outros aparelhos imediatamente;
+- fotos e documentos ficam em bucket privado, em caminhos pertencentes ao usuário autenticado;
+- o backup único continua contendo todas as seções e a identidade compartilhada.
 
-Isso ainda não é um único banco ACID. Há proteção por lock, revisão, confirmação, checksum e idempotência nos fluxos críticos, mas não existe uma transação única entre módulos. O Apps Script é a fonte remota atual; a futura migração ao Supabase substituirá os adaptadores sem misturar regras de domínio.
+Cada mutação de módulo é transacional e consistente no PostgreSQL. Operações que atravessam módulos continuam coordenadas pelos adaptadores e não fingem ser uma única transação distribuída; os vínculos usam referências explícitas e reconciliação idempotente.
 
-## Preparação para Supabase
+## Regras do Supabase
 
-A futura migração deve trocar adaptadores, não telas nem regras de negócio. O desenho esperado é:
+O backend segue estas regras:
 
-- tabelas separadas pelos prefixos `core_`, `kds_`, `checklist_`, `compras_` e `l42_`;
-- chaves de estabelecimento em todas as entidades compartilhadas;
+- estados separados por domínio e proprietário em `api.module_states`;
+- `owner_id` derivado da sessão, nunca aceito do corpo enviado pelo cliente;
 - RLS habilitado em toda tabela exposta;
 - autorização real no servidor, sem confiar nas permissões visuais do navegador;
 - operações idempotentes com chave única de operação;
-- Realtime apenas para eventos operacionais, sem transformar histórico antigo em carga contínua;
+- Realtime apenas sinaliza mudança de revisão; cada adaptador reconcilia o estado canônico;
 - migrações versionadas, conferência por contagem e assinatura, e caminho de retorno;
 - credenciais privilegiadas nunca incluídas no APK ou no JavaScript público.
 
-O Supabase deve ser introduzido módulo a módulo por uma camada de repositório. Durante a transição, cada domínio terá uma única fonte de verdade declarada; não haverá gravação dupla silenciosa em Apps Script e Supabase.
+Não existe gravação dupla: conectado, o Supabase é a única fonte remota; desconectado, as filas locais preservam as ações até a reconciliação.
 
 O plano executável está em `docs/SUPABASE-MIGRATION.md`.
 
 ## Etiquetas e Android
 
-Etiquetas usa o Apps Script unificado quando incorporado ao Alô Cozinha. O APK preserva o pacote `com.aloetiqueta.l42`, o deep link `aloetiqueta://auth/callback` e o mesmo certificado do APK anterior para permitir atualização sem limpar o sandbox Android. Esses nomes são compatibilidade técnica, não uma segunda conta ou um segundo aplicativo dentro do produto.
+Etiquetas usa a sessão e o endpoint Supabase do núcleo quando incorporado ao Alô Cozinha. O APK preserva o pacote `com.aloetiqueta.l42`, o deep link `aloetiqueta://auth/callback` e o mesmo certificado do APK anterior para permitir atualização sem limpar o sandbox Android. Esses nomes são compatibilidade técnica, não uma segunda conta ou um segundo aplicativo dentro do produto.
 
 O Gradle empacota o shell web diretamente da raiz no momento do build; não existe uma segunda cópia manual dos arquivos web dentro de `android/app/src/main/assets`. As pontes `AloNative` e `AloPrinter` permanecem restritas ao WebView local do APK.
 
@@ -112,6 +116,6 @@ Antes de publicar uma alteração estrutural:
 3. conferir que os quatro módulos voltam à tela inicial;
 4. simular offline, fila pendente e retorno da internet;
 5. validar backup e restauração com dados de todos os módulos;
-6. validar a cópia A/B de Etiquetas e a resolução de conflito por revisão;
+6. validar a resolução de conflito por revisão em Etiquetas;
 7. confirmar que o service worker não referencia arquivos removidos;
 8. verificar que nenhuma chave persistente foi renomeada sem migração explícita.

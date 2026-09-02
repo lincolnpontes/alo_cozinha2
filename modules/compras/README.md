@@ -20,4 +20,4 @@ Abra `http://127.0.0.1:5173/`.
 
 ## Backend
 
-O módulo usa a mesma URL e a mesma implantação dos demais módulos. O código publicado deve ser o `google-apps-script.gs` da raiz do Alô Cozinha.
+Quando incorporado, o módulo usa a sessão e a Edge Function Supabase configuradas pelo núcleo do Alô Cozinha.

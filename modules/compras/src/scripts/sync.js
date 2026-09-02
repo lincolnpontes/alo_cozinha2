@@ -16,7 +16,11 @@ async function fetchComTimeout(url, options = {}, timeoutMs = 15000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        return await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+        const requestOptions = Object.assign({}, options, { signal: controller.signal });
+        const cloud = window.parent !== window ? window.parent.AloCloud : window.AloCloud;
+        return cloud?.isEndpoint?.(url)
+            ? await cloud.fetch(url, requestOptions)
+            : await fetch(url, requestOptions);
     } finally {
         clearTimeout(timer);
     }

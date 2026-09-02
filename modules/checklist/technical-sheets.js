@@ -1049,7 +1049,9 @@
         url.searchParams.set('action', 'sincronizar_fichas_tecnicas');
         if (revision !== '') url.searchParams.set('revision', String(revision));
         url.searchParams.set('cb', String(Date.now()));
-        const response = await fetch(url.toString(), { cache:'no-store' });
+        const response = global.AloCloud?.isEndpoint?.(url.toString())
+            ? await global.AloCloud.fetch(url.toString(), { cache:'no-store' })
+            : await fetch(url.toString(), { cache:'no-store' });
         if (!response.ok) throw new Error('Servidor indisponível.');
         const result = await response.json();
         if (result.status !== 'ok') throw new Error(result.message || 'Fichas não sincronizadas.');
@@ -1063,14 +1065,14 @@
             for (let attempt = 0; attempt < 5 && state.outbox.length; attempt += 1) {
                 await new Promise(resolve => setTimeout(resolve, 500 + (attempt * 250)));
                 const confirmation = await getRemote('');
-                if (!Array.isArray(confirmation.fichas)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar fichas técnicas.');
+                if (!Array.isArray(confirmation.fichas)) throw new Error('A nuvem não devolveu as fichas técnicas esperadas.');
                 mergeRemote(confirmation.fichas);
                 state.revision = Number(confirmation.revision || state.revision);
             }
             if (state.outbox.length) throw new Error('A nuvem não confirmou as alterações das fichas técnicas.');
         }
         const result = await getRemote(state.revision);
-        if (result.changed && !Array.isArray(result.fichas)) throw new Error('Atualize a implantação do Google Apps Script para sincronizar fichas técnicas.');
+        if (result.changed && !Array.isArray(result.fichas)) throw new Error('A nuvem não devolveu as fichas técnicas esperadas.');
         if (result.changed) mergeRemote(result.fichas);
         state.revision = Number(result.revision || state.revision);
         saveState(); render();

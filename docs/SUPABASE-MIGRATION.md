@@ -1,65 +1,55 @@
 # Migração do Alô Cozinha para Supabase
 
-## Meta
+## Resultado
 
-Levar os quatro módulos e o núcleo compartilhado para um único projeto Supabase sem alterar as telas, perder históricos ou manter duas fontes de verdade indefinidamente.
+A v2.1.41 usa um único projeto Supabase para KDS, Checklist, Lista de Compras, Etiquetas e dados compartilhados. O app continua local-first e não exige login para abrir; a conta da nuvem é conectada uma vez nas configurações e permanece no aparelho.
 
-## Modelo inicial
+## Componentes
 
-Tabelas do núcleo:
+- `api.module_states`: snapshots separados por conta e domínio.
+- `api.sync_operations`: recibos idempotentes de operações já confirmadas.
+- `api.get_module_state` e `api.sync_module_state`: leitura e escrita autenticadas, com revisão otimista.
+- `alo-cozinha-sync`: Edge Function que mantém os contratos dos quatro módulos.
+- `alo-cozinha-private`: bucket privado para fotos e documentos.
+- Supabase Realtime: aviso imediato de alteração aos demais aparelhos da mesma conta.
 
-- `core_establishments`
-- `core_people`
-- `core_credentials`
-- `core_module_permissions`
-- `core_areas`
-- `core_product_links`
-- `core_migration_runs`
+## Isolamento
 
-Tabelas de domínio:
-
-- `kds_orders`, `kds_order_events`, `kds_alert_acknowledgements`
-- `checklist_templates`, `checklist_schedules`, `checklist_executions`
-- `compras_products`, `compras_suppliers`, `compras_orders`, `compras_order_items`
-- `l42_products`, `l42_labels`, `l42_stock_events`, `l42_print_events`
-
-Todas as entidades operacionais devem carregar `establishment_id`. IDs antigos ficam em colunas `legacy_id` com restrição única por origem, permitindo migração idempotente.
-
-## Segurança
-
-1. Expor à API somente as tabelas necessárias.
-2. Habilitar RLS em todas as tabelas expostas.
-3. Autorizar por estabelecimento e função no servidor.
-4. Guardar PIN apenas como hash; nunca enviar credencial privilegiada no APK.
-5. Usar funções `SECURITY DEFINER` somente quando indispensável, com `search_path` fixo e permissões mínimas.
-6. Registrar ações administrativas e migrações.
+1. O proprietário é sempre obtido da sessão Supabase; o cliente não escolhe `owner_id`.
+2. `api.module_states` e `api.sync_operations` usam RLS forçada.
+3. A política permite leitura somente quando `owner_id = auth.uid()`.
+4. O bucket privado aceita apenas caminhos iniciados pelo ID do usuário autenticado.
+5. A chave pública fica no cliente; a chave `service_role` existe somente dentro da Edge Function.
+6. PINs de operadores continuam sendo uma autorização interna do restaurante e não substituem a conta da nuvem.
 
 ## Consistência
 
-- Toda escrita recebe `operation_id` único.
-- Mudança de status grava evento e estado atual na mesma transação.
-- O servidor rejeita revisões antigas.
-- Realtime entrega eventos operacionais; a tela reconcilia periodicamente o estado canônico.
-- Histórico antigo é consultado por período e não participa do fluxo operacional em tempo real.
-- Exclusões regulatórias usam estado ou tombstone quando o histórico precisa permanecer auditável.
+- Toda gravação compara a revisão conhecida com a revisão atual.
+- Uma revisão antiga devolve conflito e o adaptador reconcilia o estado canônico.
+- Operações com o mesmo ID devolvem o recibo anterior sem repetir o efeito.
+- As filas locais sobrevivem a reinício e retomam o envio quando a conexão volta.
+- Realtime acelera a atualização, mas a leitura periódica continua como conferência.
 
-## Etapas
+## Dados migrados
 
-1. Criar esquema, RLS, índices e ambiente de homologação.
-2. Migrar `core_people`, permissões, restaurante e áreas; conferir contagem e assinaturas.
-3. Trocar o adaptador de identidade do frontend e manter os módulos atuais.
-4. Migrar Checklist, depois Compras, KDS e por último L42.
-5. Em cada módulo: congelar escrita antiga, importar, conferir, virar a fonte de verdade e manter retorno documentado.
-6. Rodar ao menos um ciclo operacional completo em homologação.
-7. Desativar Apps Script e o esquema legado do L42 somente depois da conferência final e do backup.
+Em 1º de setembro de 2026, a conta principal recebeu:
+
+- 44 produtos de catálogo e 5 tarefas cadastradas;
+- 3.423 pedidos KDS;
+- 15 atividades, 5 fichas técnicas e 1 documento;
+- 209 produtos, 1.039 pedidos e 20 fornecedores de Compras;
+- 77 produtos e 1.982 registros de histórico de Etiquetas;
+- 3 fotos e 1 documento no Storage privado.
+
+O backup anterior à migração está em `C:\Users\Lincoln\Downloads\alo_cozinha_pre_supabase_2026-09-01.json`. O commit e a tag `v2.1.40` preservam o backend anterior como caminho de retorno.
 
 ## Critérios de aceite
 
-- nenhum registro perdido ou duplicado;
-- mesma pessoa e mesmas permissões em todos os aparelhos;
-- fila offline sobrevive a reinício e envia uma única vez;
-- status não regride diante de respostas atrasadas;
-- KDS e Checklist recebem atualizações operacionais em tempo útil;
-- backup completo restaura os quatro módulos;
-- APK não contém chave privilegiada;
-- políticas RLS testadas para acesso permitido e negado.
+- nenhuma chamada operacional usa configuração manual de URL;
+- outro usuário não lê nem altera dados da conta principal;
+- KDS, Checklist, Compras e Etiquetas recebem confirmação do servidor;
+- Realtime acorda somente o adaptador do domínio alterado;
+- fotos e documentos não possuem URL pública permanente;
+- confirmação e recuperação de senha continuam abrindo o site de conta existente;
+- o APK não contém chave privilegiada e empacota a biblioteca Supabase;
+- o backup completo continua exportando os quatro módulos.

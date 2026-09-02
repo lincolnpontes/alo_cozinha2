@@ -560,7 +560,8 @@
         }
 
         async getPendingCount() {
-            return (await global.AloStorage.getAllOperations()).length;
+            const operations = await global.AloStorage.getAllOperations();
+            return operations.filter(operation => !operation.submittedAt || operation.lastError).length;
         }
 
         async emit() {

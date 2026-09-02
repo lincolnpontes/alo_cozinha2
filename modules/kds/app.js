@@ -1,5 +1,6 @@
 const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let db = carregarBanco();
+    db.configs.url = window.AloCloud?.getEndpoint?.() || '';
     let categoriaAtual = null;
     const KDS_ORDER_KEY = 'alo_kds_product_order_v1';
     let ordemProdutos = ['cadastro', 'categoria', 'mais_pedidos'].includes(localStorage.getItem(KDS_ORDER_KEY))
@@ -1430,7 +1431,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     function abrirPainelControle() {
-        document.getElementById('configUrlApp').value = db.configs.url || '';
+        window.AloCloud?.renderAccountSettings?.();
         abrirModalNoTopo('modalPainelUnificado');
     }
 
@@ -1616,7 +1617,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     function abrirConfiguracoesAvancadas() {
         document.getElementById('configSenhaSeguranca').value = db.configs.senhaSeguranca || '';
         document.getElementById('configSenhaFeedback').innerText = '';
-        document.getElementById('configUrlApp').value = db.configs.url || '';
+        window.AloCloud?.renderAccountSettings?.();
         abrirModalNoTopo('modalConfigAvancadas');
     }
 
@@ -1653,7 +1654,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             ? confirmation.atividades.filter(activity => ['concluida', 'nao_realizada'].includes(activity.status))
             : [];
         if (confirmation?.revision === undefined || finalized.length) {
-            throw new Error('O Apps Script não confirmou a limpeza do Checklist.');
+            throw new Error('A nuvem não confirmou a limpeza do Checklist.');
         }
         AloTasks.clearHistoryLocal();
     }
@@ -1871,7 +1872,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.40',
+                version: '2.1.41',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2025,7 +2026,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const etapasConcluidas = [];
         try {
             if (!db.configs.url || !ehUrlAppsScript(db.configs.url)) {
-                throw new Error('Cadastre e valide primeiro a URL do novo Google Apps Script.');
+                throw new Error('Conecte a conta da nuvem antes de restaurar o backup.');
             }
             const importedData = JSON.parse(await lerArquivoTexto(file));
             const modulos = separarModulosDoBackup(importedData);
@@ -2056,9 +2057,9 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             if (modulos.kdsChecklist) {
                 const preparedBank = bancoPreparadoDoBackup(modulos.kdsChecklist);
                 const currentBank = await AloApi.getBank(db.configs.url);
-                if (!bancoNuvemValido(currentBank)) throw new Error('O Google Apps Script não possui suporte à restauração.');
+                if (!bancoNuvemValido(currentBank)) throw new Error('A nuvem não possui suporte à restauração deste backup.');
                 if (atividades.length && !currentBank._capabilities?.atividadesBackup) {
-                    throw new Error('Atualize primeiro o Google Apps Script para restaurar também o histórico do Checklist.');
+                    throw new Error('A nuvem não confirmou suporte ao histórico do Checklist.');
                 }
                 const migrationId = `backup_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
                 const report = await AloApi.migrateBackup(db.configs.url, {
@@ -2125,45 +2126,6 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         } finally {
             input.value = '';
             if (button) { button.disabled = false; button.innerText = originalText; }
-        }
-    }
-
-    async function salvarURL() {
-        const urlInput = document.getElementById('configUrlApp').value.trim();
-        if(!urlInput) return alert('Cole a URL do Google Apps Script.');
-        if(!ehUrlAppsScript(urlInput)) return alert('URL inválida. Use o endereço de implantação que termina em /exec.');
-
-        const btn = document.getElementById('btnSalvarUrl');
-        const textoOriginal = btn ? btn.innerText : '';
-        if(btn) { btn.disabled = true; btn.innerText = 'Validando...'; }
-        try {
-            const [nuvemDB, respostaSync] = await Promise.all([
-                AloApi.getBank(urlInput),
-                AloApi.sync(urlInput, '')
-            ]);
-            if(!bancoNuvemValido(nuvemDB) || !respostaSync || respostaSync.status !== 'ok') throw new Error('Servidor incompatível.');
-
-            db.configs.url = urlInput;
-            window.AloFeiraModule?.syncServerUrl();
-            db.configs.dadosBaixados = true;
-            db.configs.revisaoBanco = Number(nuvemDB._revision || 0);
-            if(Array.isArray(nuvemDB.produtos)) {
-                aplicarBancoDaNuvem(nuvemDB);
-                iniciar();
-            } else {
-                db.configs.bancoPendente = true;
-                salvarBancoLocal();
-                agendarSincronizacaoBanco(0);
-            }
-            if(syncConfiavel) await syncConfiavel.retryNow();
-            alert(Array.isArray(nuvemDB.produtos)
-                ? 'URL validada. Cardápio, áreas e pedidos estão sincronizados.'
-                : 'URL validada. Os dados deste aparelho serão publicados automaticamente.');
-        } catch(error) {
-            document.getElementById('configUrlApp').value = db.configs.url || '';
-            alert('Não foi possível validar esta URL. Confira se é a implantação correta do Alô Cozinha e se a internet está funcionando.');
-        } finally {
-            if(btn) { btn.disabled = false; btn.innerText = textoOriginal; }
         }
     }
 
@@ -2725,6 +2687,11 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     let syncConfiavel = null;
+    window.addEventListener('alo:cloud-change', event => {
+        const module = String(event.detail?.module || '');
+        if (module === 'kds') syncConfiavel?.syncNow?.(false, true);
+        if (module === 'catalog') agendarSincronizacaoBanco(0);
+    });
     let bancoSyncTimer = null;
     let bancoSyncEmAndamento = false;
     let bancoSyncErro = '';
@@ -3073,14 +3040,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     function ehUrlAppsScript(valor) {
-        try {
-            const url = new URL(valor);
-            return url.protocol === 'https:'
-                && url.hostname === 'script.google.com'
-                && /^\/macros\/s\/[^/]+\/exec\/?$/.test(url.pathname);
-        } catch(error) {
-            return false;
-        }
+        return Boolean(window.AloCloud?.isEndpoint?.(valor));
     }
 
     function bancoNuvemValido(nuvemDB) {
@@ -3226,7 +3186,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.40').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.41').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

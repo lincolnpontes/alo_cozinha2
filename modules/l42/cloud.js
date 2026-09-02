@@ -51,8 +51,14 @@
         const body = await response.text();
         try { return JSON.parse(body); }
         catch (error) {
-            throw new Error('O Google Apps Script atual ainda não aceita a sincronização de Etiquetas. Publique o código mais recente.');
+            throw new Error('A nuvem devolveu uma resposta inválida para Etiquetas.');
         }
+    }
+
+    function request(url, options = {}) {
+        return global.AloCloud?.isEndpoint?.(url)
+            ? global.AloCloud.fetch(url, options)
+            : fetch(url, options);
     }
 
     async function requestRemote(baseRevision) {
@@ -60,7 +66,7 @@
         url.searchParams.set('action', 'carregar_etiquetas_banco');
         url.searchParams.set('revision', String(baseRevision));
         url.searchParams.set('_', String(Date.now()));
-        const response = await fetch(url.toString(), { cache: 'no-store', redirect: 'follow' });
+        const response = await request(url.toString(), { cache: 'no-store', redirect: 'follow' });
         if (!response.ok) throw new Error(`Servidor indisponível (${response.status}).`);
         const result = await readJsonResponse(response);
         if (result.status !== 'ok') throw new Error(result.message || 'Não foi possível carregar Etiquetas.');
@@ -68,7 +74,7 @@
     }
 
     async function saveRemote(bank, expectedRevision, reuseOperation = true) {
-        const response = await fetch(serverUrl(), {
+        const response = await request(serverUrl(), {
             method: 'POST',
             redirect: 'follow',
             body: JSON.stringify({
@@ -116,7 +122,7 @@
     async function performSync() {
         const url = serverUrl();
         if (!url) {
-            setStatus('local', 'Configure a URL de nuvem do Alô Cozinha');
+            setStatus('local', 'Conecte a conta da nuvem nas configurações');
             return false;
         }
         if (!navigator.onLine) {

@@ -31,7 +31,7 @@
     </div>
 </div>
 
-<script src="../../core/demo.js?v=2.1.42"></script>
+<script src="../../core/demo.js?v=2.1.43"></script>
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/qrcode.min.js"></script>
 <script src="vendor/html5-qrcode.min.js"></script>
@@ -488,7 +488,7 @@ body{color:#20242a;background:var(--fundo)}
 }
 </style>
 <script>
-const APP_VERSION="2.1.42";
+const APP_VERSION="2.1.43";
 const SUPABASE_URL="https://sxbcjzshcjxzladwptiu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK";
 const SUPABASE_SESSION_KEY="alo_supabase_session_v1";
@@ -1961,7 +1961,7 @@ function garantirBotaoAvancarEtiquetaHome(){
     btn.type='button';
     btn.title='Controle da etiqueta';
     btn.setAttribute('aria-label','Abrir controles da etiqueta');
-    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.42" alt="">';
+    btn.innerHTML='<img src="assets/printer-controls.svg?v=2.1.43" alt="">';
     btn.onclick=()=>abrirModal('modalControlesEtiqueta');
     grupo.insertBefore(btn,document.getElementById('btnScannerQRHome')||null);
 }
@@ -7296,7 +7296,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     const showHome=()=>parent.postMessage({source:'alo-l42',type:'show-home'},'*');
     const brand=document.querySelector('.header > div:first-child');
     if(brand){
-        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.42" alt=""><strong>Etiquetas</strong></button>';
+        brand.innerHTML='<button type="button" class="alo-l42-module-back" aria-label="Etiquetas, voltar aos módulos" title="Voltar aos módulos"><span aria-hidden="true">‹</span><img src="icon.png?v=2.1.43" alt=""><strong>Etiquetas</strong></button>';
         brand.style.flex='0 0 auto';
         brand.querySelector('button').addEventListener('click',showHome);
     }
@@ -7322,7 +7322,7 @@ html.alo-l42-embedded .app-sync-indicator.offline::after,html.alo-l42-embedded .
     };
     window.atualizarCabecalhoOperadorEtiquetas();
     const scannerHome=document.getElementById('btnScannerQRHome');
-    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.42" alt="">';
+    if(scannerHome)scannerHome.innerHTML='<img src="assets/qr-reader.svg?v=2.1.43" alt="">';
     const indicadorAntigo=document.getElementById('indicadorConexao');
     if(indicadorAntigo){
         const indicador=document.createElement('button');

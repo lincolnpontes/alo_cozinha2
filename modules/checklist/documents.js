@@ -72,7 +72,7 @@
             observacoes: String(source.observacoes || ''),
             tarefaId: String(source.tarefaId || ''),
             arquivo: source.arquivo && typeof source.arquivo === 'object' ? {
-                nome: String(source.arquivo.nome || ''), mime: String(source.arquivo.mime || ''), tamanho: Number(source.arquivo.tamanho || 0), atualizadoEm: Number(source.arquivo.atualizadoEm || 0)
+                nome: String(source.arquivo.nome || ''), mime: String(source.arquivo.mime || ''), tamanho: Number(source.arquivo.tamanho || 0), atualizadoEm: Number(source.arquivo.atualizadoEm || 0), demoUrl: String(source.arquivo.demoUrl || '')
             } : null,
             atualizadoEm: Number(source.atualizadoEm || Date.now()),
             revisao: Number(source.revisao || 1),
@@ -116,8 +116,16 @@
         return task?.nome || '';
     }
     function isImageDocument(record) { return Boolean(record?.arquivo?.mime?.startsWith('image/')); }
+    function demoFile(record) {
+        const relative = String(record?.arquivo?.demoUrl || '');
+        if (!relative || !global.AloDemo?.isActive?.()) return null;
+        return { dataUrl:new URL(relative, document.baseURI).toString(), name:record.arquivo.nome, mime:record.arquivo.mime };
+    }
     async function loadFilePreview(record) {
-        if (!isImageDocument(record) || !deps.getUrl()) return '';
+        if (!isImageDocument(record)) return '';
+        const localDemo = demoFile(record);
+        if (localDemo) return localDemo.dataUrl;
+        if (!deps.getUrl()) return '';
         if (filePreviewCache.has(record.id)) return filePreviewCache.get(record.id);
         if (filePreviewLoading.has(record.id)) return '';
         filePreviewLoading.add(record.id);
@@ -246,7 +254,7 @@
         const record = findDocument(documentId || viewerDocumentId);
         if (!record?.arquivo) return;
         try {
-            const remote = await global.AloApi.getChecklistDocumentFile(deps.getUrl(), record.id, true);
+            const remote = demoFile(record) || await global.AloApi.getChecklistDocumentFile(deps.getUrl(), record.id, true);
             const dataUrl = remote?.dataUrl || remote?.data || remote?.arquivo || '';
             if (!dataUrl) throw new Error('Arquivo não encontrado.');
             const blob = await (await fetch(dataUrl)).blob();
@@ -382,7 +390,7 @@
     async function openFile(documentId = '') {
         const current = findDocument(documentId || document.getElementById('checklistDocumentId').value);
         try {
-            const file = pendingFile || await global.AloApi.getChecklistDocumentFile(deps.getUrl(), current.id, true);
+            const file = pendingFile || demoFile(current) || await global.AloApi.getChecklistDocumentFile(deps.getUrl(), current.id, true);
             const dataUrl = file.dataUrl || file.data || file.arquivo;
             if (!dataUrl) throw new Error('Arquivo não encontrado.');
             const response = await fetch(dataUrl);
@@ -417,6 +425,12 @@
         return result;
     }
     async function performSync() {
+        if (global.AloDemo?.isActive?.()) {
+            state.outbox = [];
+            saveState(); render();
+            setSyncStatus('ok', 'Dados fictícios salvos neste aparelho');
+            return true;
+        }
         if (!deps.getUrl() || !navigator.onLine) { setSyncStatus('error', 'Sem conexão com o servidor'); return false; }
         if (state.outbox.length) setSyncStatus('syncing', 'Sincronizando documentos');
         if (state.outbox.length) {

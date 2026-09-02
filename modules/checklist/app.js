@@ -338,6 +338,13 @@
     }
     async function syncNow(force = false) {
         if (syncRunning) return;
+        if (global.AloDemo?.isActive?.()) {
+            outbox = [];
+            activities = activities.map(activity => ({ ...activity, syncState:'confirmed' }));
+            saveRuntime();
+            setSyncIndicator('online', 0);
+            return true;
+        }
         const url = deps.getUrl();
         if (!url || !navigator.onLine) { setSyncIndicator('offline'); return; }
         syncRunning = true;
@@ -826,6 +833,8 @@
     function render() {
         if (!initialized) return;
         renderAreaOptions();
+        const tabs = document.querySelector('.tasks-tabs');
+        if (tabs) tabs.style.display = selectedArea === 'todos' ? 'none' : '';
         document.querySelectorAll('[data-task-tab]').forEach(button => {
             button.classList.toggle('active', button.dataset.taskTab === selectedTab);
         });
@@ -839,14 +848,16 @@
         document.getElementById('taskTabPendingCount').innerText = `(${allToday.filter(item => item.status === 'pendente').length})`;
         document.getElementById('taskTabRunningCount').innerText = `(${allToday.filter(item => item.status === 'em_execucao').length})`;
         document.getElementById('taskTabCompletedCount').innerText = `(${allToday.filter(item => item.status === 'concluida').length})`;
+        if (selectedArea === 'todos') {
+            list.innerHTML = '';
+            return;
+        }
         if (!groups.length) {
             const text = selectedTab === 'total' ? 'Nenhuma atividade programada para hoje.' : (selectedTab === 'pendentes' ? 'Nenhuma atividade pendente.' : (selectedTab === 'em_execucao' ? 'Nenhuma atividade em execução.' : 'Nenhuma atividade concluída hoje.'));
             list.innerHTML = `<li class="tasks-empty">${text}</li>`;
             return;
         }
         const renderCard = activity => {
-            const area = getArea(activity.setorId);
-            const employee = getEmployee(activity.funcionarioId);
             const timing = taskTiming(activity);
             const template = db().tarefas.find(item => item.id === activity.tarefaId) || {};
             const canReschedule = activity.permiteRemarcacao || template.permiteRemarcacao;
@@ -861,9 +872,8 @@
             const urgent = activity.prioridade === 'urgente' ? '<b class="task-urgent-label">URGENTE</b>' : '';
             return `<article class="task-card ${stateClass} details-clickable" id="task-${escapeHtml(activity.id)}"${detailsAction}>
                 <div class="task-card-main">
-                    <div class="task-time">${formatTime(activity.horario)}</div>
-                    <div class="task-card-copy"><strong>${escapeHtml(activity.nome)}</strong><span>${areaVisualHtml(area.emoji)} ${escapeHtml(area.nome)}${employee ? ` · ${escapeHtml(employee.nome)}` : ''}</span></div>
-                    ${urgent || actions ? `<div class="task-card-side">${urgent}${actions ? `<div class="task-card-actions">${actions}</div>` : ''}</div>` : ''}
+                    <div class="task-card-heading"><div class="task-time">${formatTime(activity.horario)}</div><div class="task-card-copy"><strong>${escapeHtml(activity.nome)}</strong></div>${urgent}</div>
+                    ${actions ? `<div class="task-card-actions">${actions}</div>` : ''}
                 </div>
             </article>`;
         };
@@ -1329,6 +1339,7 @@
             return;
         }
         selectedArea = area;
+        if (area === 'todos') selectedTab = 'total';
         localStorage.setItem(STORAGE_SELECTED_AREA, area);
         closeAreaPicker();
         render();

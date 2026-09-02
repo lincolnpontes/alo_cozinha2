@@ -8,6 +8,9 @@
     let session = readSession();
     let channel = null;
     let initializing = null;
+    let refreshPromise = null;
+    let recoveryTimer = null;
+    let recoveryAttempt = 0;
     let realtimeClient = null;
     let lastStatus = session ? 'connecting' : 'local';
     let accessMode = 'signin';
@@ -60,6 +63,30 @@
         renderAccountSettings(message);
     }
 
+    function updateRealtimeToken() {
+        if (session?.access_token && realtimeClient?.realtime?.setAuth) {
+            realtimeClient.realtime.setAuth(session.access_token);
+        }
+    }
+
+    function wakeAllModules() {
+        ['kds', 'catalog', 'checklist', 'technical_sheets', 'documents', 'compras', 'etiquetas']
+            .forEach(module => wakeModule(module));
+    }
+
+    function scheduleRecovery(delay = 5000) {
+        if (recoveryTimer || !session || isDemoMode() || !navigator.onLine) return;
+        const wait = Math.min(60000, Math.max(delay, 5000) * Math.max(1, recoveryAttempt + 1));
+        recoveryTimer = global.setTimeout(async () => {
+            recoveryTimer = null;
+            const recovered = await initialize();
+            if (!recovered) {
+                recoveryAttempt = Math.min(recoveryAttempt + 1, 6);
+                scheduleRecovery(5000);
+            }
+        }, wait);
+    }
+
     function errorMessage(error) {
         const raw = String(error?.message || error || 'Falha inesperada.');
         const translations = [
@@ -85,12 +112,36 @@
 
     async function refreshSession() {
         if (!session?.refresh_token) throw new Error('Conecte a conta da nuvem nas configurações.');
-        const response = await global.fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-            method: 'POST',
-            headers: { apikey: PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: session.refresh_token })
+        if (refreshPromise) return refreshPromise;
+        const attemptedRefreshToken = session.refresh_token;
+        refreshPromise = (async () => {
+            emitStatus('connecting', 'Renovando a conexão com a nuvem...');
+            const response = await global.fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+                method: 'POST',
+                headers: { apikey: PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: attemptedRefreshToken })
+            });
+            if (!response.ok) {
+                const stored = readSession();
+                if (stored?.refresh_token && stored.refresh_token !== attemptedRefreshToken) {
+                    saveSession(stored);
+                    updateRealtimeToken();
+                    return session;
+                }
+            }
+            const refreshed = saveSession(await parseResponse(response));
+            updateRealtimeToken();
+            recoveryAttempt = 0;
+            emitStatus('online', 'Conexão com a nuvem restabelecida');
+            global.setTimeout(wakeAllModules, 0);
+            return refreshed;
+        })().catch(error => {
+            scheduleRecovery();
+            throw error;
+        }).finally(() => {
+            refreshPromise = null;
         });
-        return saveSession(await parseResponse(response));
+        return refreshPromise;
     }
 
     async function ensureSession() {
@@ -107,11 +158,24 @@
         headers.set('x-alo-device-id', deviceId());
         if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json;charset=utf-8');
         const request = () => global.fetch(input, { ...options, headers, mode: 'cors', cache: 'no-store' });
-        let response = await request();
+        let response;
+        try {
+            response = await request();
+        } catch (error) {
+            emitStatus('warning', 'Conexão interrompida; tentando restabelecer...');
+            scheduleRecovery();
+            throw error;
+        }
         if (response.status === 401) {
             await refreshSession();
             headers.set('Authorization', `Bearer ${session.access_token}`);
-            response = await request();
+            try {
+                response = await request();
+            } catch (error) {
+                scheduleRecovery();
+                throw error;
+            }
+            if (response.status === 401) scheduleRecovery();
         }
         return response;
     }
@@ -183,11 +247,15 @@
                 await ensureSession();
                 await rpc('bootstrap_account', { p_display_name: session.user?.user_metadata?.display_name || null });
                 await startRealtime();
+                recoveryAttempt = 0;
+                if (recoveryTimer) global.clearTimeout(recoveryTimer);
+                recoveryTimer = null;
                 emitStatus('online', 'Conta conectada ao Supabase');
                 global.dispatchEvent(new CustomEvent('alo:cloud-ready', { detail: { endpoint: ENDPOINT } }));
                 return true;
             } catch (error) {
                 emitStatus('error', errorMessage(error));
+                scheduleRecovery();
                 return false;
             }
         })().finally(() => { initializing = null; });
@@ -222,6 +290,9 @@
         if (channel && realtimeClient) await realtimeClient.removeChannel(channel).catch(() => {});
         channel = null;
         realtimeClient = null;
+        if (recoveryTimer) global.clearTimeout(recoveryTimer);
+        recoveryTimer = null;
+        recoveryAttempt = 0;
         session = null;
         localStorage.removeItem(SESSION_KEY);
         emitStatus('local', 'Conta desconectada; dados locais preservados');
@@ -455,6 +526,22 @@
         toggleAccessPassword,
         submitAccess,
         recoverFromAccess
+    });
+
+    global.addEventListener('online', () => {
+        if (!session || isDemoMode()) return;
+        recoveryAttempt = 0;
+        initialize();
+    });
+    global.addEventListener('storage', event => {
+        if (event.key !== SESSION_KEY) return;
+        const stored = readSession();
+        if (!stored?.access_token || stored.access_token === session?.access_token) return;
+        session = stored;
+        updateRealtimeToken();
+        recoveryAttempt = 0;
+        emitStatus('connecting', 'Sessão atualizada; reconectando...');
+        initialize();
     });
 
     if (document.readyState === 'loading') {

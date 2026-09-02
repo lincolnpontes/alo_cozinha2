@@ -1,14 +1,15 @@
-# Alô Cozinha v2.1.42
+# Alô Cozinha v2.1.43
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
-- A v2.1.42 migra os quatro módulos para um backend Supabase único e configurado no aplicativo, com autenticação persistente, atualização em tempo real e isolamento de dados por conta.
-- A v2.1.42 abre instalações novas em uma tela própria de acesso, com criação de conta, recuperação por e-mail e verificação rápida; os PINs internos dos operadores continuam independentes.
-- A v2.1.42 adiciona um Modo Demonstração isolado da conta e da nuvem, com exemplos fictícios nos quatro módulos e saída sem alterar os dados reais.
-- A v2.1.42 corrige corridas de sincronização do KDS: comandos rebaseados não reutilizam recibos antigos, o ciente permanece na fila até confirmação e pedidos retirados aparecem concluídos na Cozinha.
-- A v2.1.42 importa a operação existente para o novo banco, usa armazenamento privado para fotos e documentos e retira a configuração manual da URL do antigo backend.
+- A v2.1.43 compacta e refina a tela inicial de acesso para celular, mantendo login, verificação e demonstração em uma única tela.
+- A v2.1.43 amplia o Modo Demonstração com pedidos acionáveis, quantidades padrão, fichas, etiquetas e documentos fictícios, todos isolados dos dados reais.
+- A v2.1.43 reorganiza as atividades do Checklist: o painel Geral não mistura cartões e cada atividade usa o título inteiro com ações na linha inferior.
+- A v2.1.43 recupera automaticamente a sessão compartilhada do Supabase, serializa a renovação do token e reacorda as filas dos quatro módulos sem exigir novo login após falhas transitórias.
+- A v2.1.42 migra os quatro módulos para um backend Supabase único, com autenticação persistente, atualização em tempo real e isolamento de dados por conta.
+- A v2.1.42 corrige corridas de sincronização do KDS, importa a operação existente, usa armazenamento privado e elimina a configuração manual da antiga URL.
 - A v2.1.40 corrige a exportação do backup completo: no APK, o arquivo é salvo em Downloads/Alo Cozinha; no navegador, o JSON é baixado diretamente.
 - A v2.1.39 alinha o controle Inverter com a seleção de preto e dá a Funcionários e Acessos um ícone próprio no padrão visual das configurações.
 - A v2.1.39 remove o atalho duplicado de categorias e impede que os retornos de Produtos e Categorias abram o painel legado do antigo L42.

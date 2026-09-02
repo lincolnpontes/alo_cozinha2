@@ -172,6 +172,10 @@
         }
 
         async syncNow(flush = true, force = false) {
+            if (global.AloDemo?.isActive?.()) {
+                await this.confirmDemoOperations();
+                return;
+            }
             if (!this.getUrl()) {
                 this.emit();
                 return;
@@ -264,6 +268,7 @@
         }
 
         async flushUrgently() {
+            if (global.AloDemo?.isActive?.()) return this.confirmDemoOperations();
             if (!this.getUrl()) return this.emit();
             if (!navigator.onLine) {
                 await this.markPendingOffline();
@@ -480,6 +485,21 @@
             await Promise.all(rebased.map(operation => global.AloStorage.updateOperation(operation)));
             await global.AloStorage.removeOperations(confirmed);
             if (rebased.length) this.queueImmediateFlush();
+        }
+
+        async confirmDemoOperations() {
+            const operations = await global.AloStorage.getAllOperations();
+            const pendingIds = new Set(operations.map(operation => String(operation.orderId || '')).filter(Boolean));
+            const confirmed = this.orders
+                .filter(order => pendingIds.has(String(order.id)))
+                .map(order => global.AloLogic.normalizeOrder({ ...order, syncState: 'confirmed', localOnly: false }));
+            confirmed.forEach(order => this.upsertLocalOrder(order));
+            if (confirmed.length) await global.AloStorage.putOrders(confirmed);
+            if (operations.length) await global.AloStorage.removeOperations(operations.map(operation => operation.operationId));
+            this.lastError = '';
+            this.lastSyncAt = Date.now();
+            this.emit();
+            this.schedule();
         }
 
         async mergeRemoteOrders(remoteOrders, fullPull = false) {

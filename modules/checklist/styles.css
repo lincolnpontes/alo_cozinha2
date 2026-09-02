@@ -58,41 +58,46 @@
     z-index: 9000;
     overflow-y: auto;
     box-sizing: border-box;
-    padding: clamp(24px, 7vh, 62px) 16px 28px;
+    padding: clamp(8px, 2.3vh, 18px) 14px 16px;
     background: #edf2f1;
     color: var(--tasks-ink);
     overscroll-behavior: contain;
     touch-action: pan-y;
 }
 
-.cloud-access-shell { width: min(410px, 100%); margin: 0 auto; }
-.cloud-access-brand { margin-bottom: 18px; text-align: center; }
-.cloud-access-brand img { width: 86px; height: 86px; object-fit: contain; }
-.cloud-access-brand h1 { margin: 7px 0 1px; color: #184f46; font-size: 29px; }
-.cloud-access-brand > span { color: #647579; font-size: 13px; font-weight: 800; }
-.cloud-access-form { padding: 18px; border: 1px solid #d1dcda; border-radius: 8px; background: #fff; box-shadow: 0 12px 32px rgba(31, 56, 53, .1); }
-.cloud-access-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 17px; padding: 4px; border-radius: 7px; background: #e9efee; }
-.cloud-access-mode button { min-height: 42px; border: 0; border-radius: 5px; background: transparent; color: #53666a; font-size: 14px; font-weight: 900; cursor: pointer; }
+.cloud-access-shell { width: min(400px, 100%); margin: 0 auto; }
+.cloud-access-brand { margin-bottom: 8px; text-align: center; }
+.cloud-access-brand img { width: 64px; height: 64px; object-fit: contain; }
+.cloud-access-brand h1 { margin: 1px 0 0; color: #184f46; font-size: 25px; line-height: 1.08; }
+.cloud-access-brand > span { color: #647579; font-size: 12px; font-weight: 800; }
+.cloud-access-form { padding: 12px 14px; border: 1px solid #d1dcda; border-radius: 8px; background: #fff; box-shadow: 0 9px 25px rgba(31, 56, 53, .09); }
+.cloud-access-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; padding: 3px; border-radius: 7px; background: #e9efee; }
+.cloud-access-mode button { min-height: 37px; border: 0; border-radius: 5px; background: transparent; color: #53666a; font-size: 14px; font-weight: 900; cursor: pointer; }
 .cloud-access-mode button.active { background: #fff; color: #096c59; box-shadow: 0 1px 4px rgba(38, 60, 58, .13); }
-.cloud-access-field { margin-bottom: 13px; }
-.cloud-access-field label, .cloud-access-challenge legend { color: #34494d; font-size: 13px; font-weight: 900; }
-.cloud-access-field input { width: 100%; height: 49px; box-sizing: border-box; margin-top: 6px; padding: 0 13px; border: 1px solid #b8c7c8; border-radius: 6px; background: #fbfcfc; color: #223438; font-size: 16px; outline: none; }
+.cloud-access-field { margin-bottom: 8px; }
+.cloud-access-field label, .cloud-access-challenge legend { color: #34494d; font-size: 12px; font-weight: 900; }
+.cloud-access-field input { width: 100%; height: 43px; box-sizing: border-box; margin-top: 4px; padding: 0 12px; border: 1px solid #b8c7c8; border-radius: 6px; background: #fbfcfc; color: #223438; font-size: 16px; outline: none; }
 .cloud-access-field input:focus { border-color: #087f68; box-shadow: 0 0 0 3px rgba(8, 127, 104, .13); }
 .cloud-access-label-row { display: flex; align-items: center; justify-content: space-between; }
 .cloud-access-label-row button { min-height: 28px; padding: 0 3px; border: 0; background: transparent; color: #087f68; font-size: 12px; font-weight: 900; cursor: pointer; }
-.cloud-access-challenge { margin: 3px 0 12px; padding: 9px 11px 11px; border: 1px solid #d4dfdd; border-radius: 7px; background: #f7f9f9; }
-.cloud-access-challenge-line { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 10px; margin-top: 5px; }
-.cloud-access-challenge-line > strong { color: #28423e; font-size: 18px; text-align: center; }
+.cloud-access-challenge { margin: 1px 0 5px; padding: 7px 9px 9px; border: 1px solid #c9d8d5; border-radius: 7px; background: linear-gradient(135deg, #f7faf9 0%, #eef6f3 100%); }
+.cloud-access-challenge legend { display: flex; align-items: center; gap: 6px; padding: 0 5px; }
+.cloud-access-challenge legend > span:last-child { display: flex; align-items: baseline; gap: 6px; }
+.cloud-access-challenge legend small { color: #70817f; font-size: 10px; font-weight: 700; }
+.cloud-access-challenge-mark { width: 19px; height: 19px; display: inline-grid; place-items: center; border-radius: 50%; background: #d9eee8; color: #087f68; font-size: 11px; }
+.cloud-access-challenge-line { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 1px; }
+.cloud-access-challenge-line > strong { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid #d4e0de; border-radius: 6px; background: rgba(255,255,255,.72); color: #28423e; font-size: 18px; text-align: center; }
+.cloud-access-challenge-line > strong small { color: #70817f; font-size: 12px; }
 #cloudAccessChallengeOptions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-#cloudAccessChallengeOptions button { min-width: 0; min-height: 40px; border: 1px solid #b9c8c6; border-radius: 6px; background: #fff; color: #344a4d; font-size: 15px; font-weight: 900; cursor: pointer; }
+#cloudAccessChallengeOptions button { min-width: 0; min-height: 38px; border: 1px solid #b9c8c6; border-radius: 6px; background: #fff; color: #344a4d; font-size: 15px; font-weight: 900; cursor: pointer; }
 #cloudAccessChallengeOptions button.selected { border-color: #087f68; background: #dff2ed; color: #075e54; box-shadow: inset 0 0 0 1px #087f68; }
-.cloud-access-feedback { min-height: 17px; margin: 0 0 8px; color: #b3261e; font-size: 12px; line-height: 1.35; text-align: center; }
-.cloud-access-submit { width: 100%; min-height: 49px; border: 0; border-radius: 6px; background: #087f68; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; }
+.cloud-access-feedback { min-height: 13px; margin: 0 0 3px; color: #b3261e; font-size: 11px; line-height: 1.2; text-align: center; }
+.cloud-access-submit { width: 100%; min-height: 44px; border: 0; border-radius: 6px; background: #087f68; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; }
 .cloud-access-submit:disabled { opacity: .65; cursor: wait; }
-.cloud-access-link { width: 100%; min-height: 40px; margin-top: 5px; border: 0; background: transparent; color: #356b63; font-size: 13px; font-weight: 800; cursor: pointer; }
-.cloud-access-divider { display: flex; align-items: center; gap: 10px; margin: 13px 0; color: #778688; font-size: 12px; }
+.cloud-access-link { width: 100%; min-height: 31px; margin-top: 1px; border: 0; background: transparent; color: #356b63; font-size: 12px; font-weight: 800; cursor: pointer; }
+.cloud-access-divider { display: flex; align-items: center; gap: 10px; margin: 7px 0; color: #778688; font-size: 11px; }
 .cloud-access-divider::before, .cloud-access-divider::after { content: ''; height: 1px; flex: 1; background: #cbd6d4; }
-.cloud-demo-button { width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid #8ea8a3; border-radius: 7px; background: rgba(255, 255, 255, .72); color: #23564d; font-size: 15px; cursor: pointer; }
+.cloud-demo-button { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid #8ea8a3; border-radius: 7px; background: rgba(255, 255, 255, .72); color: #23564d; font-size: 14px; cursor: pointer; }
 .cloud-demo-button > span { font-size: 13px; }
 .demo-mode-notice { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -8px auto 15px; padding: 7px 8px 7px 12px; box-sizing: border-box; border: 1px solid #bdcfcc; border-radius: 7px; background: rgba(255,255,255,.75); text-align: left; }
 .demo-mode-notice span { display: grid; }
@@ -498,16 +503,16 @@
 
 .task-card-main {
     display: grid;
-    grid-template-columns: 58px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 9px;
+    grid-template-columns: 1fr;
+    gap: 3px;
     min-height: 60px;
-    padding: 7px 10px;
+    padding: 5px 9px 6px;
 }
 
+.task-card-heading { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 25px; }
 .task-time { font-size: 19px; font-weight: 900; color: #37474f; }
 .task-card-copy { min-width: 0; }
-.task-card-copy strong { display: block; overflow-wrap: anywhere; font-size: 18px; }
+.task-card-copy strong { display: block; overflow-wrap: anywhere; font-size: 18px; line-height: 1.16; }
 .task-card-copy span { display: block; margin-top: 2px; color: var(--tasks-muted); }
 .task-card-side { display: flex; align-items: flex-end; flex-direction: column; gap: 6px; }
 .task-urgent-label { padding: 3px 6px; border-radius: 4px; background: #ffebee; color: var(--tasks-red); font-size: 10px; }
@@ -517,8 +522,8 @@
 .task-complete-action,
 .task-skip-action,
 .task-reschedule-action {
-    min-height: 44px;
-    padding: 7px 10px;
+    min-height: 34px;
+    padding: 4px 10px;
     border: 0;
     border-radius: 6px;
     font-size: 13px;
@@ -989,12 +994,13 @@
     .tasks-toolbar { padding: 8px; }
     .tasks-tabs button { min-height: 42px; padding: 4px; font-size: 12px; }
     .tasks-scroll { padding: 8px; }
-    .task-card-main { grid-template-columns: 44px minmax(64px, 1fr) auto; gap: 6px; padding: 6px 7px; }
+    .task-card-main { grid-template-columns: 1fr; gap: 3px; padding: 5px 7px; }
+    .task-card-heading { grid-template-columns: 51px minmax(0, 1fr) auto; gap: 7px; }
     .task-card-side { grid-column: auto; align-items: flex-end; }
     .task-card-actions { justify-content: flex-end; flex-wrap: nowrap; gap: 4px; }
-    .task-card-actions button { min-height: 40px; padding-inline: 6px; font-size: 11px; }
+    .task-card-actions button { min-height: 34px; padding-inline: 7px; font-size: 13px; }
     .task-card-actions .task-skip-action,
-    .task-card-actions .task-reschedule-action { width: 40px; padding: 5px; }
+    .task-card-actions .task-reschedule-action { width: 36px; padding: 4px; }
     .task-time { font-size: 17px; }
     .task-card-copy strong { font-size: 16px; }
     .task-alarm-banner { top: 62px; width: calc(100% - 12px); min-height: 0; flex-direction: column; border-left-width: 5px; }
@@ -1054,7 +1060,7 @@
 @media (min-width: 641px) and (orientation: portrait) {
     .tasks-scroll { padding: 14px 22px; }
     .task-card-main { min-height: 66px; }
-    .task-card-actions button { min-height: 44px; font-size: 14px; }
+    .task-card-actions button { min-height: 36px; font-size: 14px; }
 }
 
 @media (min-width: 900px) {

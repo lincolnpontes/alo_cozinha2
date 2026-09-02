@@ -205,7 +205,9 @@ function obterEstadoHostCompras() {
     return {
         mode: db.configs.modo === 'compras' ? 'compras' : 'pedido',
         profileName: operador?.nome || 'Perfil',
-        profileEmoji: operador?.emoji || '👤'
+        profileEmoji: operador?.emoji || '👤',
+        syncState: window.AloDemo?.isActive?.() ? 'sincronizado' : (db.configs.url ? 'sincronizando' : 'local'),
+        syncMessage: window.AloDemo?.isActive?.() ? 'Demonstração pronta' : (db.configs.url ? 'Conferindo dados' : 'Dados somente neste aparelho')
     };
 }
 
@@ -270,6 +272,7 @@ window.onload = async () => {
     if (executandoNoHost) {
         db.configs.colabAtivoId = null;
         salvarBanco();
+        iniciarApp();
         ocultarSplash(true);
         resolverComprasProntasHost(true);
         notificarHostCompras();

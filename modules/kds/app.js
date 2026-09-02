@@ -711,7 +711,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     function abrirModalPedido(nomeProduto) {
-        if(!db.configs.url) return alert("URL não configurada! Vá na engrenagem ⚙️ > Avançadas");
+        if(!db.configs.url && !window.AloDemo?.isActive?.()) return alert("A nuvem ainda não está conectada.");
         document.getElementById('tituloModalPedido').innerText = `Pedir: ${nomeProduto}`; document.getElementById('pedidoItemNome').value = nomeProduto; document.getElementById('pedidoObsText').value = '';
         const btnConfirmar = document.getElementById('btnConfirmarPedido');
         if(btnConfirmar) btnConfirmar.disabled = false;
@@ -1876,7 +1876,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.42',
+                version: '2.1.43',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2706,6 +2706,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const indicador = document.getElementById('indicadorConexao');
         if (!indicador) return;
         const pendingPedidos = Number(estadoSyncPedidosAtual.pendingCount || 0);
+        if (window.AloDemo?.isActive?.()) {
+            indicador.className = 'app-sync-indicator sincronizado';
+            indicador.title = pendingPedidos ? 'Alterações salvas nesta demonstração' : 'Demonstração pronta';
+            indicador.setAttribute('aria-label', indicador.title);
+            return;
+        }
         if (!db.configs.url) {
             indicador.className = 'app-sync-indicator offline';
             indicador.title = 'Nuvem não configurada';
@@ -2733,6 +2739,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     }
 
     async function tentarSincronizarAgora() {
+        if (window.AloDemo?.isActive?.()) {
+            await AloUiDialog.notice('Os dados fictícios já estão salvos nesta demonstração.', {
+                title:'Modo Demonstração', confirmText:'Entendi'
+            });
+            return;
+        }
         if (!db.configs.url) {
             await AloUiDialog.notice('Configure a URL da nuvem nas Configurações Avançadas.', {
                 title:'Nuvem não configurada', icon:'!', confirmText:'Entendi'
@@ -3190,7 +3202,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.42').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.43').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

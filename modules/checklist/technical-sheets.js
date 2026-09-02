@@ -1058,6 +1058,12 @@
         return result;
     }
     async function performSync() {
+        if (global.AloDemo?.isActive?.()) {
+            state.outbox = [];
+            saveState(); render();
+            setSyncStatus('ok', 'Dados fictícios salvos neste aparelho');
+            return true;
+        }
         if (!deps.getUrl() || !navigator.onLine) { setSyncStatus('error', 'Sem conexão com o servidor'); return false; }
         setSyncStatus('syncing', 'Sincronizando fichas técnicas');
         if (state.outbox.length) {

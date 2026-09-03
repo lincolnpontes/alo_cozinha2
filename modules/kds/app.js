@@ -2702,15 +2702,39 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         if (!endpoint) return;
         db.configs.url = endpoint;
         window.AloFeiraModule?.syncServerUrl?.();
-        sincronizarBancoAutomaticamente({ preferirNuvem: true }).then(confirmado => {
-            if (!confirmado) return;
-            window.AloSharedData?.refreshSources?.({ includeFrames: true, push: true }).catch(() => {});
-        });
+        agendarIntegracaoInicialDaNuvem(0);
     });
     let bancoSyncTimer = null;
     let bancoSyncEmAndamento = false;
     let bancoSyncErro = '';
     let bancoSyncFalhas = 0;
+    let integracaoInicialTimer = null;
+    let fontesCompartilhadasIntegradas = false;
+
+    async function integrarFontesCompartilhadas() {
+        if (fontesCompartilhadasIntegradas || !window.AloSharedData) return true;
+        await AloSharedData.refreshSources({ includeFrames: true, push: true });
+        fontesCompartilhadasIntegradas = true;
+        return true;
+    }
+
+    function agendarIntegracaoInicialDaNuvem(tentativa = 0) {
+        if (fontesCompartilhadasIntegradas || integracaoInicialTimer) return;
+        const atraso = tentativa === 0 ? 0 : Math.min(2000, 250 * tentativa);
+        integracaoInicialTimer = setTimeout(async () => {
+            integracaoInicialTimer = null;
+            if (bancoSyncEmAndamento) {
+                agendarIntegracaoInicialDaNuvem(tentativa + 1);
+                return;
+            }
+            const confirmado = await sincronizarBancoAutomaticamente({ preferirNuvem: true });
+            if (confirmado) {
+                integrarFontesCompartilhadas().catch(error => console.warn('Integração dos dados:', error));
+            } else if (tentativa < 4 && navigator.onLine) {
+                agendarIntegracaoInicialDaNuvem(tentativa + 1);
+            }
+        }, atraso);
+    }
 
     function atualizarIndicadorSincronizacao(estado) {
         estadoSyncPedidosAtual = estado || estadoSyncPedidosAtual;
@@ -2959,12 +2983,15 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         // evita que uma leitura mais lenta do histórico mantenha o catálogo amarelo.
         const inicializacaoPedidos = syncConfiavel.start();
         const catalogoConfirmado = await sincronizarBancoAutomaticamente({ preferirNuvem: true });
-        if (catalogoConfirmado && window.AloSharedData) {
-            await AloSharedData.refreshSources({ includeFrames: true, push: true })
+        if (catalogoConfirmado) {
+            await integrarFontesCompartilhadas()
                 .catch(error => console.warn('Integração dos dados:', error));
         }
         if(!bancoSyncTimer) bancoSyncTimer = setInterval(sincronizarBancoAutomaticamente, 5000);
-        window.addEventListener('online', () => agendarSincronizacaoBanco(0));
+        window.addEventListener('online', () => {
+            agendarSincronizacaoBanco(0);
+            agendarIntegracaoInicialDaNuvem(0);
+        });
         await inicializacaoPedidos;
     }
 

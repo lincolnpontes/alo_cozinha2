@@ -26,10 +26,11 @@ test('primeiro carregamento baixa a conta antes de mesclar KDS e Compras', () =>
     const app = read('modules/kds/app.js');
     const startup = app.slice(app.indexOf('async function iniciarComSyncConfiavel'));
     const pull = startup.indexOf('await sincronizarBancoAutomaticamente({ preferirNuvem: true })');
-    const merge = startup.indexOf('await AloSharedData.refreshSources({ includeFrames: true, push: true })');
+    const merge = startup.indexOf('await integrarFontesCompartilhadas()');
 
     assert.ok(pull >= 0 && merge > pull, 'a hidratação remota deve preceder a integração entre módulos');
     assert.match(app, /window\.addEventListener\('alo:cloud-ready'/);
+    assert.match(app, /if \(bancoSyncEmAndamento\) \{\s*agendarIntegracaoInicialDaNuvem\(tentativa \+ 1\)/);
     assert.match(app, /shouldHydrateRemoteBeforePublish\(db, nuvemAtual\)/);
     assert.match(app, /applyCloudState\(nuvemDB\.coreCompartilhado, \{ force: true \}\)/);
 });

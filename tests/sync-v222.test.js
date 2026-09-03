@@ -23,7 +23,7 @@ function testCatalogConfirmationUsesActualContent() {
     const startup = appSource.slice(appSource.indexOf('async function iniciarComSyncConfiavel'));
     assert.ok(
         startup.indexOf('await sincronizarBancoAutomaticamente({ preferirNuvem: true })')
-            < startup.indexOf('await AloSharedData.refreshSources({ includeFrames: true, push: true })'),
+            < startup.indexOf('await integrarFontesCompartilhadas()'),
         'o catálogo confirmado da conta deve chegar antes da mesclagem dos módulos'
     );
 }

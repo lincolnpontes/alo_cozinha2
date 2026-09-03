@@ -1,6 +1,8 @@
-# Alô Cozinha v2.1.47
+# Alô Cozinha v2.1.48
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
+
+- A v2.1.48 recupera a exibição integral da Lista de Compras para administradores, confirma a hidratação autenticada antes de abrir o módulo e impede que uma restauração comece enquanto Compras não estiver pronto na nuvem.
 
 ## Novidades da v2
 

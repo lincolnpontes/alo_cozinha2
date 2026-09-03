@@ -146,7 +146,13 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
                 itensMostrados++;
             });
         }
-        if(itensMostrados === 0) htmlPrincipal = `<li style="padding: 20px; text-align: center; color: #999;">Nenhum item.</li>`;
+        if(itensMostrados === 0) {
+            const semPermissaoDeCategoria = Array.isArray(catsPermitidas) && catsPermitidas.length === 0;
+            const mensagem = semPermissaoDeCategoria
+                ? 'Nenhuma categoria foi liberada para este perfil.'
+                : 'Nenhum item encontrado.';
+            htmlPrincipal = `<li style="padding: 20px; text-align: center; color: #777;">${mensagem}</li>`;
+        }
         lista.innerHTML = htmlPrincipal;
         agendarReagrupamentoCompras();
     }

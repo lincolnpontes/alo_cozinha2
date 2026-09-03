@@ -1877,7 +1877,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.47',
+                version: '2.1.48',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2057,6 +2057,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             if (!confirmed) return;
 
             if (button) { button.disabled = true; button.innerText = 'Restaurando...'; }
+            if (status) status.innerText = 'Conferindo se todos os módulos estão prontos...';
+
+            if (modulos.compras) {
+                const comprasProntas = await AloFeiraModule.ensureCloudReady({ refresh: true });
+                if (!comprasProntas?.ok) throw new Error('A Lista de Compras não confirmou a conexão com a nuvem. Nenhum dado foi alterado.');
+            }
+
             if (status) status.innerText = 'Enviando e conferindo os módulos...';
 
             if (modulos.kdsChecklist) {
@@ -3253,7 +3260,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.47').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.48').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

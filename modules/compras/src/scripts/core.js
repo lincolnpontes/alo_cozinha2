@@ -82,6 +82,7 @@ function criarBancoBase() {
     function marcarMudancaPedido(pedido) { if(!pedido) return; pedido.dataStatus = agoraServidor(); db.configs.syncPendente = true; salvarBanco(); }
     function getCatsPermitidas(colabLogado, modo = db.configs.modo) {
         if(!colabLogado) return null;
+        if(colabLogado.isAdmin === true) return null;
         const especificas = modo === 'pedido' ? colabLogado.catsPermitidasPedido : colabLogado.catsPermitidasCompras;
         if(Array.isArray(especificas)) return especificas;
         if(Array.isArray(colabLogado.catsPermitidas)) return colabLogado.catsPermitidas;

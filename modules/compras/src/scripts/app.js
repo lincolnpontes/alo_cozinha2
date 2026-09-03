@@ -211,6 +211,43 @@ function obterEstadoHostCompras() {
     };
 }
 
+async function configurarNuvemComprasPeloHost(endpoint, options = {}) {
+    await comprasProntasHost;
+    const url = String(endpoint || '').trim();
+    const cloud = window.parent !== window ? window.parent.AloCloud : window.AloCloud;
+    if (!url || !cloud?.isEndpoint?.(url)) throw new Error('A conexão segura da Lista de Compras ainda não está pronta.');
+
+    const limiteEspera = Date.now() + 15000;
+    while (isSyncingFundo && Date.now() < limiteEspera) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (isSyncingFundo) throw new Error('A Lista de Compras ainda está concluindo uma sincronização.');
+
+    const mudouEndpoint = String(db.configs.url || '') !== url;
+    if (mudouEndpoint) {
+        db.configs.url = url;
+        db.configs.dadosBaixados = false;
+        backendFeiraValidadoEm = 0;
+        salvarBanco();
+    }
+
+    const precisaAtualizar = options.forcar === true || mudouEndpoint || db.configs.dadosBaixados !== true;
+    if (precisaAtualizar) {
+        const sincronizou = await sincronizarInicializacao();
+        if (!sincronizou) throw new Error('Não foi possível baixar a Lista de Compras desta conta.');
+    }
+
+    if (precisaAtualizar || options.render === true) iniciarApp();
+    return {
+        ok: true,
+        revision: Number(db.syncRevision || 0),
+        produtos: (db.produtos || []).length,
+        categorias: (db.categorias || []).length,
+        fornecedores: (db.fornecedores || []).length,
+        pedidos: (db.pedidosAtivos || []).filter(item => item?.status !== 'rascunho').length
+    };
+}
+
 function notificarHostCompras() {
     if (!executandoNoHost || window.parent === window) return;
     window.parent.AloFeiraModule?.updateHeader(obterEstadoHostCompras());

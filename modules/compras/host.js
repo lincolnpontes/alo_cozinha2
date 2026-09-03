@@ -33,12 +33,15 @@
         bank.app_id = 'alofeira';
         bank.configs = bank.configs && typeof bank.configs === 'object' ? bank.configs : {};
         const url = unifiedUrl();
+        if (!url) return false;
         const changed = !savedBank || previousAppId !== 'alofeira' || String(bank.configs.url || '') !== url;
         bank.configs.url = url;
         if (changed) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bank));
             const frame = frameElement();
-            if (frame?.getAttribute('src')) frame.contentWindow.location.reload();
+            if (frame?.getAttribute('src') && typeof frame.contentWindow?.configurarNuvemComprasPeloHost === 'function') {
+                frame.contentWindow.configurarNuvemComprasPeloHost(url, { forcar: true }).catch(() => {});
+            }
         }
         return changed;
     }
@@ -50,7 +53,7 @@
         if (!frame.getAttribute('src')) frame.setAttribute('src', frame.dataset.src);
     }
 
-    async function waitForChild() {
+    async function waitForChild(options = {}) {
         open();
         const frame = frameElement();
         if (!frame) throw new Error('O módulo de compras não está disponível.');
@@ -77,7 +80,23 @@
             child = await loadPromise;
         }
         if (typeof child.aguardarComprasProntasHost === 'function') await child.aguardarComprasProntasHost();
+        const endpoint = unifiedUrl();
+        if (options.requireCloud && !endpoint) throw new Error('A conta da nuvem ainda não está pronta para a Lista de Compras.');
+        if (endpoint) {
+            if (typeof child.configurarNuvemComprasPeloHost !== 'function') {
+                if (options.requireCloud) throw new Error('Atualize a Lista de Compras para conectar os dados desta conta.');
+            } else {
+                await child.configurarNuvemComprasPeloHost(endpoint, { forcar: options.refreshCloud === true });
+            }
+        }
         return child;
+    }
+
+    async function ensureCloudReady(options = {}) {
+        const child = await waitForChild({ requireCloud: true, refreshCloud: options.refresh !== false });
+        const state = await child.configurarNuvemComprasPeloHost(unifiedUrl(), { forcar: false });
+        if (!state?.ok) throw new Error('A Lista de Compras não confirmou a conexão com a nuvem.');
+        return state;
     }
 
     function closeModePicker() {
@@ -231,7 +250,7 @@
     }
 
     async function restoreBackup(bank) {
-        const child = await waitForChild();
+        const child = await waitForChild({ requireCloud: true, refreshCloud: true });
         if (typeof child.restaurarBackupComprasPeloHost !== 'function') throw new Error('Atualize o módulo Compras antes de restaurar.');
         return child.restaurarBackupComprasPeloHost(bank);
     }
@@ -267,7 +286,7 @@
     }
 
     global.AloFeiraModule = Object.freeze({
-        configure, open, syncServerUrl, toggleModePicker, closeModePicker, setMode,
+        configure, open, syncServerUrl, ensureCloudReady, toggleModePicker, closeModePicker, setMode,
         updateHeader, refreshHeader, openProfile, openManager, prepareLogin, authenticateOperator,
         logout, getBackup, restoreBackup, getSharedSnapshot, getCategories, applySharedPeople, applySharedRestaurant, activateSharedPerson,
         registerProductPrice, createProductForIngredient, syncNow, clearHistory, backToSettings

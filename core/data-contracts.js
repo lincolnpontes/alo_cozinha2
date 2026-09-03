@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.46';
+    const VERSION = '2.1.47';
     const SHARED_SCHEMA_VERSION = 2;
 
     const contracts = Object.freeze({

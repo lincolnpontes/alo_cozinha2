@@ -83,6 +83,16 @@
         });
     }
 
+    function shouldHydrateRemoteBeforePublish(localBank, remoteBank) {
+        const localRevision = Number(localBank?.configs?.revisaoBanco || 0);
+        const remoteRevision = Number(remoteBank?._revision || 0);
+        const localHasCatalog = (Array.isArray(localBank?.produtos) && localBank.produtos.length > 0)
+            || (Array.isArray(localBank?.categorias) && localBank.categorias.length > 0);
+        const remoteHasCatalog = (Array.isArray(remoteBank?.produtos) && remoteBank.produtos.length > 0)
+            || (Array.isArray(remoteBank?.categorias) && remoteBank.categorias.length > 0);
+        return remoteRevision > localRevision && remoteHasCatalog && !localHasCatalog;
+    }
+
     async function publish({ api, url, data, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), createReceipt }) {
         let sent = false;
         let sharedSupported = false;
@@ -127,5 +137,11 @@
         return { confirmed:false, revision:lastRevision, sent, sharedSupported, bank:lastBank };
     }
 
-    global.AloCatalogSync = Object.freeze({ isEqual, publish, createChangeTracker, mergeTaskDefinitions });
+    global.AloCatalogSync = Object.freeze({
+        isEqual,
+        publish,
+        createChangeTracker,
+        mergeTaskDefinitions,
+        shouldHydrateRemoteBeforePublish
+    });
 })(window);

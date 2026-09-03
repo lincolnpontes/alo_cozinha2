@@ -20,8 +20,12 @@ function testCatalogConfirmationUsesActualContent() {
     assert.match(appSource, /JSON\.stringify\(dadosBancoParaNuvem\(\)\) === assinaturaEnviada/);
     assert.doesNotMatch(appSource, /bancoAlteracoes/,
         'o KDS não deve depender do contador que mantinha a publicação amarela');
-    assert.match(appSource, /await dadosCompartilhadosProntos;\s*await sincronizarBancoAutomaticamente\(\)/,
-        'a identidade compartilhada deve estabilizar antes da publicação do catálogo');
+    const startup = appSource.slice(appSource.indexOf('async function iniciarComSyncConfiavel'));
+    assert.ok(
+        startup.indexOf('await sincronizarBancoAutomaticamente({ preferirNuvem: true })')
+            < startup.indexOf('await AloSharedData.refreshSources({ includeFrames: true, push: true })'),
+        'o catálogo confirmado da conta deve chegar antes da mesclagem dos módulos'
+    );
 }
 
 function testMissingCloudUrlIsExplicit() {

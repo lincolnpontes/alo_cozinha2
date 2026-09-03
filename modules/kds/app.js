@@ -1877,7 +1877,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.46',
+                version: '2.1.47',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -2697,6 +2697,16 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         if (module === 'kds') syncConfiavel?.syncNow?.(false, true);
         if (module === 'catalog') agendarSincronizacaoBanco(0);
     });
+    window.addEventListener('alo:cloud-ready', event => {
+        const endpoint = String(event.detail?.endpoint || window.AloCloud?.getEndpoint?.() || '');
+        if (!endpoint) return;
+        db.configs.url = endpoint;
+        window.AloFeiraModule?.syncServerUrl?.();
+        sincronizarBancoAutomaticamente({ preferirNuvem: true }).then(confirmado => {
+            if (!confirmado) return;
+            window.AloSharedData?.refreshSources?.({ includeFrames: true, push: true }).catch(() => {});
+        });
+    });
     let bancoSyncTimer = null;
     let bancoSyncEmAndamento = false;
     let bancoSyncErro = '';
@@ -2890,7 +2900,6 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     async function iniciarComSyncConfiavel() {
         document.addEventListener('touchstart', () => AloAudio.unlock(), { once: true });
         document.addEventListener('click', () => AloAudio.unlock(), { once: true });
-        let dadosCompartilhadosProntos = Promise.resolve();
         iniciar();
         window.AloFeiraModule?.configure({ getServerUrl: () => db.configs.url });
         window.AloEtiquetasCloud?.configure({
@@ -2940,8 +2949,6 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 markDatabaseChanged: marcarBancoAlterado,
                 openModalTop: abrirModalNoTopo
             });
-            dadosCompartilhadosProntos = AloSharedData.refreshSources()
-                .catch(error => console.warn('Integração dos dados:', error));
         }
         syncConfiavel = new AloSync({
             getUrl: () => db.configs.url,
@@ -2951,8 +2958,11 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         // O catálogo e os pedidos usam canais independentes. Iniciá-los em paralelo
         // evita que uma leitura mais lenta do histórico mantenha o catálogo amarelo.
         const inicializacaoPedidos = syncConfiavel.start();
-        await dadosCompartilhadosProntos;
-        await sincronizarBancoAutomaticamente();
+        const catalogoConfirmado = await sincronizarBancoAutomaticamente({ preferirNuvem: true });
+        if (catalogoConfirmado && window.AloSharedData) {
+            await AloSharedData.refreshSources({ includeFrames: true, push: true })
+                .catch(error => console.warn('Integração dos dados:', error));
+        }
         if(!bancoSyncTimer) bancoSyncTimer = setInterval(sincronizarBancoAutomaticamente, 5000);
         window.addEventListener('online', () => agendarSincronizacaoBanco(0));
         await inicializacaoPedidos;
@@ -3084,7 +3094,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         db.tarefas = Array.isArray(nuvemDB.tarefas) ? nuvemDB.tarefas : db.tarefas;
         if (nuvemDB.coreCompartilhado && typeof nuvemDB.coreCompartilhado === 'object') {
             db.coreCompartilhado = nuvemDB.coreCompartilhado;
-            window.AloSharedData?.applyCloudState(nuvemDB.coreCompartilhado);
+            window.AloSharedData?.applyCloudState(nuvemDB.coreCompartilhado, { force: true });
         }
         const devePublicarNucleo = configuracaoLocal.suporteDadosCompartilhados
             && !nuvemDB.coreCompartilhado
@@ -3136,17 +3146,28 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         if(tarefasAtualizadas && window.AloTasks) AloTasks.refreshDefinitions();
     }
 
-    async function sincronizarBancoAutomaticamente() {
-        if(bancoSyncEmAndamento || !db.configs.url || !navigator.onLine) return;
+    async function sincronizarBancoAutomaticamente(options = {}) {
+        if(bancoSyncEmAndamento || !db.configs.url || !navigator.onLine) return false;
         bancoSyncEmAndamento = true;
         bancoSyncErro = '';
         atualizarIndicadorSincronizacao(estadoSyncPedidosAtual);
         try {
             if(db.configs.bancoPendente) {
-                await publicarBancoPendente();
+                const nuvemAtual = await AloApi.getBank(db.configs.url);
+                const primeiraCargaSemCatalogo = options.preferirNuvem === true
+                    && !db.configs.dadosBaixados
+                    && !db.produtos.length
+                    && !db.categorias.length;
+                if (primeiraCargaSemCatalogo || AloCatalogSync.shouldHydrateRemoteBeforePublish(db, nuvemAtual)) {
+                    if (!bancoNuvemValido(nuvemAtual)) return false;
+                    aplicarBancoDaNuvem(nuvemAtual);
+                    iniciar();
+                } else {
+                    await publicarBancoPendente();
+                }
             } else {
                 const nuvemDB = await AloApi.getBank(db.configs.url);
-                if(!bancoNuvemValido(nuvemDB) || !Array.isArray(nuvemDB.produtos)) return;
+                if(!bancoNuvemValido(nuvemDB) || !Array.isArray(nuvemDB.produtos)) return false;
                 // Uma edição pode acontecer enquanto a leitura está em andamento. Nesse caso,
                 // publicar primeiro evita que a resposta antiga apague a alteração local.
                 if(db.configs.bancoPendente) {
@@ -3162,11 +3183,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             }
             bancoSyncErro = '';
             bancoSyncFalhas = 0;
+            return true;
         } catch(error) {
             bancoSyncFalhas += 1;
             bancoSyncErro = bancoSyncFalhas >= 3
                 ? (error && error.message ? error.message : 'Não foi possível sincronizar as configurações.')
                 : '';
+            return false;
         } finally {
             bancoSyncEmAndamento = false;
             atualizarIndicadorSincronizacao(estadoSyncPedidosAtual);
@@ -3203,7 +3226,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.46').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.47').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

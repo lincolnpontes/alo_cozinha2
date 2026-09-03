@@ -2,7 +2,7 @@
 
 ## Resultado
 
-A v2.1.46 usa um único projeto Supabase para KDS, Checklist, Lista de Compras, Etiquetas e dados compartilhados. Uma instalação nova solicita a conta do restaurante antes de abrir os módulos; depois disso, a sessão permanece no aparelho. O modo demonstração usa armazenamento local separado e não envia seus exemplos para a nuvem.
+A v2.1.47 usa um único projeto Supabase para KDS, Checklist, Lista de Compras, Etiquetas e dados compartilhados. Uma instalação nova solicita a conta do restaurante antes de abrir os módulos; depois disso, a sessão permanece no aparelho. O modo demonstração usa armazenamento local separado e não envia seus exemplos para a nuvem.
 
 ## Componentes
 

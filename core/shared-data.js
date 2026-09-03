@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.46';
+    const VERSION = '2.1.47';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -1113,9 +1113,9 @@
         return compact;
     }
 
-    function applyCloudState(payload) {
+    function applyCloudState(payload, options = {}) {
         const incoming = normalizeState(payload);
-        if (Number(incoming.revision || 0) <= Number(state.revision || 0)) return false;
+        if (!options.force && Number(incoming.revision || 0) <= Number(state.revision || 0)) return false;
         state = incoming;
         sourcesLoaded = Boolean(state.migration?.identitiesMerged);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));

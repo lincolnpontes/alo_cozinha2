@@ -1,14 +1,14 @@
-# Alô Cozinha v2.1.46
+# Alô Cozinha v2.1.47
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
 ## Novidades da v2
 
-- A v2.1.46 isola todo o armazenamento local, o IndexedDB e os caches por Alô Cozinha e por conta Supabase. Os módulos não leem nem sobrescrevem dados dos aplicativos antigos, e Etiquetas deixou de importar armazenamento legado.
-- A v2.1.46 protege entrada, cadastro e recuperação de senha com Cloudflare Turnstile validado pelo Supabase, além de bloquear o aparelho por cinco minutos após três senhas incorretas.
-- A v2.1.46 impede que exclusões e retornos do módulo Etiquetas reconstruam a tela antiga do Alô Etiqueta e mantém o cabeçalho integrado.
-- A v2.1.46 centraliza as ações dos cartões de atividade, capitaliza os exemplos do Etiquetas e refina o ícone de Configurações.
-- O APK v2.1.46 mantém os arquivos empacotados e passa a servi-los por uma origem HTTPS interna segura, compatível com o Turnstile sem atualizar o app por fora da Play Store.
+- A v2.1.47 isola todo o armazenamento local, o IndexedDB e os caches por Alô Cozinha e por conta Supabase. Os módulos não leem nem sobrescrevem dados dos aplicativos antigos, e Etiquetas deixou de importar armazenamento legado.
+- A v2.1.47 protege entrada, cadastro e recuperação de senha com Cloudflare Turnstile validado pelo Supabase, além de bloquear o aparelho por cinco minutos após três senhas incorretas.
+- A v2.1.47 impede que exclusões e retornos do módulo Etiquetas reconstruam a tela antiga do Alô Etiqueta e mantém o cabeçalho integrado.
+- A v2.1.47 centraliza as ações dos cartões de atividade, capitaliza os exemplos do Etiquetas e refina o ícone de Configurações.
+- O APK v2.1.47 mantém os arquivos empacotados e passa a servi-los por uma origem HTTPS interna segura, compatível com o Turnstile sem atualizar o app por fora da Play Store.
 - A v2.1.43 compacta e refina a tela inicial de acesso para celular, mantendo login, verificação e demonstração em uma única tela.
 - A v2.1.43 amplia o Modo Demonstração com pedidos acionáveis, quantidades padrão, fichas, etiquetas e documentos fictícios, todos isolados dos dados reais.
 - A v2.1.43 reorganiza as atividades do Checklist: o painel Geral não mistura cartões e cada atividade usa o título inteiro com ações na linha inferior.

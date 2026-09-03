@@ -17,7 +17,7 @@ test('Etiquetas preserva a interface integrada apos atualizar cadastros', () => 
 test('login combina Turnstile com bloqueio depois de tres senhas incorretas', () => {
     const cloud = read('core/cloud.js');
     const page = read('index.html');
-    const android = read('android/app/src/main/java/com/aloetiqueta/l42/MainActivity.java');
+    const android = read('android/app/src/main/java/io/github/lincolnpontes/alocozinha/MainActivity.java');
     assert.match(page, /alo-turnstile-site-key/);
     assert.match(page, /id="cloudAccessTurnstile"/);
     assert.match(cloud, /gotrue_meta_security:\s*\{ captcha_token: token \}/);

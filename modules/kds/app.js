@@ -1717,13 +1717,14 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
             if ('caches' in window) {
                 const names = await caches.keys();
-                await Promise.all(names.map(name => caches.delete(name)));
+                await Promise.all(names.filter(name => name.startsWith('alo-cozinha2-')).map(name => caches.delete(name)));
             }
 
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
+                const appRoot = new URL('./', window.location.href).href;
                 for (let registration of registrations) {
-                    await registration.unregister();
+                    if (registration.scope.startsWith(appRoot)) await registration.unregister();
                 }
             }
             window.location.href = window.location.pathname + '?t=' + new Date().getTime();
@@ -1876,7 +1877,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 3,
-                version: '2.1.45',
+                version: '2.1.46',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -3202,7 +3203,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.45').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.46').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

@@ -1056,7 +1056,7 @@ function testV2027TaskExperience() {
     assert.equal(html.includes('id="tasksAreaPickerOptions"'), true, 'o setor das atividades deve ser trocado no cabecalho');
     assert.equal((html.match(/class="module-nav-back"/g) || []).length, 3, 'o retorno deve usar uma indicação simples integrada ao módulo');
     assert.equal(html.includes('class="module-home-return"'), false, 'a seta circular antiga deve ser removida');
-    assert.equal(html.includes('<div class="module-home-version">v2.1.45</div>'), true, 'a tela inicial deve mostrar a versão');
+    assert.equal(html.includes('<div class="module-home-version">v2.1.46</div>'), true, 'a tela inicial deve mostrar a versão');
     assert.equal(html.includes('Senha de Segurança'), true);
     assert.equal(html.includes('Senha Mestra'), false);
     assert.equal(app.includes("senhaMestra: \"\""), false, 'o aplicativo cru não deve trazer senha definida no código');
@@ -1399,7 +1399,7 @@ function testComprasUsesUnifiedHost() {
         ['kds_pedidos_local', '[{"id":"pedido-kds"}]']
     ]);
     const frame = {
-        dataset: { src: 'modules/compras/index.html?v=2.1.45' },
+        dataset: { src: 'modules/compras/index.html?v=2.1.46' },
         getAttribute() { return ''; },
         setAttribute() {},
         addEventListener() {}
@@ -1408,6 +1408,9 @@ function testComprasUsesUnifiedHost() {
         console,
         Date,
         JSON,
+        AloCloud: {
+            isEndpoint(url) { return url === 'https://sxbcjzshcjxzladwptiu.supabase.co/functions/v1/alo-cozinha-sync'; }
+        },
         localStorage: {
             getItem(key) { return storage.has(key) ? storage.get(key) : null; },
             setItem(key, value) { storage.set(key, value); }
@@ -1421,10 +1424,10 @@ function testComprasUsesUnifiedHost() {
     });
     context.window = context;
     loadScript(context, 'modules/compras/host.js');
-    context.AloFeiraModule.configure({ getServerUrl: () => 'https://script.google.com/macros/s/unificado/exec' });
+    context.AloFeiraModule.configure({ getServerUrl: () => 'https://sxbcjzshcjxzladwptiu.supabase.co/functions/v1/alo-cozinha-sync' });
 
     const feira = JSON.parse(storage.get('alofeira_v1'));
-    assert.equal(feira.configs.url, 'https://script.google.com/macros/s/unificado/exec');
+    assert.equal(feira.configs.url, 'https://sxbcjzshcjxzladwptiu.supabase.co/functions/v1/alo-cozinha-sync');
     assert.equal(feira.app_id, 'alofeira');
     assert.equal(storage.get('kds_banco'), '{"produtos":[{"nome":"Feijão"}]}');
     assert.equal(storage.get('kds_pedidos_local'), '[{"id":"pedido-kds"}]');
@@ -1476,7 +1479,7 @@ function testV217ModuleArchitecture() {
     assert.deepEqual(closedSessions, ['compras', 'l42'], 'o host deve encerrar a sessão do módulo protegido ao sair');
 
     const contracts = context.AloDataContracts.describe();
-    assert.equal(contracts.appVersion, '2.1.45');
+    assert.equal(contracts.appVersion, '2.1.46');
     assert.equal(context.AloDataContracts.get('kds').localStorage.includes('kds_v1_db'), true);
     assert.equal(context.AloDataContracts.get('checklist').localStorage.includes('alo_tasks_outbox_v2'), true);
     assert.equal(context.AloDataContracts.get('compras').localStorage.includes('alofeira_v1'), true);
@@ -1488,20 +1491,20 @@ function testV217ModuleArchitecture() {
         'modules/checklist/app.js', 'modules/checklist/styles.css',
         'modules/compras/index.html', 'modules/compras/host.js',
         'modules/l42/index.html', 'modules/l42/host.js', 'modules/l42/module.js',
-        'android/app/src/main/java/com/aloetiqueta/l42/MainActivity.java'
+        'android/app/src/main/java/io/github/lincolnpontes/alocozinha/MainActivity.java'
     ].forEach(file => assert.equal(fs.existsSync(path.join(root, file)), true, `${file} deve existir`));
     ['app.js', 'tasks.js', 'sync.js', 'api.js', 'feira-module.js', 'modules/alo-feira/index.html']
         .forEach(file => assert.equal(fs.existsSync(path.join(root, file)), false, `${file} não deve continuar duplicado na raiz`));
 
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const shellCache = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
-    assert.equal(html.includes('core/module-host.js?v=2.1.45'), true);
-    assert.equal(html.includes('core/shared-data.js?v=2.1.45'), true);
-    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.45'), true);
-    assert.equal(html.includes('modules/l42/index.html?embedded=1&amp;v=2.1.45'), true);
-    assert.equal(html.includes('modules/l42/icon.png?v=2.1.45'), true);
-    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.45'), true);
-    assert.equal(shellCache.includes('./core/shared-data.js?v=2.1.45'), true);
+    assert.equal(html.includes('core/module-host.js?v=2.1.46'), true);
+    assert.equal(html.includes('core/shared-data.js?v=2.1.46'), true);
+    assert.equal(html.includes('modules/compras/index.html?embedded=1&amp;v=2.1.46'), true);
+    assert.equal(html.includes('modules/l42/index.html?embedded=1&amp;v=2.1.46'), true);
+    assert.equal(html.includes('modules/l42/icon.png?v=2.1.46'), true);
+    assert.equal(shellCache.includes('./modules/checklist/app.js?v=2.1.46'), true);
+    assert.equal(shellCache.includes('./core/shared-data.js?v=2.1.46'), true);
     assert.equal(shellCache.includes('./modules/compras/index.html'), true);
     assert.equal(shellCache.includes('./modules/l42/index.html'), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'icon.png')), true);
@@ -1562,7 +1565,7 @@ function testV219UnifiedPeopleAndDataHub() {
     assert.equal(etiquetasSave.includes('sheet.clearContents()'), false, 'a gravação não pode apagar o slot confirmado antes de validar o novo');
     assert.equal(etiquetasSave.includes('limparEtiquetasSlot_(sheet, nextSlot)'), true, 'somente o slot inativo deve ser preparado para a nova gravação');
     assert.equal(gas.includes("action === 'salvar_etiquetas_banco'"), true, 'o Apps Script deve aceitar gravação de Etiquetas');
-    assert.equal(shellCache.includes('./modules/l42/cloud.js?v=2.1.45'), true, 'a sincronização de Etiquetas deve funcionar offline após o primeiro carregamento');
+    assert.equal(shellCache.includes('./modules/l42/cloud.js?v=2.1.46'), true, 'a sincronização de Etiquetas deve funcionar offline após o primeiro carregamento');
 }
 
 async function testEmployeeCanExistWithoutLogin() {
@@ -1651,8 +1654,8 @@ function testV2110AccessSyncAndApkPolish() {
     const l42Cloud = fs.readFileSync(path.join(root, 'modules', 'l42', 'cloud.js'), 'utf8');
     const shellCache = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
     const kds = fs.readFileSync(path.join(root, 'modules', 'kds', 'app.js'), 'utf8');
-    const androidMain = fs.readFileSync(path.join(root, 'android', 'app', 'src', 'main', 'java', 'com', 'aloetiqueta', 'l42', 'MainActivity.java'), 'utf8');
-    const androidBridge = fs.readFileSync(path.join(root, 'android', 'app', 'src', 'main', 'java', 'com', 'aloetiqueta', 'l42', 'NativeBridge.java'), 'utf8');
+    const androidMain = fs.readFileSync(path.join(root, 'android', 'app', 'src', 'main', 'java', 'io', 'github', 'lincolnpontes', 'alocozinha', 'MainActivity.java'), 'utf8');
+    const androidBridge = fs.readFileSync(path.join(root, 'android', 'app', 'src', 'main', 'java', 'io', 'github', 'lincolnpontes', 'alocozinha', 'NativeBridge.java'), 'utf8');
     const androidBuild = fs.readFileSync(path.join(root, 'android', 'app', 'build.gradle'), 'utf8');
     const apkScript = fs.readFileSync(path.join(root, 'build-apk.ps1'), 'utf8');
     const emojiCatalog = shared.slice(shared.indexOf('const PERSON_EMOJIS'), shared.indexOf('];', shared.indexOf('const PERSON_EMOJIS')) + 2);
@@ -1675,12 +1678,12 @@ function testV2110AccessSyncAndApkPolish() {
     assert.equal(l42.includes("className='app-sync-indicator local'"), true, 'Etiquetas deve usar o mesmo indicador dos módulos');
     assert.equal(l42.includes("parent.AloEtiquetasCloud?.sync?.()"), true, 'a bolinha de Etiquetas deve permitir nova sincronização');
     assert.equal(l42Cloud.includes('global.AloCloud.fetch'), true, 'Etiquetas deve usar o transporte autenticado do núcleo');
-    assert.equal(l42.includes('assets/qr-reader.svg?v=2.1.45'), true);
-    assert.equal(l42.includes('assets/printer-controls.svg?v=2.1.45'), true);
+    assert.equal(l42.includes('assets/qr-reader.svg?v=2.1.46'), true);
+    assert.equal(l42.includes('assets/printer-controls.svg?v=2.1.46'), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'assets', 'qr-reader.svg')), true);
     assert.equal(fs.existsSync(path.join(root, 'modules', 'l42', 'assets', 'printer-controls.svg')), true);
-    assert.equal(shellCache.includes('./modules/l42/assets/qr-reader.svg?v=2.1.45'), true);
-    assert.equal(shellCache.includes('./modules/l42/assets/printer-controls.svg?v=2.1.45'), true);
+    assert.equal(shellCache.includes('./modules/l42/assets/qr-reader.svg?v=2.1.46'), true);
+    assert.equal(shellCache.includes('./modules/l42/assets/printer-controls.svg?v=2.1.46'), true);
 
     assert.equal(kds.includes('AloL42Module.getBackup()'), true, 'o backup único deve coletar Etiquetas');
     assert.match(kds, /\n\s+l42,\r?\n/, 'o arquivo completo deve conter a seção Etiquetas');
@@ -1688,12 +1691,15 @@ function testV2110AccessSyncAndApkPolish() {
     assert.equal(kds.includes('navigator.share({'), false, 'exportar backup não deve desviar para o compartilhamento do navegador');
     assert.equal(kds.includes('Download iniciado:'), true, 'o navegador deve informar que iniciou o download');
     assert.equal(androidBridge.includes('Environment.DIRECTORY_DOWNLOADS + "/Alo Cozinha"'), true, 'o APK deve salvar o backup na pasta do aplicativo');
-    assert.equal(androidMain.includes('webView.loadUrl("file:///android_asset/index.html")'), true, 'o APK deve abrir os arquivos empacotados');
+    assert.equal(androidMain.includes('webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")'), true, 'o APK deve abrir os arquivos empacotados em uma origem HTTPS interna');
     assert.equal(androidMain.includes('WebView.OVER_SCROLL_NEVER'), true, 'o APK não deve atualizar por gesto de puxar');
     assert.equal(styles.includes('overscroll-behavior: none'), true);
-    assert.equal(androidBuild.includes('versionCode 75'), true);
-    assert.equal(androidBuild.includes('versionName "2.1.45"'), true);
-    assert.equal(apkScript.includes('Alo-Cozinha-v2.1.45.apk'), true);
+    assert.equal(androidBuild.includes('namespace "io.github.lincolnpontes.alocozinha"'), true);
+    assert.equal(androidBuild.includes('applicationId "io.github.lincolnpontes.alocozinha"'), true);
+    assert.equal(androidBuild.includes('com.aloetiqueta.l42'), false, 'o APK novo não pode reutilizar a identidade do antigo L42');
+    assert.equal(androidBuild.includes('versionCode 76'), true);
+    assert.equal(androidBuild.includes('versionName "2.1.46"'), true);
+    assert.equal(apkScript.includes('Alo-Cozinha-v2.1.46.apk'), true);
 }
 
 function testV2141SupabaseCloud() {
@@ -1715,7 +1721,7 @@ function testV2141SupabaseCloud() {
     assert.equal(migration.includes('alter table api.module_states force row level security'), true);
     assert.equal(migration.includes('using ((select auth.uid()) = owner_id)'), true);
     assert.equal(androidBuild.includes('include "assets/**", "core/**", "modules/**", "vendor/**"'), true);
-    assert.equal(shellCache.includes('./vendor/supabase.min.js?v=2.1.45'), true);
+    assert.equal(shellCache.includes('./vendor/supabase.min.js?v=2.1.46'), true);
 }
 
 (async () => {
@@ -1738,7 +1744,7 @@ function testV2141SupabaseCloud() {
     testComprasUsesUnifiedHost();
     testV217ModuleArchitecture();
     testV2141SupabaseCloud();
-    console.log('Testes críticos da v2.1.45 passaram.');
+    console.log('Testes críticos da v2.1.46 passaram.');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

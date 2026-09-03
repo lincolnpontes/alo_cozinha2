@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b765f">
+    <title>Conta do Alô Cozinha</title>
+    <style>
+        :root { color-scheme: light; font-family: Arial, sans-serif; }
+        * { box-sizing: border-box; }
+        body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; background: #eef5f2; color: #1d2926; }
+        main { width: min(100%, 420px); padding: 28px 24px; border: 1px solid #d2dfda; border-radius: 8px; background: #fff; box-shadow: 0 12px 30px rgba(22, 52, 44, .1); }
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+        .brand img { width: 58px; height: 58px; object-fit: contain; }
+        .brand strong { display: block; color: #0b765f; font-size: 22px; }
+        .brand small { color: #64726e; }
+        h1 { margin: 0 0 8px; font-size: 23px; }
+        p { margin: 0 0 18px; color: #5a6965; line-height: 1.5; }
+        form { display: none; }
+        label { display: block; margin: 14px 0 6px; font-weight: 700; }
+        input { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid #b8c9c3; border-radius: 7px; font: inherit; }
+        button, a { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; font-weight: 800; text-decoration: none; }
+        button { width: 100%; margin-top: 18px; border: 0; background: #0b765f; color: #fff; cursor: pointer; }
+        button:disabled { opacity: .65; }
+        .back { width: 100%; margin-top: 12px; border: 1px solid #b8c9c3; color: #0b765f; }
+        .message { min-height: 22px; margin-top: 14px; color: #0b765f; font-weight: 700; }
+        .message.error { color: #b42318; }
+    </style>
+</head>
+<body>
+<main>
+    <div class="brand"><img src="icon.png?v=2.1.46" alt=""><span><strong>Alô Cozinha</strong><small>Conta e segurança</small></span></div>
+    <h1 id="title">Conferindo seu link</h1>
+    <p id="description">Aguarde enquanto validamos a confirmação enviada pelo Supabase.</p>
+    <form id="passwordForm">
+        <label for="password">Nova senha</label>
+        <input id="password" type="password" autocomplete="new-password" minlength="6" required>
+        <label for="passwordConfirm">Repita a nova senha</label>
+        <input id="passwordConfirm" type="password" autocomplete="new-password" minlength="6" required>
+        <button id="submit" type="submit">Salvar nova senha</button>
+    </form>
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+    <a class="back" href="./">Voltar ao Alô Cozinha</a>
+</main>
+<script>
+(function () {
+    const SUPABASE_URL = 'https://sxbcjzshcjxzladwptiu.supabase.co';
+    const PUBLISHABLE_KEY = 'sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK';
+    const query = new URLSearchParams(location.search);
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const value = key => hash.get(key) || query.get(key) || '';
+    const accessToken = value('access_token');
+    const type = value('type');
+    const title = document.getElementById('title');
+    const description = document.getElementById('description');
+    const form = document.getElementById('passwordForm');
+    const message = document.getElementById('message');
+
+    function feedback(text, error) {
+        message.textContent = text || '';
+        message.classList.toggle('error', Boolean(error));
+    }
+
+    const authError = value('error_description') || value('error');
+    if (authError) {
+        title.textContent = 'Não foi possível validar o link';
+        description.textContent = 'Solicite um novo e-mail pelo aplicativo.';
+        feedback(decodeURIComponent(authError.replace(/\+/g, ' ')), true);
+        return;
+    }
+
+    if (type === 'recovery' && accessToken) {
+        title.textContent = 'Crie uma nova senha';
+        description.textContent = 'Use pelo menos 6 caracteres. A nova senha valerá em todos os seus aparelhos.';
+        form.style.display = 'block';
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const password = document.getElementById('password').value;
+            const confirmation = document.getElementById('passwordConfirm').value;
+            if (password.length < 6) return feedback('A senha precisa ter pelo menos 6 caracteres.', true);
+            if (password !== confirmation) return feedback('As duas senhas não são iguais.', true);
+            const button = document.getElementById('submit');
+            button.disabled = true;
+            feedback('Salvando...');
+            try {
+                const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                    method: 'PUT',
+                    headers: {
+                        apikey: PUBLISHABLE_KEY,
+                        Authorization: `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || data.error_description || 'Não foi possível alterar a senha.');
+                form.style.display = 'none';
+                title.textContent = 'Senha alterada';
+                description.textContent = 'Você já pode entrar no Alô Cozinha com a nova senha.';
+                feedback('Alteração concluída com segurança.');
+                history.replaceState(null, '', location.pathname);
+            } catch (error) {
+                feedback(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+        return;
+    }
+
+    if (accessToken) {
+        title.textContent = 'E-mail confirmado';
+        description.textContent = 'Sua conta está pronta. Volte ao Alô Cozinha e entre com seu e-mail e sua senha.';
+        feedback('Confirmação concluída.');
+        history.replaceState(null, '', location.pathname);
+        return;
+    }
+
+    title.textContent = 'Link incompleto ou expirado';
+    description.textContent = 'Solicite um novo e-mail pelo Alô Cozinha para continuar.';
+    feedback('Nenhuma credencial foi armazenada nesta página.', true);
+})();
+</script>
+</body>
+</html>

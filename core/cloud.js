@@ -7,7 +7,7 @@
     const LOGIN_GUARD_KEY = 'alo_auth_login_guard_v1';
     const LOGIN_MAX_ATTEMPTS = 3;
     const LOGIN_LOCK_MS = 5 * 60 * 1000;
-    const ACCOUNT_SITE = 'https://lincolnpontes.github.io/alo-etiqueta-conta/';
+    const ACCOUNT_SITE = 'https://lincolnpontes.github.io/alo_cozinha2/auth-callback.html';
     let session = readSession();
     let channel = null;
     let initializing = null;
@@ -652,7 +652,8 @@
         initialize();
     });
     global.addEventListener('storage', event => {
-        if (event.key !== SESSION_KEY) return;
+        const ownsSessionKey = global.AloStorageScope?.ownsPhysicalKey;
+        if (ownsSessionKey ? !ownsSessionKey(event.key, SESSION_KEY) : event.key !== SESSION_KEY) return;
         const stored = readSession();
         if (!stored?.access_token || stored.access_token === session?.access_token) return;
         session = stored;

@@ -54,22 +54,11 @@
         callbacks.forEach(callback => deliverNativeCallback(callback.name, callback.args));
     }
 
-    function legacyStorageSnapshot() {
-        const entries = {};
-        for (let index = 0; index < localStorage.length; index += 1) {
-            const key = localStorage.key(index);
-            if (!key || !/^(etiquetadora_|alo_supabase_|alo_etiqueta_)/.test(key)) continue;
-            entries[key] = localStorage.getItem(key);
-        }
-        return entries;
-    }
-
     function receiveMessage(event) {
         const frame = frameElement();
         if (!frame || event.source !== frame.contentWindow || event.data?.source !== 'alo-l42') return;
         if (event.data.type === 'ready') {
             frameReady = true;
-            event.source.postMessage({ source: 'alo-cozinha', type: 'restore-legacy-storage', entries: legacyStorageSnapshot() }, '*');
             flushNativeCallbacks();
             setCloudStatus(lastCloudStatus.status, lastCloudStatus.message);
             global.AloEtiquetasCloud?.sync?.().catch(() => {});

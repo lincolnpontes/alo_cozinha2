@@ -89,7 +89,7 @@ async function run() {
     await testEarlyAcknowledgementIsNotLost();
     testServerReceiptUsesAttemptFingerprint();
     testKitchenRendersAcknowledgedOrder();
-    console.log('Corridas de sincronização do KDS v2.1.45 validadas.');
+    console.log('Corridas de sincronização do KDS v2.1.46 validadas.');
 }
 
 run().catch(error => { console.error(error); process.exitCode = 1; });

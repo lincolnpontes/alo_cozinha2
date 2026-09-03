@@ -1,33 +1,34 @@
-const CACHE_NAME = 'alo-feira-v2.1.45-r1';
+const CACHE_NAME = 'alo-cozinha2-compras-v2.1.46-r1';
+const CACHE_PREFIX = 'alo-cozinha2-compras-';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon.png',
-  './report-send.png?v=2.1.45',
-  './clear-completed.png?v=2.1.45',
+  './report-send.png?v=2.1.46',
+  './clear-completed.png?v=2.1.46',
   './src/assets/icon-192.png',
   './src/assets/icon-512.png',
-  './src/styles/base.css?v=2.1.45-compras-r1',
-  './src/styles/layout.css?v=2.1.45-compras-r1',
-  './src/styles/components.css?v=2.1.45-compras-r1',
-  './src/styles/features.css?v=2.1.45-compras-r1',
-  './src/styles/responsive.css?v=2.1.45-compras-r1',
-  './src/scripts/domain.js?v=2.1.45-compras-r1',
-  './src/scripts/core.js?v=2.1.45-compras-r1',
-  './src/scripts/security.js?v=2.1.45-compras-r1',
-  './src/scripts/sync.js?v=2.1.45-compras-r1',
-  './src/scripts/auth.js?v=2.1.45-compras-r1',
-  './src/scripts/orders.js?v=2.1.45-compras-r1',
-  './src/scripts/catalog.js?v=2.1.45-compras-r1',
-  './src/scripts/drafts.js?v=2.1.45-compras-r1',
-  './src/scripts/purchases.js?v=2.1.45-compras-r1',
-  './src/scripts/purchase-details.js?v=2.1.45-compras-r1',
-  './src/scripts/reports.js?v=2.1.45-compras-r1',
-  './src/scripts/settings.js?v=2.1.45-compras-r1',
-  './src/scripts/catalog-settings.js?v=2.1.45-compras-r1',
-  './src/scripts/people-settings.js?v=2.1.45-compras-r1',
-  './src/scripts/app.js?v=2.1.45-compras-r1'
+  './src/styles/base.css?v=2.1.46-compras-r1',
+  './src/styles/layout.css?v=2.1.46-compras-r1',
+  './src/styles/components.css?v=2.1.46-compras-r1',
+  './src/styles/features.css?v=2.1.46-compras-r1',
+  './src/styles/responsive.css?v=2.1.46-compras-r1',
+  './src/scripts/domain.js?v=2.1.46-compras-r1',
+  './src/scripts/core.js?v=2.1.46-compras-r1',
+  './src/scripts/security.js?v=2.1.46-compras-r1',
+  './src/scripts/sync.js?v=2.1.46-compras-r1',
+  './src/scripts/auth.js?v=2.1.46-compras-r1',
+  './src/scripts/orders.js?v=2.1.46-compras-r1',
+  './src/scripts/catalog.js?v=2.1.46-compras-r1',
+  './src/scripts/drafts.js?v=2.1.46-compras-r1',
+  './src/scripts/purchases.js?v=2.1.46-compras-r1',
+  './src/scripts/purchase-details.js?v=2.1.46-compras-r1',
+  './src/scripts/reports.js?v=2.1.46-compras-r1',
+  './src/scripts/settings.js?v=2.1.46-compras-r1',
+  './src/scripts/catalog-settings.js?v=2.1.46-compras-r1',
+  './src/scripts/people-settings.js?v=2.1.46-compras-r1',
+  './src/scripts/app.js?v=2.1.46-compras-r1'
 ];
 
 self.addEventListener('install', event => {
@@ -38,7 +39,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key.startsWith('alo-feira-') && key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });

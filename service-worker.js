@@ -1,53 +1,56 @@
-const VERSION = '2.1.45';
-const CACHE_NAME = `alo-cozinha-${VERSION}-turnstile`;
+const VERSION = '2.1.46';
+const CACHE_NAME = `alo-cozinha2-${VERSION}-turnstile`;
+const CACHE_PREFIX = 'alo-cozinha2-';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=2.1.45',
-  './modules/checklist/styles.css?v=2.1.45',
-  './core/demo.js?v=2.1.45',
-  './core/module-host.js?v=2.1.45',
-  './core/data-contracts.js?v=2.1.45',
-  './core/shared-data.js?v=2.1.45',
-  './vendor/supabase.min.js?v=2.1.45',
-  './core/cloud.js?v=2.1.45',
-  './core/api.js?v=2.1.45',
-  './core/catalog-sync.js?v=2.1.45',
-  './core/checklist-sync.js?v=2.1.45',
-  './core/ui-dialog.js?v=2.1.45',
-  './modules/kds/module.js?v=2.1.45',
-  './modules/kds/logic.js?v=2.1.45',
-  './modules/kds/storage.js?v=2.1.45',
-  './modules/kds/audio.js?v=2.1.45',
-  './modules/kds/sync.js?v=2.1.45',
-  './modules/kds/app.js?v=2.1.45',
-  './modules/checklist/module.js?v=2.1.45',
-  './modules/checklist/templates.js?v=2.1.45',
-  './modules/checklist/vendor/qrcode.js?v=2.1.45',
-  './modules/checklist/app.js?v=2.1.45',
-  './modules/checklist/technical-sheets.js?v=2.1.45',
-  './modules/checklist/documents.js?v=2.1.45',
-  './modules/compras/module.js?v=2.1.45',
-  './modules/compras/host.js?v=2.1.45',
-  './modules/l42/module.js?v=2.1.45',
-  './modules/l42/cloud.js?v=2.1.45',
-  './modules/l42/host.js?v=2.1.45',
+  './auth-callback.html',
+  './styles.css?v=2.1.46',
+  './modules/checklist/styles.css?v=2.1.46',
+  './core/storage-scope.js?v=2.1.46',
+  './core/demo.js?v=2.1.46',
+  './core/module-host.js?v=2.1.46',
+  './core/data-contracts.js?v=2.1.46',
+  './core/shared-data.js?v=2.1.46',
+  './vendor/supabase.min.js?v=2.1.46',
+  './core/cloud.js?v=2.1.46',
+  './core/api.js?v=2.1.46',
+  './core/catalog-sync.js?v=2.1.46',
+  './core/checklist-sync.js?v=2.1.46',
+  './core/ui-dialog.js?v=2.1.46',
+  './modules/kds/module.js?v=2.1.46',
+  './modules/kds/logic.js?v=2.1.46',
+  './modules/kds/storage.js?v=2.1.46',
+  './modules/kds/audio.js?v=2.1.46',
+  './modules/kds/sync.js?v=2.1.46',
+  './modules/kds/app.js?v=2.1.46',
+  './modules/checklist/module.js?v=2.1.46',
+  './modules/checklist/templates.js?v=2.1.46',
+  './modules/checklist/vendor/qrcode.js?v=2.1.46',
+  './modules/checklist/app.js?v=2.1.46',
+  './modules/checklist/technical-sheets.js?v=2.1.46',
+  './modules/checklist/documents.js?v=2.1.46',
+  './modules/compras/module.js?v=2.1.46',
+  './modules/compras/host.js?v=2.1.46',
+  './modules/l42/module.js?v=2.1.46',
+  './modules/l42/cloud.js?v=2.1.46',
+  './modules/l42/host.js?v=2.1.46',
   './assets/sounds/alarme-curto.ogg',
   './assets/sounds/beep-classico.ogg',
   './assets/sounds/sino-forte.ogg',
   './manifest.json',
-  './icon.png?v=2.1.45',
-  './assets/module-kds.png?v=2.1.45',
-  './assets/module-checklist.png?v=2.1.45',
-  './assets/module-feira.png?v=2.1.45',
-  './assets/module-settings.png?v=2.1.45',
-  './assets/settings/restaurant-data.svg?v=2.1.45',
-  './assets/settings/restaurant-sectors.svg?v=2.1.45',
-  './assets/settings/home-modules.svg?v=2.1.45',
-  './assets/settings/employees-access.svg?v=2.1.45',
-  './assets/icons/share-2.svg?v=2.1.45',
-  './assets/demo/alvara-sanitario-ficticio.png?v=2.1.45',
-  './assets/demo/contrato-social-ficticio.png?v=2.1.45',
+  './icon.png?v=2.1.46',
+  './assets/module-kds.png?v=2.1.46',
+  './assets/module-checklist.png?v=2.1.46',
+  './assets/module-feira.png?v=2.1.46',
+  './assets/module-settings.png?v=2.1.46',
+  './assets/settings/restaurant-data.svg?v=2.1.46',
+  './assets/settings/restaurant-sectors.svg?v=2.1.46',
+  './assets/settings/home-modules.svg?v=2.1.46',
+  './assets/settings/employees-access.svg?v=2.1.46',
+  './assets/icons/share-2.svg?v=2.1.46',
+  './assets/demo/alvara-sanitario-ficticio.png?v=2.1.46',
+  './assets/demo/contrato-social-ficticio.png?v=2.1.46',
   './assets/areas/kitchen.svg',
   './assets/areas/kitchen-counter.png',
   './assets/areas/dining-table.png',
@@ -66,13 +69,13 @@ const APP_SHELL = [
   './assets/areas/cashier.svg',
   './modules/compras/index.html',
   './modules/compras/manifest.json',
-  './modules/compras/report-send.png?v=2.1.45',
-  './modules/compras/clear-completed.png?v=2.1.45',
+  './modules/compras/report-send.png?v=2.1.46',
+  './modules/compras/clear-completed.png?v=2.1.46',
   './modules/l42/index.html',
   './modules/l42/manifest.json',
-  './modules/l42/icon.png?v=2.1.45',
-  './modules/l42/assets/qr-reader.svg?v=2.1.45',
-  './modules/l42/assets/printer-controls.svg?v=2.1.45',
+  './modules/l42/icon.png?v=2.1.46',
+  './modules/l42/assets/qr-reader.svg?v=2.1.46',
+  './modules/l42/assets/printer-controls.svg?v=2.1.46',
   './modules/l42/service-worker.js',
   './modules/l42/modelo-importacao-produtos-v2.10.xlsx',
   './modules/l42/vendor/html2canvas.min.js',
@@ -90,7 +93,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -106,9 +109,10 @@ self.addEventListener('fetch', event => {
         return response;
       })
       .catch(async () => {
-        const cached = await caches.match(event.request);
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(event.request);
         if (cached) return cached;
-        if (event.request.mode === 'navigate') return caches.match('./index.html');
+        if (event.request.mode === 'navigate') return cache.match('./index.html');
         throw new Error('Recurso indisponível offline.');
       })
   );

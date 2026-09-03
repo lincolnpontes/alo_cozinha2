@@ -18,7 +18,8 @@
     }
 
     function unifiedUrl() {
-        return String(getServerUrl() || '').trim();
+        const url = String(getServerUrl() || '').trim();
+        return global.AloCloud?.isEndpoint?.(url) ? url : '';
     }
 
     function frameElement() {

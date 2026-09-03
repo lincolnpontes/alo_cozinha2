@@ -1,4 +1,4 @@
-package com.aloetiqueta.l42;
+package io.github.lincolnpontes.alocozinha;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;

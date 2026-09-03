@@ -2,24 +2,30 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <script src="../../core/demo.js?v=2.1.45"></script>
+    <script src="../../core/storage-scope.js?v=2.1.46"></script>
+    <script src="../../core/demo.js?v=2.1.46"></script>
+    <script>
+        if (window.parent === window || new URLSearchParams(location.search).get('embedded') !== '1') {
+            window.location.replace('../../');
+        }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon.png">
-    <title>Lista de Compras v2.1.45</title>
-    <link rel="stylesheet" href="src/styles/base.css?v=2.1.45-compras-r1">
-    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.45-compras-r1">
-    <link rel="stylesheet" href="src/styles/components.css?v=2.1.45-compras-r1">
-    <link rel="stylesheet" href="src/styles/features.css?v=2.1.45-compras-r1">
-    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.45-compras-r1">
+    <title>Lista de Compras v2.1.46</title>
+    <link rel="stylesheet" href="src/styles/base.css?v=2.1.46-compras-r1">
+    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.46-compras-r1">
+    <link rel="stylesheet" href="src/styles/components.css?v=2.1.46-compras-r1">
+    <link rel="stylesheet" href="src/styles/features.css?v=2.1.46-compras-r1">
+    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.46-compras-r1">
 </head>
 <body class="theme-pedido">
 <div id="splashScreen">
     <img src="icon.png" alt="Ícone" class="splash-logo" onerror="this.style.display='none'">
     <div class="splash-titulo">Lista de Compras</div>
-    <div class="splash-versao">v2.1.45</div>
+    <div class="splash-versao">v2.1.46</div>
 </div>
 <div id="syncIndicador" class="sync-indicador oculto" role="status" aria-live="polite"></div>
 <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
@@ -56,7 +62,7 @@
             </div>
             <div class="filtros-acoes">
                 <button id="btnHistHoje" style="display:none;" aria-label="Pedidos enviados hoje" title="Pedidos enviados hoje" onclick="abrirPedidosHoje()">📋</button>
-                <button id="btnRelatorioBar" style="display:none;" aria-label="Criar relatório para fornecedor" title="Relatório para fornecedor" onclick="abrirModalRelatorio()"><img src="report-send.png?v=2.1.45" alt=""></button>
+                <button id="btnRelatorioBar" style="display:none;" aria-label="Criar relatório para fornecedor" title="Relatório para fornecedor" onclick="abrirModalRelatorio()"><img src="report-send.png?v=2.1.46" alt=""></button>
             </div>
         </div>
         <div class="scroll-area">
@@ -499,20 +505,20 @@
         <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormFornecedor'); abrirGerenciar('fornecedores', true);">Cancelar</button><button class="btn-action" onclick="salvarFornecedor()">Salvar</button></div>
     </div>
 </div>
-<script src="src/scripts/domain.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/core.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/security.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/sync.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/auth.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/orders.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/catalog.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/drafts.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/purchases.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/purchase-details.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/reports.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/settings.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/catalog-settings.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/people-settings.js?v=2.1.45-compras-r1"></script>
-<script src="src/scripts/app.js?v=2.1.45-compras-r1"></script>
+<script src="src/scripts/domain.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/core.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/security.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/sync.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/auth.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/orders.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/catalog.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/drafts.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/purchases.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/purchase-details.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/reports.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/settings.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/catalog-settings.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/people-settings.js?v=2.1.46-compras-r1"></script>
+<script src="src/scripts/app.js?v=2.1.46-compras-r1"></script>
 </body>
 </html>

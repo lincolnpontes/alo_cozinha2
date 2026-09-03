@@ -20,15 +20,15 @@ tasks.register("syncWebAssets", Sync) {
 }
 
 android {
-    namespace "com.aloetiqueta.l42"
+    namespace "io.github.lincolnpontes.alocozinha"
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.aloetiqueta.l42"
+        applicationId "io.github.lincolnpontes.alocozinha"
         minSdk 23
         targetSdk 36
-        versionCode 75
-        versionName "2.1.45"
+        versionCode 76
+        versionName "2.1.46"
     }
 
     signingConfigs {

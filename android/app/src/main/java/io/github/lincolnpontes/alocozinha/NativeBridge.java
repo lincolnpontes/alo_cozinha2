@@ -1,4 +1,4 @@
-package com.aloetiqueta.l42;
+package io.github.lincolnpontes.alocozinha;
 
 import android.Manifest;
 import android.content.ClipData;
@@ -229,7 +229,7 @@ public class NativeBridge {
         }
     }
     private String sanitizeName(String requestedName) {
-        String name = requestedName == null ? "Alo-Etiqueta.png" : requestedName.trim();
+        String name = requestedName == null ? "Alo-Cozinha.png" : requestedName.trim();
         name = name.replaceAll("[\\\\/:*?\"<>|\\r\\n]+", "-");
         if (!name.toLowerCase().endsWith(".png")) {
             name += ".png";
@@ -241,10 +241,10 @@ public class NativeBridge {
     }
 
     private String sanitizeDocumentName(String requestedName) {
-        String name = requestedName == null ? "Alo-Etiqueta.bin" : requestedName.trim();
+        String name = requestedName == null ? "Alo-Cozinha.bin" : requestedName.trim();
         name = name.replaceAll("[\\\\/:*?\"<>|\\r\\n]+", "-");
         if (name.isEmpty()) {
-            name = "Alo-Etiqueta.bin";
+            name = "Alo-Cozinha.bin";
         }
         if (name.length() > 120) {
             int dot = name.lastIndexOf('.');

@@ -1,4 +1,4 @@
-package com.aloetiqueta.l42;
+package io.github.lincolnpontes.alocozinha;
 
 import android.app.AlertDialog;
 
@@ -418,7 +418,7 @@ public class MainActivity extends ComponentActivity {
         if ("https".equals(scheme) && "appassets.androidplatform.net".equals(uri.getHost())) {
             return false;
         }
-        if ("aloetiqueta".equals(scheme)) {
+        if ("alocozinha".equals(scheme)) {
             pendingAuthUrl = uri.toString();
             dispatchPendingAuthUrl();
             return true;
@@ -434,7 +434,7 @@ public class MainActivity extends ComponentActivity {
 
     private void captureAuthIntent(Intent intent) {
         Uri uri = intent == null ? null : intent.getData();
-        if (uri != null && "aloetiqueta".equals(uri.getScheme()) && "auth".equals(uri.getHost())) {
+        if (uri != null && "alocozinha".equals(uri.getScheme()) && "auth".equals(uri.getHost())) {
             pendingAuthUrl = uri.toString();
         }
     }

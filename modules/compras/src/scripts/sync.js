@@ -666,7 +666,8 @@ async function forcarAtualizacao(confirmado = false) {
     if(!confirmado) return abrirConfirmacaoApp({ titulo:'Atualizar aplicativo?', mensagem:'A versão mais recente será buscada sem apagar seus dados.', rotulo:'Atualizar', cor:'#1565C0', acao:() => forcarAtualizacao(true) });
     if('serviceWorker' in navigator) {
         const registros = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registros.map(registro => registro.update()));
+        const appRoot = new URL('../../', window.location.href).href;
+        await Promise.all(registros.filter(registro => registro.scope.startsWith(appRoot)).map(registro => registro.update()));
     }
     window.location.href = window.location.pathname + '?nocache=' + Date.now();
 }

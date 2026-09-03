@@ -56,9 +56,10 @@
     }
 
     function request(url, options = {}) {
-        return global.AloCloud?.isEndpoint?.(url)
-            ? global.AloCloud.fetch(url, options)
-            : fetch(url, options);
+        if (!global.AloCloud?.isEndpoint?.(url)) {
+            return Promise.reject(new Error('Etiquetas só pode usar a nuvem do Alô Cozinha.'));
+        }
+        return global.AloCloud.fetch(url, options);
     }
 
     async function requestRemote(baseRevision) {

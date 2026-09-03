@@ -9,6 +9,7 @@ O Alô Cozinha é um único produto com uma única instalação e uma única tel
 ```text
 core/
   module-host.js       navegação e ciclo de vida dos módulos
+  storage-scope.js     isolamento local por produto e por conta Supabase
   data-contracts.js    propriedade e namespaces dos dados
   shared-data.js       pessoas, acessos, restaurante e índice compartilhado
   cloud.js             sessão Supabase, Realtime e endpoint único
@@ -41,7 +42,7 @@ Cada módulo possui um `module.js` com identidade, tela, namespace, exigência d
 | Catálogo, pedidos de compra e fornecedores | Compras | `alofeira_v1` e módulo `compras` no Supabase | `compras_*` |
 | Etiquetas, estoque e impressão | Etiquetas | `etiquetadora_*`, fila local e módulo `etiquetas` no Supabase | `l42_*` |
 
-As chaves existentes são um contrato de compatibilidade. A v2.1.45 não renomeia `kds_v1_db`, `alo_tasks_*`, `alofeira_v1`, `etiquetadora_*` ou `alo_supabase_*`; assim, atualizar o aplicativo não exige migração local. A sessão anterior do Etiquetas é reaproveitada como sessão única do produto.
+As chaves lógicas continuam estáveis dentro dos módulos, mas `core/storage-scope.js` grava cada uma no namespace físico exclusivo `alo_cozinha2` e na partição da conta Supabase ativa. O aplicativo não lê nem sobrescreve `alofeira_v1`, `etiquetadora_*`, `kds_*`, sessões ou outras chaves sem namespace deixadas por aplicativos antigos. A primeira abertura desta versão exige uma nova autenticação; depois dela, os dados dos módulos são obtidos do Supabase e as próximas atualizações preservam a sessão exclusiva do Alô Cozinha.
 
 ## Regras entre módulos
 
@@ -103,7 +104,7 @@ O plano executável está em `docs/SUPABASE-MIGRATION.md`.
 
 ## Etiquetas e Android
 
-Etiquetas usa a sessão e o endpoint Supabase do núcleo quando incorporado ao Alô Cozinha. O APK preserva o pacote `com.aloetiqueta.l42`, o deep link `aloetiqueta://auth/callback` e o mesmo certificado do APK anterior para permitir atualização sem limpar o sandbox Android. Esses nomes são compatibilidade técnica, não uma segunda conta ou um segundo aplicativo dentro do produto.
+Etiquetas usa exclusivamente a sessão e o endpoint Supabase do núcleo quando incorporado ao Alô Cozinha. O APK usa o pacote próprio `io.github.lincolnpontes.alocozinha` e o deep link `alocozinha://auth/callback`; por isso, não compartilha o sandbox Android com o antigo L42. Confirmação de e-mail e recuperação de senha usam `auth-callback.html` dentro do próprio projeto Alô Cozinha.
 
 O Gradle empacota o shell web diretamente da raiz no momento do build; não existe uma segunda cópia manual dos arquivos web dentro de `android/app/src/main/assets`. As pontes `AloNative` e `AloPrinter` permanecem restritas ao WebView local do APK.
 

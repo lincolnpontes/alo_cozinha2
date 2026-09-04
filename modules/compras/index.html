@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <script src="../../core/storage-scope.js?v=2.1.49"></script>
-    <script src="../../core/demo.js?v=2.1.49"></script>
+    <script src="../../core/storage-scope.js?v=2.1.50"></script>
+    <script src="../../core/demo.js?v=2.1.50"></script>
     <script>
         if (window.parent === window || new URLSearchParams(location.search).get('embedded') !== '1') {
             window.location.replace('../../');
@@ -14,18 +14,18 @@
     <meta name="theme-color" content="#1565C0" id="metaThemeColor">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon.png">
-    <title>Lista de Compras v2.1.49</title>
-    <link rel="stylesheet" href="src/styles/base.css?v=2.1.49-compras-r2">
-    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.49-compras-r2">
-    <link rel="stylesheet" href="src/styles/components.css?v=2.1.49-compras-r2">
-    <link rel="stylesheet" href="src/styles/features.css?v=2.1.49-compras-r2">
-    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.49-compras-r2">
+    <title>Lista de Compras v2.1.50</title>
+    <link rel="stylesheet" href="src/styles/base.css?v=2.1.50-compras-r2">
+    <link rel="stylesheet" href="src/styles/layout.css?v=2.1.50-compras-r2">
+    <link rel="stylesheet" href="src/styles/components.css?v=2.1.50-compras-r2">
+    <link rel="stylesheet" href="src/styles/features.css?v=2.1.50-compras-r2">
+    <link rel="stylesheet" href="src/styles/responsive.css?v=2.1.50-compras-r2">
 </head>
 <body class="theme-pedido">
 <div id="splashScreen">
     <img src="icon.png" alt="Ícone" class="splash-logo" onerror="this.style.display='none'">
     <div class="splash-titulo">Lista de Compras</div>
-    <div class="splash-versao">v2.1.49</div>
+    <div class="splash-versao">v2.1.50</div>
 </div>
 <div id="syncIndicador" class="sync-indicador oculto" role="status" aria-live="polite"></div>
 <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
@@ -63,7 +63,7 @@
             </div>
             <div class="filtros-acoes">
                 <button id="btnHistHoje" style="display:none;" aria-label="Pedidos enviados hoje" title="Pedidos enviados hoje" onclick="abrirPedidosHoje()">📋</button>
-                <button id="btnRelatorioBar" style="display:none;" aria-label="Criar relatório para fornecedor" title="Relatório para fornecedor" onclick="abrirModalRelatorio()"><img src="report-send.png?v=2.1.49" alt=""></button>
+                <button id="btnRelatorioBar" style="display:none;" aria-label="Criar relatório para fornecedor" title="Relatório para fornecedor" onclick="abrirModalRelatorio()"><img src="report-send.png?v=2.1.50" alt=""></button>
             </div>
         </div>
         <div class="scroll-area">
@@ -197,8 +197,13 @@
             <button id="btnEditProdPedido" style="display:none; background:none; border:none; font-size:20px; cursor:pointer; padding:0 0 0 10px;">⚙️</button>
         </div>
         <input type="hidden" id="editPedidoId">
+        <input type="hidden" id="editPedidoProdutoId">
         <div id="editPedidoFlowState" class="pedido-flow-state" style="display:none"></div>
         <div id="editPedidoStockGuide" class="pedido-stock-guide" style="display:none"></div>
+        <div id="editPedidoQuickAdd" class="pedido-quick-add" style="display:none">
+            <label for="editPedidoQtdPadrao">Quantidade padrão</label>
+            <div class="pedido-quick-add-controls"><input type="text" inputmode="decimal" id="editPedidoQtdPadrao" onfocus="this.select();"><span id="editPedidoUnidadePadrao"></span><button type="button" onclick="incluirQuantidadePadraoPedido()">Incluir</button></div>
+        </div>
         <div id="editPedidoArea">
             <div style="display: flex; gap:10px;">
                 <div class="form-group" style="flex:1;"><label>Quantidade:</label>
@@ -511,20 +516,20 @@
         <div class="modal-actions"><button class="btn-cancel" onclick="fecharModal('modalFormFornecedor'); abrirGerenciar('fornecedores', true);">Cancelar</button><button class="btn-action" onclick="salvarFornecedor()">Salvar</button></div>
     </div>
 </div>
-<script src="src/scripts/domain.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/core.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/security.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/sync.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/auth.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/orders.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/catalog.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/drafts.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/purchases.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/purchase-details.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/reports.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/settings.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/catalog-settings.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/people-settings.js?v=2.1.49-compras-r2"></script>
-<script src="src/scripts/app.js?v=2.1.49-compras-r2"></script>
+<script src="src/scripts/domain.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/core.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/security.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/sync.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/auth.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/orders.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/catalog.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/drafts.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/purchases.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/purchase-details.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/reports.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/settings.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/catalog-settings.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/people-settings.js?v=2.1.50-compras-r2"></script>
+<script src="src/scripts/app.js?v=2.1.50-compras-r2"></script>
 </body>
 </html>

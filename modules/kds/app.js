@@ -4,13 +4,18 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     let categoriaAtual = null;
     const KDS_ORDER_KEY = 'alo_kds_product_order_v1';
     const KDS_VIEW_KEY = 'alo_kds_product_view_v1';
+    const KDS_RECEIVING_VIEW_KEY = 'alo_kds_receiving_view_v1';
     let ordemProdutos = ['cadastro', 'categoria', 'mais_pedidos'].includes(localStorage.getItem(KDS_ORDER_KEY))
         ? localStorage.getItem(KDS_ORDER_KEY)
         : 'cadastro';
     let visualizacaoProdutos = ['lista', 'quadro'].includes(localStorage.getItem(KDS_VIEW_KEY))
         ? localStorage.getItem(KDS_VIEW_KEY)
         : 'lista';
+    let visualizacaoPedidos = ['lista', 'quadro'].includes(localStorage.getItem(KDS_RECEIVING_VIEW_KEY))
+        ? localStorage.getItem(KDS_RECEIVING_VIEW_KEY)
+        : 'lista';
     let menuOrdemAberto = false;
+    let menuVisualizacaoPedidosAberto = false;
     let popularidadeCache = { assinatura: '', valores: {} };
     let popularidadeRemota = (() => { try { return JSON.parse(localStorage.getItem('alo_kds_popularity_v1') || '{}'); } catch (error) { return {}; } })();
     let pedidosServidor = [];
@@ -248,6 +253,11 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         if (menuOrdemAberto && orderPicker && !orderPicker.contains(event.target)) {
             menuOrdemAberto = false;
             renderizarFiltros();
+        }
+        const receivingPicker = document.querySelector('.kds-receiving-view-picker');
+        if (menuVisualizacaoPedidosAberto && receivingPicker && !receivingPicker.contains(event.target)) {
+            menuVisualizacaoPedidosAberto = false;
+            renderizarFiltrosCozinha();
         }
     });
 
@@ -593,7 +603,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         const themeColor = document.getElementById('metaThemeColor'); document.body.className = modo === 'panelas' ? 'theme-panelas' : 'theme-cozinha';
         if(loopSync) clearInterval(loopSync);
         loopSync = null;
-        if(modo === 'panelas') { if(themeColor) themeColor.content = '#1565C0'; document.getElementById('area-panelas').style.display = 'flex'; document.getElementById('area-cozinha').style.display = 'none'; pararAlarme(); renderizarFiltros(); renderizarListaPanelas(); syncGeral(true); } else { if(themeColor) themeColor.content = '#2e7d32'; document.getElementById('area-panelas').style.display = 'none'; document.getElementById('area-cozinha').style.display = 'flex'; pararAlarme(); syncGeral(true); }
+        if(modo === 'panelas') { if(themeColor) themeColor.content = '#1565C0'; document.getElementById('area-panelas').style.display = 'flex'; document.getElementById('area-cozinha').style.display = 'none'; pararAlarme(); renderizarFiltros(); renderizarListaPanelas(); syncGeral(true); } else { if(themeColor) themeColor.content = '#2e7d32'; document.getElementById('area-panelas').style.display = 'none'; document.getElementById('area-cozinha').style.display = 'flex'; pararAlarme(); renderizarFiltrosCozinha(); renderizarListaCozinha(); syncGeral(true); }
     }
 
     function renderizarFiltros() {
@@ -648,6 +658,30 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         localStorage.setItem(KDS_VIEW_KEY, visualizacao);
         renderizarFiltros();
         renderizarListaPanelas();
+    }
+
+    function renderizarFiltrosCozinha() {
+        const container = document.getElementById('containerFiltrosCozinha');
+        if (!container) return;
+        const labels = { lista: 'Lista', quadro: 'Quadro' };
+        const options = Object.entries(labels).map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${visualizacaoPedidos === id}" class="${visualizacaoPedidos === id ? 'selected' : ''}" onclick="selecionarVisualizacaoPedidos('${id}', event)"><span>${label}</span><b>${visualizacaoPedidos === id ? '✓' : ''}</b></button>`).join('');
+        container.innerHTML = `<div class="kds-order-picker kds-receiving-view-picker"><button type="button" class="chip kds-all-chip active" style="background:#ccc;color:#000" onclick="toggleMenuVisualizacaoPedidos(event)" aria-haspopup="menu" aria-expanded="${menuVisualizacaoPedidosAberto}">TODOS <span class="filter-menu-chevron" aria-hidden="true">⌄</span></button><div class="kds-order-menu" style="display:${menuVisualizacaoPedidosAberto ? 'grid' : 'none'}" role="menu" aria-label="Visualização dos pedidos recebidos"><div class="kds-order-menu-title">Visualização</div>${options}</div></div>`;
+    }
+
+    function toggleMenuVisualizacaoPedidos(event) {
+        event?.stopPropagation?.();
+        menuVisualizacaoPedidosAberto = !menuVisualizacaoPedidosAberto;
+        renderizarFiltrosCozinha();
+    }
+
+    function selecionarVisualizacaoPedidos(visualizacao, event) {
+        event?.stopPropagation?.();
+        if (!['lista', 'quadro'].includes(visualizacao)) return;
+        visualizacaoPedidos = visualizacao;
+        menuVisualizacaoPedidosAberto = false;
+        localStorage.setItem(KDS_RECEIVING_VIEW_KEY, visualizacao);
+        renderizarFiltrosCozinha();
+        renderizarListaCozinha();
     }
 
     async function atualizarPopularidadeRemota() {
@@ -1113,6 +1147,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function renderizarListaCozinha() {
         const lista = document.getElementById('listaPedidosCozinha'); const agora = Date.now(); lista.innerHTML = '';
+        lista.classList.toggle('kds-grid-view', visualizacaoPedidos === 'quadro');
         const dataHoje = new Date().toDateString();
 
         const visiveis = pedidosDaAreaAtual().filter(p => new Date(p.timestamp).toDateString() === dataHoje).filter(p => {
@@ -1453,6 +1488,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function abrirConfiguracaoModulos() {
         sincronizarSwitchesModulos();
+        window.AloFeiraModule?.refreshHeader?.();
         fecharModal('modalPainelUnificado');
         abrirModalNoTopo('modalModuleVisibility');
     }
@@ -1932,7 +1968,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 app: 'alo_cozinha',
                 format: 'backup_completo',
                 schemaVersion: 4,
-                version: '2.1.49',
+                version: '2.1.50',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -3320,7 +3356,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.49').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.50').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

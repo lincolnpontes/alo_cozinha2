@@ -149,11 +149,12 @@ async function aplicarPessoasCompartilhadasComprasPeloHost(pessoas) {
             ...(operador.permissoesModulos || {}),
             kds: { configuracoes: Boolean(permissions.kds?.configuracoes) },
             checklist: { configuracoes: Boolean(permissions.checklist?.configuracoes) },
-            compras: { receber: compras.receber !== false, comprar: compras.comprar !== false },
+            compras: { pedir: compras.pedir !== false, comprar: compras.comprar !== false, receber: compras.receber !== false },
             l42: JSON.parse(JSON.stringify(permissions.l42 || {}))
         };
         operador.catsPermitidasPedido = Array.isArray(compras.categoriasPedido) ? [...compras.categoriasPedido] : (operador.catsPermitidasPedido || []);
         operador.catsPermitidasCompras = Array.isArray(compras.categoriasCompras) ? [...compras.categoriasCompras] : (operador.catsPermitidasCompras || []);
+        operador.catsPermitidasReceber = Array.isArray(compras.categoriasReceber) ? [...compras.categoriasReceber] : (operador.catsPermitidasReceber || operador.catsPermitidasCompras || []);
         const centralHash = hashCentralCompras(pessoa);
         if (centralHash) {
             operador.senhaHash = centralHash;
@@ -206,8 +207,9 @@ function obterEstadoHostCompras() {
     return {
         mode: ['pedido', 'compras', 'receber'].includes(db.configs.modo) ? db.configs.modo : 'pedido',
         receiveModeEnabled: db.configs.modoReceberAtivo === true,
+        canOrder: permissions.pedir,
         canBuy: permissions.comprar,
-        canReceive: permissions.receber,
+        canReceive: permissions.receberModo,
         profileName: operador?.nome || 'Perfil',
         profileEmoji: operador?.emoji || '👤',
         syncState: window.AloDemo?.isActive?.() ? 'sincronizado' : (db.configs.url ? 'sincronizando' : 'local'),

@@ -7,11 +7,15 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
         const atual = arguments.length > 0
             ? colaborador
             : db.colaboradores.find(item => item.id === db.configs.colabAtivoId);
-        if(!atual) return { receber: true, comprar: true };
+        if(!atual) return { pedir: true, comprar: true, receber: true, receberModo: true };
         const permissoes = atual.permissoesModulos?.compras;
-        if(permissoes) return { receber: permissoes.receber !== false, comprar: permissoes.comprar !== false };
-        if(atual.apenasReceber) return { receber: true, comprar: false };
-        return { receber: true, comprar: true };
+        if(permissoes) {
+            const comprar = permissoes.comprar !== false;
+            const receberModo = permissoes.receber !== false;
+            return { pedir: permissoes.pedir !== false, comprar, receber: comprar || receberModo, receberModo };
+        }
+        if(atual.apenasReceber) return { pedir: true, comprar: false, receber: true, receberModo: true };
+        return { pedir: true, comprar: true, receber: true, receberModo: true };
     }
 
     function acaoToqueSimples(el) {

@@ -8,6 +8,8 @@
     let getServerUrl = () => '';
     let loadPromise = null;
     let settingsReturnTarget = 'compras';
+    let pickerGuardConfigured = false;
+    let suppressOutsideClick = false;
 
     function readBank() {
         try {
@@ -103,6 +105,7 @@
     function closeModePicker() {
         document.getElementById('feiraModeOptions')?.classList.remove('open');
         document.getElementById('feiraModeButton')?.setAttribute('aria-expanded', 'false');
+        document.getElementById('feiraModeDismiss')?.classList.remove('open');
     }
 
     function toggleModePicker() {
@@ -112,6 +115,7 @@
         const openNow = !options.classList.contains('open');
         options.classList.toggle('open', openNow);
         button.setAttribute('aria-expanded', String(openNow));
+        document.getElementById('feiraModeDismiss')?.classList.toggle('open', openNow);
     }
 
     function updateHeader(state = {}) {
@@ -122,9 +126,9 @@
         const profileName = document.getElementById('feiraProfileName');
         const profileEmoji = document.getElementById('feiraProfileEmoji');
         const syncIndicator = document.getElementById('feiraSyncIndicator');
+        const orderOption = document.querySelector('[data-feira-mode="pedido"]');
         const receiveOption = document.querySelector('[data-feira-mode="receber"]');
         const buyOption = document.querySelector('[data-feira-mode="compras"]');
-        const receiveSetting = document.getElementById('comprasReceiveModeEnabled');
         if (modeName) modeName.textContent = label.name;
         if (modeEmoji) modeEmoji.textContent = label.emoji;
         if (profileName) profileName.textContent = state.profileName || 'Perfil';
@@ -134,9 +138,12 @@
             syncIndicator.title = state.syncMessage || 'Estado da sincronização de Compras';
             syncIndicator.setAttribute('aria-label', syncIndicator.title);
         }
+        if (orderOption) orderOption.style.display = state.canOrder !== false ? 'grid' : 'none';
         if (receiveOption) receiveOption.style.display = state.receiveModeEnabled && state.canReceive !== false ? 'grid' : 'none';
-        if (buyOption) buyOption.style.display = state.canBuy !== false || (!state.receiveModeEnabled && state.canReceive !== false) ? 'grid' : 'none';
-        if (receiveSetting) receiveSetting.checked = state.receiveModeEnabled === true;
+        if (buyOption) buyOption.style.display = state.canBuy !== false ? 'grid' : 'none';
+        document.querySelectorAll('[data-compras-receive-toggle], #comprasReceiveModeEnabled').forEach(toggle => {
+            toggle.checked = state.receiveModeEnabled === true;
+        });
         document.querySelectorAll('[data-feira-mode]').forEach(button => {
             const selected = button.dataset.feiraMode === mode;
             button.classList.toggle('selected', selected);
@@ -294,10 +301,27 @@
         if (typeof options.getServerUrl === 'function') getServerUrl = options.getServerUrl;
         syncServerUrl();
         frameElement()?.addEventListener('load', refreshHeader);
+        if (pickerGuardConfigured) return;
+        pickerGuardConfigured = true;
         document.addEventListener('pointerdown', event => {
             const picker = document.querySelector('.feira-mode-picker');
-            if (picker && !picker.contains(event.target)) closeModePicker();
-        });
+            const optionsOpen = document.getElementById('feiraModeOptions')?.classList.contains('open');
+            if (!optionsOpen || !picker || picker.contains(event.target)) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            suppressOutsideClick = true;
+            closeModePicker();
+            setTimeout(() => { suppressOutsideClick = false; }, 450);
+        }, true);
+        document.addEventListener('click', event => {
+            const picker = document.querySelector('.feira-mode-picker');
+            const optionsOpen = document.getElementById('feiraModeOptions')?.classList.contains('open');
+            if (!suppressOutsideClick && (!optionsOpen || !picker || picker.contains(event.target))) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            suppressOutsideClick = false;
+            closeModePicker();
+        }, true);
     }
 
     global.AloFeiraModule = Object.freeze({

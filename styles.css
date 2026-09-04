@@ -47,9 +47,11 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .filters { padding: 10px 15px; display: flex; gap: 10px; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid #eee; background: white; flex-shrink: 0; }
         .chip { background-color: #e0e0e0; color: #333; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
         .chip.active { border: 2px solid #333; opacity: 0.9; }
-        #containerFiltros .chip { border-radius: 6px; }
+        #containerFiltros .chip,
+        #containerFiltrosCozinha .chip { border-radius: 6px; }
         .kds-order-picker { position: relative; flex: 0 0 auto; }
-        #containerFiltros .chip { height: 36px; display: inline-flex; align-items: center; box-sizing: border-box; padding: 0 12px; font-size: 13px; }
+        #containerFiltros .chip,
+        #containerFiltrosCozinha .chip { height: 36px; display: inline-flex; align-items: center; box-sizing: border-box; padding: 0 12px; font-size: 13px; }
         .kds-all-chip { min-height: 0; border: 2px solid transparent; font-family: inherit; font-weight: 850; line-height: normal; cursor: pointer; }
         .kds-all-chip .filter-menu-chevron { display: inline-block; margin-left: 6px; font-size: 17px; font-weight: 900; line-height: .6; transform: scaleX(1.45); transform-origin: center; }
         .kds-order-menu { position: fixed; z-index: 1200; left: 14px; top: 126px; width: min(250px, calc(100vw - 28px)); overflow: hidden; border: 1px solid #ccd5d9; border-radius: 7px; background: #fff; box-shadow: 0 12px 32px rgba(25, 40, 48, .2); }
@@ -192,7 +194,7 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .shared-category-dialog { width: min(520px, calc(100vw - 24px)); padding: 16px; border-top: 4px solid #087466; }
         .shared-category-intro { margin: -10px 0 12px; color: #667771; font-size: 13px; }
         .shared-category-list { max-height: min(430px, 52vh); overflow-y: auto; border: 1px solid #dfe7e5; border-radius: 7px; }
-        .shared-category-title, .shared-category-row { min-height: 38px; display: grid; grid-template-columns: minmax(0, 1fr) 62px 62px; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid #edf0f0; }
+        .shared-category-title, .shared-category-row { min-height: 38px; display: grid; grid-template-columns: minmax(86px, 1fr) repeat(3, 56px); align-items: center; gap: 3px; padding: 4px 7px; border-bottom: 1px solid #edf0f0; }
         .shared-category-title { min-height: 32px; color: #60706e; font-size: 11px; text-align: center; background: #f5f8f7; }
         .shared-category-title strong { text-align: left; }
         .shared-category-row:last-child { border-bottom: 0; }
@@ -309,6 +311,32 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
             .header-area-chevron { font-size: 12px; }
             .header-area-options { position: fixed; top: 62px; left: 10px; width: calc(100vw - 20px); transform: none; }
         }
+
+        #listaPedidosCozinha.kds-grid-view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; align-content: start; }
+        #listaPedidosCozinha.kds-grid-view > li { min-width: 0; }
+        #listaPedidosCozinha.kds-grid-view > li:not(.pedido-cozinha) { grid-column: 1 / -1; }
+        #listaPedidosCozinha.kds-grid-view .pedido-cozinha {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 38px;
+            grid-template-areas: "conteudo origem" "acoes acoes";
+            gap: 7px;
+            padding: 8px;
+            border: 1px solid #dce2e5;
+            border-left-width: 6px;
+            border-radius: 7px;
+            box-sizing: border-box;
+        }
+        #listaPedidosCozinha.kds-grid-view .pedido-conteudo { grid-area: conteudo; min-width: 0; }
+        #listaPedidosCozinha.kds-grid-view .pedido-status-emoji { width: 25px; min-width: 25px; height: 34px; margin-right: 3px; font-size: 19px; }
+        #listaPedidosCozinha.kds-grid-view .pedido-produto-nome { display: block; overflow-wrap: anywhere; font-size: 16px; white-space: normal; }
+        #listaPedidosCozinha.kds-grid-view .item-info { min-width: 0; display: block !important; }
+        #listaPedidosCozinha.kds-grid-view .item-info > div:last-child { margin: 3px 0 0 !important; font-size: 11px !important; white-space: normal !important; }
+        #listaPedidosCozinha.kds-grid-view .pedido-meta-acoes { display: contents; }
+        #listaPedidosCozinha.kds-grid-view .pedido-origem { grid-area: origem; min-width: 38px; min-height: 38px; padding: 2px; align-self: start; font-size: 20px; }
+        #listaPedidosCozinha.kds-grid-view .pedido-acoes { grid-area: acoes; width: 100%; gap: 4px; }
+        #listaPedidosCozinha.kds-grid-view .btn-pedido-acao { min-width: 0; min-height: 42px; padding: 5px; flex: 1 1 0; }
+        #listaPedidosCozinha.kds-grid-view .acao-label { display: none; }
 
         .alerta-pisca { animation: bg-pisca 1s infinite; }
         @keyframes bg-pisca { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }

@@ -30,6 +30,12 @@
         .pedido-stock-guide { min-height:38px; align-items:center; justify-content:space-between; gap:10px; margin:-5px 0 12px; padding:7px 10px; border:1px solid #b9d8d1; border-radius:6px; background:#edf7f5; color:#245c52; }
         .pedido-stock-guide strong { font-size:10px; font-weight:900; }
         .pedido-stock-guide span { font-size:13px; font-weight:800; text-align:right; }
+        .pedido-quick-add { margin:-3px 0 13px; padding:9px 10px; border:1px solid #d8e3df; border-radius:6px; background:#f8faf9; }
+        .pedido-quick-add > label { display:block; margin-bottom:5px; color:#3f5550; font-size:11px; font-weight:850; }
+        .pedido-quick-add-controls { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:7px; }
+        .pedido-quick-add-controls input { min-width:0; height:39px; margin:0; padding:6px 9px; box-sizing:border-box; }
+        .pedido-quick-add-controls span { max-width:70px; overflow:hidden; color:#56645f; font-size:12px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+        .pedido-quick-add-controls button { min-height:39px; padding:7px 15px; border:0; border-radius:6px; background:#238636; color:#fff; font-size:13px; font-weight:850; cursor:pointer; }
         .produto-estoque-limites { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
         .item-stock-limits { color:#267064; font-size:11px; font-weight:800; }
         .btn-editar-pedido { background:#238636; }

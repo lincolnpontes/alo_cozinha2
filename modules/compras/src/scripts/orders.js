@@ -1,9 +1,16 @@
 function alterarModo(modo) {
     if(!['pedido', 'compras', 'receber'].includes(modo)) return;
-    if(modo === 'receber' && db.configs.modoReceberAtivo !== true) return;
     const permissions = getPermissoesComprasColab();
-    if(modo === 'receber' && !permissions.receber) return mostrarToast('Seu perfil não possui permissão para receber pedidos.', 'erro');
-    if(modo === 'compras' && !permissions.comprar && db.configs.modoReceberAtivo && permissions.receber) modo = 'receber';
+    const permitidos = {
+        pedido: permissions.pedir,
+        compras: permissions.comprar,
+        receber: db.configs.modoReceberAtivo === true && permissions.receberModo
+    };
+    if(!permitidos[modo]) {
+        const alternativo = ['pedido', 'compras', 'receber'].find(opcao => permitidos[opcao]);
+        if(!alternativo) return mostrarToast('Seu perfil não possui um modo ativo na Lista de Compras.', 'erro');
+        modo = alternativo;
+    }
     db.configs.modo = modo;
     modoSelecaoAtivo = false;
     itensSelecionadosRelatorio.clear();
@@ -57,7 +64,7 @@ function renderizarMenuFerramentas() {
     if(compras) {
         html += `<button type="button" class="menu-ferramentas-item" id="opcaoAgruparStatus" role="menuitem" onclick="acionarMenuFerramentas('agrupar')"><span aria-hidden="true">🗂️</span><span>Agrupar por status</span><span class="menu-estado" id="estadoAgruparStatus">${agrupamentoCompradoAtivo ? '✓' : ''}</span></button>`;
         html += `<button type="button" class="menu-ferramentas-item" role="menuitem" onclick="acionarMenuFerramentas('fornecedor')"><span aria-hidden="true">🚚</span><span>Filtrar por fornecedor</span><span class="menu-estado" id="estadoFiltroFornecedor">${filtroFornecedorComprasId ? '✓' : ''}</span></button>`;
-        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('limpar')"><span aria-hidden="true"><img class="menu-ferramentas-icon-image" src="clear-completed.png?v=2.1.49" alt=""></span><span>Limpar itens comprados</span></button>`;
+        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('limpar')"><span aria-hidden="true"><img class="menu-ferramentas-icon-image" src="clear-completed.png?v=2.1.50" alt=""></span><span>Limpar itens comprados</span></button>`;
     }
     html += '<div class="menu-ferramentas-separador" role="separator"></div>';
     html += '<div class="menu-categorias-titulo">Agrupar por categoria:</div>';

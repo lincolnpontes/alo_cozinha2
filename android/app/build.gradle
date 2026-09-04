@@ -27,8 +27,8 @@ android {
         applicationId "io.github.lincolnpontes.alocozinha"
         minSdk 23
         targetSdk 36
-        versionCode 79
-        versionName "2.1.49"
+        versionCode 80
+        versionName "2.1.50"
     }
 
     signingConfigs {

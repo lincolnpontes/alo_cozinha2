@@ -1,11 +1,12 @@
-# Alô Cozinha v2.1.49
+# Alô Cozinha v2.1.50
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
-- A v2.1.49 coordena a renovação da sessão Supabase entre módulos e abas, evita reutilização do refresh token e recupera a conexão sem exigir logout após falhas transitórias.
-- O backup completo v2.1.49 inclui dados do restaurante, logomarca, setores, funcionários e as mídias privadas de tarefas, fichas técnicas e documentos, com restauração para o Storage do Supabase.
-- A Lista de Compras ganha estoque mínimo/máximo e o modo opcional Receber; o KDS ganha visualização em quadro, controle de “Vir buscar”, ícones maiores de área e uma nova ação para limpar o histórico.
-- Etiquetas passa a usar somente o tema transparente integrado, inclusive para bancos antigos.
+- A v2.1.50 separa as permissões dos modos Pedir, Comprar e Receber, inclusive por categoria, sem retirar os acessos existentes.
+- O modo Receber passa a ser configurado junto aos módulos da tela inicial, e o seletor de Compras fecha sem acionar o conteúdo que estiver por trás.
+- A tela Pedir mostra quantidade padrão e estoque mínimo/máximo na mesma linha, além de inclusão rápida com quantidade ajustável.
+- O recebimento do KDS ganha visualização local em Lista ou Quadro, com duas colunas, e o histórico usa um ícone PNG compatível com o APK.
+- O ícone de Configurações agora usa uma engrenagem com o chapéu de chef ao centro.
 
 ## Novidades da v2
 

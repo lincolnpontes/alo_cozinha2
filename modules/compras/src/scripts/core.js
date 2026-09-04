@@ -53,7 +53,14 @@ function criarBancoBase() {
         banco.categorias.sort((a, b) => Number(a.ordem || 0) - Number(b.ordem || 0));
         banco.produtos.forEach(p => { if(!p.unidades) p.unidades = ['']; if(!p.fornecedores) p.fornecedores = []; p.estoqueMinimo = p.estoqueMinimo === '' || p.estoqueMinimo == null ? '' : Math.max(0, Number(p.estoqueMinimo) || 0); p.estoqueMaximo = p.estoqueMaximo === '' || p.estoqueMaximo == null ? '' : Math.max(0, Number(p.estoqueMaximo) || 0); p.historicoPrecos = AloFeiraDomain.normalizarHistoricoPrecos(p.historicoPrecos, p.atualizadoEm); if(!p.precosExcluidos || typeof p.precosExcluidos !== 'object') p.precosExcluidos = {}; if(p.ativo === undefined) p.ativo = true; });
         banco.fornecedores.forEach(f => { if(f.ativo === undefined) f.ativo = true; });
-        banco.colaboradores.forEach(c => { if(c.ativo === undefined) c.ativo = true; if(!c.emoji) c.emoji = '👤'; });
+        banco.colaboradores.forEach(c => {
+            if(c.ativo === undefined) c.ativo = true;
+            if(!c.emoji) c.emoji = '👤';
+            if(c.permissoesModulos?.compras) {
+                if(c.permissoesModulos.compras.pedir === undefined) c.permissoesModulos.compras.pedir = true;
+                if(!Array.isArray(c.catsPermitidasReceber)) c.catsPermitidasReceber = Array.isArray(c.catsPermitidasCompras) ? [...c.catsPermitidasCompras] : [];
+            }
+        });
         banco.configs.agruparComprasPorStatus = banco.configs.agruparComprasPorStatus === true;
         banco.configs.modoReceberAtivo = banco.configs.modoReceberAtivo === true;
         if(!['pedido', 'compras', 'receber'].includes(banco.configs.modo)) banco.configs.modo = 'pedido';
@@ -87,7 +94,9 @@ function criarBancoBase() {
     function getCatsPermitidas(colabLogado, modo = db.configs.modo) {
         if(!colabLogado) return null;
         if(colabLogado.isAdmin === true) return null;
-        const especificas = modo === 'pedido' ? colabLogado.catsPermitidasPedido : colabLogado.catsPermitidasCompras;
+        const especificas = modo === 'pedido'
+            ? colabLogado.catsPermitidasPedido
+            : (modo === 'receber' ? colabLogado.catsPermitidasReceber : colabLogado.catsPermitidasCompras);
         if(Array.isArray(especificas)) return especificas;
         if(Array.isArray(colabLogado.catsPermitidas)) return colabLogado.catsPermitidas;
         return [];

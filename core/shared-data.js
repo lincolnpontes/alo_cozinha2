@@ -1,5 +1,5 @@
 (function (global) {
-    const VERSION = '2.1.49';
+    const VERSION = '2.1.50';
     const SCHEMA_VERSION = 2;
     const STORAGE_KEY = 'alo_core_shared_v2';
     const L42_PERMISSION_KEYS = [
@@ -72,7 +72,7 @@
         return {
             kds: { configuracoes: admin },
             checklist: { configuracoes: admin, funcionario: false, setorId: '', setorIds: [] },
-            compras: { acesso: false, receber: true, comprar: true, categoriasPedido: [], categoriasCompras: [] },
+            compras: { acesso: false, pedir: true, comprar: true, receber: true, categoriasPedido: [], categoriasCompras: [], categoriasReceber: [] },
             l42: defaultL42Permissions(admin)
         };
     }
@@ -131,6 +131,10 @@
         normalized.permissions.checklist.setorId = normalized.permissions.checklist.setorIds.length === 1
             ? normalized.permissions.checklist.setorIds[0]
             : '';
+        if (permissions.compras?.pedir === undefined) normalized.permissions.compras.pedir = true;
+        if (!Array.isArray(permissions.compras?.categoriasReceber)) {
+            normalized.permissions.compras.categoriasReceber = clone(normalized.permissions.compras.categoriasCompras || []);
+        }
         if (permissions.compras?.acesso === undefined) normalized.permissions.compras.acesso = Boolean(links.comprasId);
         if (permissions.l42?.acesso === undefined) normalized.permissions.l42.acesso = Boolean(links.l42Nome);
         // Etiquetas é um módulo operacional protegido por PIN. O controle específico
@@ -159,6 +163,7 @@
         person.permissions.kds.configuracoes = true;
         person.permissions.checklist.configuracoes = true;
         person.permissions.compras.acesso = true;
+        person.permissions.compras.pedir = true;
         person.permissions.compras.receber = true;
         person.permissions.compras.comprar = true;
         person.permissions.l42.acesso = true;
@@ -301,10 +306,12 @@
                 person.permissions.compras.acesso = true;
                 person.permissions.kds.configuracoes = modulePermissions.kds?.configuracoes ?? person.isAdmin;
                 person.permissions.checklist.configuracoes = modulePermissions.checklist?.configuracoes ?? person.isAdmin;
+                person.permissions.compras.pedir = modulePermissions.compras?.pedir !== false;
                 person.permissions.compras.receber = modulePermissions.compras?.receber !== false;
                 person.permissions.compras.comprar = modulePermissions.compras?.comprar !== false;
                 person.permissions.compras.categoriasPedido = clone(sourcePerson.catsPermitidasPedido || sourcePerson.catsPermitidas || []);
                 person.permissions.compras.categoriasCompras = clone(sourcePerson.catsPermitidasCompras || sourcePerson.catsPermitidas || []);
+                person.permissions.compras.categoriasReceber = clone(sourcePerson.catsPermitidasReceber || sourcePerson.catsPermitidasCompras || sourcePerson.catsPermitidas || []);
                 if (sourcePerson.senhaHash) addCredential(person, { scheme: 'pbkdf2-sha256', hash: sourcePerson.senhaHash });
                 else if (sourcePerson.senha) addCredential(person, { scheme: 'plain-legacy', hash: sourcePerson.senha });
             }
@@ -869,8 +876,9 @@
     function updateComprasCategorySummary() {
         const order = document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked').length;
         const shopping = document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked').length;
+        const receiving = document.querySelectorAll('#sharedPersonComprasCategories [data-category-receiving]:checked').length;
         const button = document.getElementById('sharedPersonComprasCategoryButton');
-        if (button) button.setAttribute('aria-label', `Permissões por categoria: ${order} para pedir e ${shopping} para comprar`);
+        if (button) button.setAttribute('aria-label', `Permissões por categoria: ${order} para pedir, ${shopping} para comprar e ${receiving} para receber`);
     }
 
     function toggleComprasCategories(requested) {
@@ -923,12 +931,14 @@
         }
         const orderAllowed = new Set(person.permissions.compras.categoriasPedido || []);
         const shoppingAllowed = new Set(person.permissions.compras.categoriasCompras || []);
+        const receivingAllowed = new Set(person.permissions.compras.categoriasReceber || []);
         container.innerHTML = categories.map(category => {
             const id = escapeHtml(category.id);
             const name = escapeHtml(category.nome || 'Categoria');
-        const orderChecked = orderAllowed.has(category.id) ? 'checked' : '';
-        const shoppingChecked = shoppingAllowed.has(category.id) ? 'checked' : '';
-            return `<div class="shared-category-row" data-category-id="${id}"><span>${name}</span><label class="shared-category-choice" title="Pode pedir ${name}"><input type="checkbox" data-category-order ${orderChecked} aria-label="Pedir ${name}" onchange="AloSharedData.updateComprasCategorySummary()"><span aria-hidden="true">✓</span></label><label class="shared-category-choice" title="Pode comprar ${name}"><input type="checkbox" data-category-shopping ${shoppingChecked} aria-label="Comprar ${name}" onchange="AloSharedData.updateComprasCategorySummary()"><span aria-hidden="true">✓</span></label></div>`;
+            const orderChecked = orderAllowed.has(category.id) ? 'checked' : '';
+            const shoppingChecked = shoppingAllowed.has(category.id) ? 'checked' : '';
+            const receivingChecked = receivingAllowed.has(category.id) ? 'checked' : '';
+            return `<div class="shared-category-row" data-category-id="${id}"><span>${name}</span><label class="shared-category-choice" title="Pode pedir ${name}"><input type="checkbox" data-category-order ${orderChecked} aria-label="Pedir ${name}" onchange="AloSharedData.updateComprasCategorySummary()"><span aria-hidden="true">✓</span></label><label class="shared-category-choice" title="Pode comprar ${name}"><input type="checkbox" data-category-shopping ${shoppingChecked} aria-label="Comprar ${name}" onchange="AloSharedData.updateComprasCategorySummary()"><span aria-hidden="true">✓</span></label><label class="shared-category-choice" title="Pode receber ${name}"><input type="checkbox" data-category-receiving ${receivingChecked} aria-label="Receber ${name}" onchange="AloSharedData.updateComprasCategorySummary()"><span aria-hidden="true">✓</span></label></div>`;
         }).join('');
         updateComprasCategorySummary();
     }
@@ -936,7 +946,7 @@
     async function openPersonForm(id = '') {
         const person = state.people.find(item => item.id === id) || normalizePerson({
             id: '', nome: '', emoji: '👤', ativo: true, podeEntrar: false, isAdmin: false,
-            permissions: { checklist: { funcionario: true }, compras: { acesso:false, receber:false, comprar:false, categoriasPedido:[], categoriasCompras:[] } }
+            permissions: { checklist: { funcionario: true }, compras: { acesso:false, pedir:false, comprar:false, receber:false, categoriasPedido:[], categoriasCompras:[], categoriasReceber:[] } }
         });
         global.fecharModal?.('modalPessoasCompartilhadas');
         document.getElementById('sharedPersonId').value = id;
@@ -962,6 +972,7 @@
         }
         setCheckbox('sharedPersonKdsConfig', person.permissions.kds.configuracoes);
         setCheckbox('sharedPersonChecklistConfig', person.permissions.checklist.configuracoes);
+        setCheckbox('sharedPersonComprasOrder', person.permissions.compras.pedir);
         setCheckbox('sharedPersonComprasReceive', person.permissions.compras.receber);
         setCheckbox('sharedPersonComprasBuy', person.permissions.compras.comprar);
         setCheckbox('sharedPersonLabelsConfig', person.permissions.l42.configuracoes);
@@ -1006,11 +1017,13 @@
         const admin = document.getElementById('sharedPersonAdmin').checked;
         const kdsConfig = document.getElementById('sharedPersonKdsConfig').checked;
         const checklistConfig = document.getElementById('sharedPersonChecklistConfig').checked;
+        const comprasOrder = document.getElementById('sharedPersonComprasOrder').checked;
         const comprasReceive = document.getElementById('sharedPersonComprasReceive').checked;
         const comprasBuy = document.getElementById('sharedPersonComprasBuy').checked;
         const categoriasPedido = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-order]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
         const categoriasCompras = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-shopping]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
-        const comprasAccess = Boolean(admin || comprasReceive || comprasBuy || categoriasPedido.length || categoriasCompras.length);
+        const categoriasReceber = [...document.querySelectorAll('#sharedPersonComprasCategories [data-category-receiving]:checked')].map(input => input.closest('[data-category-id]').dataset.categoryId);
+        const comprasAccess = Boolean(admin || comprasOrder || comprasReceive || comprasBuy || categoriasPedido.length || categoriasCompras.length || categoriasReceber.length);
         if (!name) return global.AloUiDialog?.notice('Informe o nome da pessoa.', { title: 'Nome necessário', confirmText: 'Entendi' });
         if (pin && pin.length < 4) return global.AloUiDialog?.notice('Use pelo menos 4 dígitos no PIN.', { title: 'PIN muito curto', confirmText: 'Entendi' });
         if (state.people.some(person => person.id !== id && comparableText(person.nome) === comparableText(name))) {
@@ -1034,10 +1047,12 @@
             ? person.permissions.checklist.setorIds[0]
             : '';
         person.permissions.compras.acesso = comprasAccess;
+        person.permissions.compras.pedir = comprasOrder;
         person.permissions.compras.receber = comprasReceive;
         person.permissions.compras.comprar = comprasBuy;
         person.permissions.compras.categoriasPedido = categoriasPedido;
         person.permissions.compras.categoriasCompras = categoriasCompras;
+        person.permissions.compras.categoriasReceber = categoriasReceber;
         const labelsConfig = document.getElementById('sharedPersonLabelsConfig').checked;
         const labelsAccess = Boolean(admin || pin || person.credentials.alternatives.length || labelsConfig);
         person.permissions.l42.acesso = labelsAccess;

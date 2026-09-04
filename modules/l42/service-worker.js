@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alo-cozinha2-l42-v2.1.49-integrado';
+const CACHE_NAME = 'alo-cozinha2-l42-v2.1.50-integrado';
 const CACHE_PREFIX = 'alo-cozinha2-l42-';
 
 self.addEventListener('install', (e) => {
@@ -10,8 +10,8 @@ self.addEventListener('install', (e) => {
                 './index.html',
                 './manifest.json',
                 './icon.png',
-                './assets/qr-reader.svg?v=2.1.49',
-                './assets/printer-controls.svg?v=2.1.49',
+                './assets/qr-reader.svg?v=2.1.50',
+                './assets/printer-controls.svg?v=2.1.50',
                 './vendor/html2canvas.min.js',
                 './vendor/qrcode.min.js',
                 './vendor/html5-qrcode.min.js',

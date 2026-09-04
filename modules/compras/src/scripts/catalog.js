@@ -59,9 +59,9 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
 
                 let classesExtra = ""; let infoDireita = ""; let iconeListaPedido = '○'; let classeIconePedido = 'neutro';
                 let defaultUn = p.unidades && p.unidades.length > 0 ? p.unidades[0] : '';
-                let padraoTexto = (p.qtdPadrao !== null && p.qtdPadrao !== '') ? `(Padrão: ${p.qtdPadrao} ${defaultUn})` : '';
+                let padraoTexto = (p.qtdPadrao !== null && p.qtdPadrao !== '') ? `Padrão: ${p.qtdPadrao} ${defaultUn}` : '';
                 const limitesEstoque = [p.estoqueMinimo !== '' && p.estoqueMinimo != null ? `mín. ${p.estoqueMinimo}` : '', p.estoqueMaximo !== '' && p.estoqueMaximo != null ? `máx. ${p.estoqueMaximo}` : ''].filter(Boolean).join(' · ');
-                if(limitesEstoque) padraoTexto += `${padraoTexto ? '<br>' : ''}<span class="item-stock-limits">Estoque ${escaparHtml(limitesEstoque)}</span>`;
+                if(limitesEstoque) padraoTexto += `${padraoTexto ? ' - ' : ''}<span class="item-stock-limits">Estoque ${escaparHtml(limitesEstoque)}</span>`;
                 if(p.obsPadrao) { let quebra = padraoTexto ? '<br>' : ''; padraoTexto += `${quebra}<span style="color:#000; font-size:11px;">Obs Padrão: ${escaparHtml(p.obsPadrao)}</span>`; }
 
                 if (pedidoEditavel) {

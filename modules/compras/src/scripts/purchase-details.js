@@ -23,6 +23,7 @@ function abrirModalEditarPedido(paId, pId) {
     const p = db.produtos.find(x => x.id === pId);
     if(!p) return;
     if(!podeUsarProdutoCompras(p, 'pedido', true)) return;
+    document.getElementById('editPedidoProdutoId').value = p.id;
     document.getElementById('tituloModalEditarPedido').innerText = p.nome;
     const isAdmin = temAcessoAdmin();
     const btnEditPed = document.getElementById('btnEditProdPedido');
@@ -34,6 +35,12 @@ function abrirModalEditarPedido(paId, pId) {
     }
 
     const pedidoAtual = paId ? db.pedidosAtivos.find(x => x.idUnico === paId) : null;
+    const quickAdd = document.getElementById('editPedidoQuickAdd');
+    const quickQuantity = document.getElementById('editPedidoQtdPadrao');
+    const quickUnit = document.getElementById('editPedidoUnidadePadrao');
+    if (quickAdd) quickAdd.style.display = pedidoAtual ? 'none' : 'block';
+    if (quickQuantity) quickQuantity.value = p.qtdPadrao !== null && p.qtdPadrao !== undefined ? p.qtdPadrao : '';
+    if (quickUnit) quickUnit.textContent = p.unidades?.[0] || '';
     const stockGuide = document.getElementById('editPedidoStockGuide');
     const hasMinimum = p.estoqueMinimo !== '' && p.estoqueMinimo != null;
     const hasMaximum = p.estoqueMaximo !== '' && p.estoqueMaximo != null;
@@ -72,6 +79,30 @@ function abrirModalEditarPedido(paId, pId) {
     removeButton.textContent = pedidoAtual?.status === 'rascunho' ? 'Remover da lista de envio' : 'Cancelar pedido';
     document.getElementById('modalEditarPedido').style.display = 'flex';
 }
+    function incluirQuantidadePadraoPedido() {
+        const pId = document.getElementById('editPedidoProdutoId').value;
+        const produto = db.produtos.find(item => item.id === pId);
+        if(!produto || !podeUsarProdutoCompras(produto, 'pedido', true)) return;
+        const qtd = parseFloatBr(document.getElementById('editPedidoQtdPadrao').value);
+        if(qtd === '' || Number(qtd) <= 0) return mostrarToast('Informe uma quantidade válida.', 'erro');
+        const agora = agoraServidor();
+        db.pedidosAtivos.push({
+            idUnico: `pa_${agora}_${Math.random().toString(36).slice(2,7)}`,
+            produtoId: produto.id,
+            qtd,
+            unidade: produto.unidades?.[0] || '',
+            obs: produto.obsPadrao || '',
+            status: 'rascunho',
+            dataStatus: agora,
+            excluido: false,
+            historico: [],
+            colaboradorId: db.configs.colabAtivoId
+        });
+        salvarBanco();
+        fecharModal('modalEditarPedido');
+        renderizarLista();
+        mostrarToast('Item incluído na lista de envio.', 'sucesso');
+    }
     function abrirHistoricoCompletoPedido() { document.getElementById('modalHistoricoPedidosProduto').style.display = 'flex'; }
     function cancelarEdicaoPedido() { fecharModal('modalEditarPedido'); }
     function salvarEdicaoPedido() { const paId = document.getElementById('editPedidoId').value; if(!paId) return fecharModal('modalEditarPedido'); const qtd = parseFloatBr(document.getElementById('editPedidoQtd').value); let pa = db.pedidosAtivos.find(x => x.idUnico === paId); const produto = pa && db.produtos.find(x => x.id === pa.produtoId); if(!podeUsarProdutoCompras(produto, 'pedido', true)) return; if(pa) { pa.qtd = qtd; pa.unidade = document.getElementById('editPedidoUnidade').value; pa.obs = document.getElementById('editPedidoObs').value.trim(); pa.dataStatus = agoraServidor(); db.configs.syncPendente = pa.status !== 'rascunho'; salvarBanco(); } fecharModal('modalEditarPedido'); renderizarLista(); if(document.getElementById('modalPedidosHoje').style.display === 'flex') abrirPedidosHoje(); if(pa && pa.status !== 'rascunho') sincronizarFundo(false, true); }

@@ -202,13 +202,26 @@ async function ativarPessoaCompartilhadaComprasPeloHost(pessoa) {
 
 function obterEstadoHostCompras() {
     const operador = db.colaboradores.find(c => c.id === db.configs.colabAtivoId && c.ativo !== false);
+    const permissions = getPermissoesComprasColab(operador);
     return {
-        mode: db.configs.modo === 'compras' ? 'compras' : 'pedido',
+        mode: ['pedido', 'compras', 'receber'].includes(db.configs.modo) ? db.configs.modo : 'pedido',
+        receiveModeEnabled: db.configs.modoReceberAtivo === true,
+        canBuy: permissions.comprar,
+        canReceive: permissions.receber,
         profileName: operador?.nome || 'Perfil',
         profileEmoji: operador?.emoji || '👤',
         syncState: window.AloDemo?.isActive?.() ? 'sincronizado' : (db.configs.url ? 'sincronizando' : 'local'),
         syncMessage: window.AloDemo?.isActive?.() ? 'Demonstração pronta' : (db.configs.url ? 'Conferindo dados' : 'Dados somente neste aparelho')
     };
+}
+
+function definirModoReceberAtivoPeloHost(enabled) {
+    db.configs.modoReceberAtivo = Boolean(enabled);
+    if (!db.configs.modoReceberAtivo && db.configs.modo === 'receber') db.configs.modo = 'compras';
+    marcarMudancaConfiguracao();
+    alterarModo(db.configs.modo);
+    sincronizarFundo(false, true);
+    return obterEstadoHostCompras();
 }
 
 async function configurarNuvemComprasPeloHost(endpoint, options = {}) {
@@ -304,6 +317,9 @@ async function excluirHistoricoPeloHost() {
 }
 
 window.onload = async () => {
+    document.addEventListener('pointerdown', () => {
+        if (executandoNoHost && window.parent !== window) window.parent.AloFeiraModule?.closeModePicker?.();
+    }, true);
     ativarAtualizacaoAutomatica();
     await sincronizarInicializacao();
     if (executandoNoHost) {

@@ -1,4 +1,9 @@
 function alterarModo(modo) {
+    if(!['pedido', 'compras', 'receber'].includes(modo)) return;
+    if(modo === 'receber' && db.configs.modoReceberAtivo !== true) return;
+    const permissions = getPermissoesComprasColab();
+    if(modo === 'receber' && !permissions.receber) return mostrarToast('Seu perfil não possui permissão para receber pedidos.', 'erro');
+    if(modo === 'compras' && !permissions.comprar && db.configs.modoReceberAtivo && permissions.receber) modo = 'receber';
     db.configs.modo = modo;
     modoSelecaoAtivo = false;
     itensSelecionadosRelatorio.clear();
@@ -6,13 +11,13 @@ function alterarModo(modo) {
     if(modo === 'pedido') filtroFornecedorComprasId = null;
     fecharMenuFerramentas();
     fecharMenuAcaoCompra();
-    document.body.classList.remove('theme-pedido', 'theme-compras');
+    document.body.classList.remove('theme-pedido', 'theme-compras', 'theme-receber');
     document.body.classList.add(`theme-${modo}`);
-    document.getElementById('metaThemeColor').content = modo === 'pedido' ? '#1565C0' : '#521565';
+    document.getElementById('metaThemeColor').content = modo === 'pedido' ? '#1565C0' : (modo === 'receber' ? '#0b7466' : '#521565');
     document.getElementById('dicasCabecalho').innerHTML = '';
     document.getElementById('btnHistHoje').style.display = modo === 'pedido' ? 'inline-flex' : 'none';
     document.getElementById('btnRelatorioBar').style.display = modo === 'compras' ? 'inline-flex' : 'none';
-    if(modo === 'compras') document.getElementById('containerBotoesEnvio').style.display = 'none';
+    if(modo !== 'pedido') document.getElementById('containerBotoesEnvio').style.display = 'none';
     renderizarFiltros();
     atualizarControlesSelecao();
     atualizarEstadoMenuFerramentas();
@@ -25,7 +30,7 @@ function alterarModo(modo) {
 }
 
 function renderizarFiltros() {
-    const compras = db.configs.modo === 'compras';
+    const compras = db.configs.modo !== 'pedido';
     const todosAtivo = categoriaAtual === null && (!compras || (!filtroFornecedorComprasId && !agrupamentoCompradoAtivo));
     let html = `<button id="btnTodosFiltros" class="chip compras-all-chip ${todosAtivo ? 'active' : ''}" onclick="abrirMenuFerramentas(this)" aria-haspopup="menu" aria-expanded="false">FILTROS <span class="filter-menu-chevron" aria-hidden="true">⌄</span></button>`;
     html += `<button class="btn-busca-filtros ${buscaPedidoTexto ? 'ativo' : ''}" onclick="abrirBuscaPedido()" id="btnBuscaPedido" title="Buscar item" aria-label="Buscar item">🔎</button>`;
@@ -43,7 +48,7 @@ function filtrarCat(catId) {
 
 function renderizarMenuFerramentas() {
     const menu = document.getElementById('menuFerramentas');
-    const compras = db.configs.modo === 'compras';
+    const compras = db.configs.modo !== 'pedido';
     const colabLogado = db.colaboradores.find(c => c.id === db.configs.colabAtivoId);
     const catsPermitidas = getCatsPermitidas(colabLogado);
     const categorias = db.categorias.filter(cat => cat.ativo !== false && (!catsPermitidas || catsPermitidas.includes(cat.id)));
@@ -52,7 +57,7 @@ function renderizarMenuFerramentas() {
     if(compras) {
         html += `<button type="button" class="menu-ferramentas-item" id="opcaoAgruparStatus" role="menuitem" onclick="acionarMenuFerramentas('agrupar')"><span aria-hidden="true">🗂️</span><span>Agrupar por status</span><span class="menu-estado" id="estadoAgruparStatus">${agrupamentoCompradoAtivo ? '✓' : ''}</span></button>`;
         html += `<button type="button" class="menu-ferramentas-item" role="menuitem" onclick="acionarMenuFerramentas('fornecedor')"><span aria-hidden="true">🚚</span><span>Filtrar por fornecedor</span><span class="menu-estado" id="estadoFiltroFornecedor">${filtroFornecedorComprasId ? '✓' : ''}</span></button>`;
-        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('limpar')"><span aria-hidden="true"><img class="menu-ferramentas-icon-image" src="clear-completed.png?v=2.1.48" alt=""></span><span>Limpar itens comprados</span></button>`;
+        html += `<button type="button" class="menu-ferramentas-item ultimo-grupo" role="menuitem" onclick="acionarMenuFerramentas('limpar')"><span aria-hidden="true"><img class="menu-ferramentas-icon-image" src="clear-completed.png?v=2.1.49" alt=""></span><span>Limpar itens comprados</span></button>`;
     }
     html += '<div class="menu-ferramentas-separador" role="separator"></div>';
     html += '<div class="menu-categorias-titulo">Agrupar por categoria:</div>';
@@ -99,7 +104,7 @@ function acionarMenuFerramentas(acao) {
 }
 
 function selecionarCategoriaMenu(catId) {
-    if(db.configs.modo === 'compras') {
+    if(db.configs.modo !== 'pedido') {
         filtroFornecedorComprasId = null;
         agrupamentoCompradoAtivo = false;
     }
@@ -116,7 +121,7 @@ function atualizarEstadoMenuFerramentas() {
 }
 
 function mostrarTodosItens() {
-    if(db.configs.modo === 'compras') {
+    if(db.configs.modo !== 'pedido') {
         filtroFornecedorComprasId = null;
         agrupamentoCompradoAtivo = false;
     }
@@ -128,7 +133,7 @@ function mostrarTodosItens() {
 function mostrarTodosCompras() { mostrarTodosItens(); }
 
 function ativarAgrupamentoCompras() {
-    if(db.configs.modo !== 'compras') return;
+    if(db.configs.modo === 'pedido') return;
     filtroFornecedorComprasId = null;
     agrupamentoCompradoAtivo = true;
     categoriaAtual = null;
@@ -141,7 +146,7 @@ function ativarAgrupamentoCompras() {
 }
 
 function aplicarPreferenciaAgrupamentoCompras() {
-    agrupamentoCompradoAtivo = db.configs.modo === 'compras' && db.configs.agruparComprasPorStatus === true;
+    agrupamentoCompradoAtivo = db.configs.modo !== 'pedido' && db.configs.agruparComprasPorStatus === true;
     if(agrupamentoCompradoAtivo) {
         filtroFornecedorComprasId = null;
         categoriaAtual = null;
@@ -180,6 +185,7 @@ function executarLimpezaComprasAntigas() {
 
 function atualizarControlesSelecao() {
     const pedido = db.configs.modo === 'pedido';
+    const recebimento = db.configs.modo === 'receber';
     const permissoesCompras = getPermissoesComprasColab();
     const permiteAcaoEmMassa = permissoesCompras.comprar || permissoesCompras.receber;
     const btnRelatorio = document.getElementById('btnRelatorioBar');
@@ -190,10 +196,10 @@ function atualizarControlesSelecao() {
     const btnCancelarSelecao = document.getElementById('btnCancelarSelecaoCompras');
 
     btnComprado.style.display = permiteAcaoEmMassa ? 'inline-flex' : 'none';
-    btnPedidoFornecedor.style.display = permissoesCompras.comprar ? 'inline-flex' : 'none';
-    btnVincular.style.display = permissoesCompras.comprar ? 'inline-flex' : 'none';
+    btnPedidoFornecedor.style.display = !recebimento && permissoesCompras.comprar ? 'inline-flex' : 'none';
+    btnVincular.style.display = !recebimento && permissoesCompras.comprar ? 'inline-flex' : 'none';
     acoesSelecao.style.display = !pedido && modoSelecaoAtivo && permiteAcaoEmMassa ? 'flex' : 'none';
-    btnRelatorio.style.display = !pedido ? 'inline-flex' : 'none';
+    btnRelatorio.style.display = !pedido && !recebimento ? 'inline-flex' : 'none';
     if(btnCancelarSelecao) btnCancelarSelecao.style.display = !pedido && modoSelecaoAtivo ? 'inline-flex' : 'none';
     if(modoSelecaoAtivo) {
         fecharMenuFerramentas();
@@ -228,7 +234,7 @@ function alternarSelecaoDireta(id) {
 
 function selecionarItemCompraDireto(event, idUnico) {
     if(event) { event.preventDefault(); event.stopPropagation(); }
-    if(db.configs.modo !== 'compras') return;
+    if(db.configs.modo === 'pedido') return;
     const permissoes = getPermissoesComprasColab();
     if(!permissoes.comprar && !permissoes.receber) return mostrarToast('Seu perfil não possui ações no modo Compras.', 'info');
     alternarSelecaoDireta(idUnico);
@@ -236,7 +242,7 @@ function selecionarItemCompraDireto(event, idUnico) {
 
 function alternarSelecaoGrupo(seletor) {
     const permissoes = getPermissoesComprasColab();
-    if(db.configs.modo === 'compras' && !permissoes.comprar && !permissoes.receber) {
+    if(db.configs.modo !== 'pedido' && !permissoes.comprar && !permissoes.receber) {
         return mostrarToast('Seu perfil não possui ações no modo Compras.', 'info');
     }
     const ids = Array.from(document.querySelectorAll(seletor)).map(el => el.getAttribute('data-id')).filter(Boolean);
@@ -295,7 +301,7 @@ function executarAcaoEmMassa(acao) {
 }
 
 function abrirModalMassaVincular() {
-    if(db.configs.modo !== 'compras') return;
+    if(db.configs.modo === 'pedido') return;
     if(itensSelecionadosRelatorio.size === 0) return alert('Selecione itens primeiro.');
     const selForn = document.getElementById('massaVincularForn');
     selForn.innerHTML = '<option value="">-- Escolha o Fornecedor --</option>';
@@ -331,7 +337,7 @@ function confirmarMassaVincular() {
 }
 
 function abrirModalFiltroFornCompras() {
-    if(db.configs.modo !== 'compras') return;
+    if(db.configs.modo === 'pedido') return;
     const selForn = document.getElementById('filtroComprasForn');
     selForn.innerHTML = '<option value="">-- Mostrar Todos os Itens --</option>';
     db.fornecedores.filter(f => f.ativo !== false).sort((a,b) => a.nome.localeCompare(b.nome)).forEach(f => {

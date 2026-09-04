@@ -1100,6 +1100,19 @@
         setSyncStatus(state.outbox.length ? 'syncing' : (navigator.onLine ? 'ok' : 'error'), state.outbox.length ? 'Alterações aguardando confirmação' : 'Fichas técnicas sincronizadas');
     }
     function getBackup() { return { schemaVersion:1, ...clone(state) }; }
+    async function getBackupWithMedia() {
+        const backup = getBackup();
+        backup.media = { photos:{} };
+        const sheetsWithPhoto = state.sheets.filter(sheet => !sheet.excluida && sheet.fotoReferencia);
+        if (!sheetsWithPhoto.length) return backup;
+        if (!deps.getUrl()) throw new Error('Conecte a nuvem para incluir as fotos das fichas técnicas no backup.');
+        for (const sheet of sheetsWithPhoto) {
+            const file = await global.AloApi.getTaskPhoto(deps.getUrl(), photoKey(sheet.id), true);
+            if (!file?.encontrada || !file.dataUrl) throw new Error(`A foto da ficha “${sheet.nome}” não pôde ser incluída no backup.`);
+            backup.media.photos[sheet.id] = { dataUrl:file.dataUrl, mime:file.mime || 'image/jpeg', name:file.nome || `ficha-${sheet.id}.jpg` };
+        }
+        return backup;
+    }
     function restoreBackup(backup) {
         if (!backup || !Array.isArray(backup.sheets)) return false;
         state = {
@@ -1114,11 +1127,24 @@
         };
         saveState(); render(); return true;
     }
+    async function restoreBackupWithMedia(backup) {
+        if (!restoreBackup(backup)) return false;
+        const photos = backup?.media?.photos || {};
+        const entries = Object.entries(photos);
+        if (!entries.length) return true;
+        if (!deps.getUrl()) throw new Error('Conecte a nuvem para restaurar as fotos das fichas técnicas.');
+        for (const [sheetId, file] of entries) {
+            if (!file?.dataUrl) continue;
+            await global.AloApi.uploadTaskPhoto(deps.getUrl(), photoKey(sheetId), file.dataUrl);
+            photoCache.set(sheetId, file.dataUrl);
+        }
+        return true;
+    }
 
     global.AloTechnicalSheets = Object.freeze({
         configure, showView, openManager, closeManager, render, toggleMainSearch, clearMainSearch, renderManager, setCategory, setManagerCategory, getLinkOptions, openCategoryManager, closeCategoryManager, renderCategoryManager, createCategory, renameCategory, deleteCategory, openCategoryColor, closeCategoryColor, previewCategoryColor, saveCategoryColors, openForm, duplicateSheet, closeForm, addIngredient, removeIngredient,
         openIngredientSearch, renderIngredientSearch, selectIngredientProduct, closeIngredientSearch, createPurchaseIngredient, returnFromPurchaseProduct, openPriceEditor, closePriceEditor, savePriceEditor, updateLabelProductNote,
         openLabelProductPicker, closeLabelProductPicker, setLabelProductCategory, renderLabelProductPicker, selectLabelProduct,
-        previewCost, saveForm, deleteCurrent, openDetail, closeDetail, printLabel, toggleDetailScale, updateDetailScaleBase, applyDetailScale, resetDetailScale, updateLabelProductReference, handlePhoto, removePhotoDraft, syncNow, getBackup, restoreBackup, calculate
+        previewCost, saveForm, deleteCurrent, openDetail, closeDetail, printLabel, toggleDetailScale, updateDetailScaleBase, applyDetailScale, resetDetailScale, updateLabelProductReference, handlePhoto, removePhotoDraft, syncNow, getBackup, getBackupWithMedia, restoreBackup, restoreBackupWithMedia, calculate
     });
 })(window);

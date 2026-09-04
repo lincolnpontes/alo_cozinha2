@@ -3,10 +3,13 @@
     const PUBLISHABLE_KEY = 'sb_publishable_U5ZEfqHRxIJc1abrIzV0cg_keNdZvuK';
     const ENDPOINT = `${SUPABASE_URL}/functions/v1/alo-cozinha-sync`;
     const SESSION_KEY = 'alo_supabase_session_v1';
+    const REFRESH_LOCK_KEY = 'alo_supabase_refresh_lock_v1';
+    const REFRESH_BACKOFF_KEY = 'alo_supabase_refresh_backoff_v1';
     const DEVICE_KEY = 'alo_cloud_device_id_v1';
     const LOGIN_GUARD_KEY = 'alo_auth_login_guard_v1';
     const LOGIN_MAX_ATTEMPTS = 3;
-    const LOGIN_LOCK_MS = 5 * 60 * 1000;
+    const LOGIN_LOCK_MS = 30 * 1000;
+    const LOGIN_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
     const ACCOUNT_SITE = 'https://lincolnpontes.github.io/alo_cozinha2/auth-callback.html';
     let session = readSession();
     let channel = null;
@@ -21,6 +24,8 @@
     let accessCaptchaToken = '';
     let turnstileWidgetId = null;
     let turnstileLoader = null;
+    const refreshOwner = global.crypto?.randomUUID?.() || `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let sessionInvalidated = false;
 
     function isDemoMode() {
         return global.AloDemo?.isActive?.() === true;
@@ -50,8 +55,96 @@
             user: value.user || session?.user || null
         };
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        sessionInvalidated = false;
         renderAccountSettings();
         return session;
+    }
+
+    function wait(milliseconds) {
+        return new Promise(resolve => global.setTimeout(resolve, milliseconds));
+    }
+
+    function readJsonStorage(key) {
+        try { return JSON.parse(localStorage.getItem(key) || 'null'); }
+        catch (error) { return null; }
+    }
+
+    function refreshBackoffUntil() {
+        const value = readJsonStorage(REFRESH_BACKOFF_KEY);
+        const until = Number(value?.until || 0);
+        if (until <= Date.now()) {
+            localStorage.removeItem(REFRESH_BACKOFF_KEY);
+            return 0;
+        }
+        return until;
+    }
+
+    function registerRefreshBackoff(error) {
+        const headerSeconds = Number.parseInt(String(error?.retryAfter || ''), 10);
+        const delay = Number.isFinite(headerSeconds) && headerSeconds > 0
+            ? headerSeconds * 1000
+            : 30000;
+        const until = Date.now() + Math.min(Math.max(delay, 5000), 5 * 60 * 1000);
+        localStorage.setItem(REFRESH_BACKOFF_KEY, JSON.stringify({ until }));
+        return until;
+    }
+
+    function acquireRefreshLock(refreshToken) {
+        const now = Date.now();
+        const current = readJsonStorage(REFRESH_LOCK_KEY);
+        if (current?.owner && current.owner !== refreshOwner && Number(current.expiresAt || 0) > now) return false;
+        const lock = { owner: refreshOwner, token: String(refreshToken || ''), expiresAt: now + 15000 };
+        localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify(lock));
+        return readJsonStorage(REFRESH_LOCK_KEY)?.owner === refreshOwner;
+    }
+
+    function releaseRefreshLock() {
+        if (readJsonStorage(REFRESH_LOCK_KEY)?.owner === refreshOwner) localStorage.removeItem(REFRESH_LOCK_KEY);
+    }
+
+    async function adoptPeerSession(attemptedRefreshToken, timeout = 16000) {
+        const deadline = Date.now() + timeout;
+        while (Date.now() < deadline) {
+            const stored = readSession();
+            if (stored?.refresh_token && stored.refresh_token !== attemptedRefreshToken) {
+                saveSession(stored);
+                updateRealtimeToken();
+                return session;
+            }
+            const lock = readJsonStorage(REFRESH_LOCK_KEY);
+            if (!lock?.owner || Number(lock.expiresAt || 0) <= Date.now()) return null;
+            await wait(180);
+        }
+        return null;
+    }
+
+    function isTerminalRefreshError(error) {
+        const code = String(error?.code || '').toLowerCase();
+        const message = String(error?.message || '').toLowerCase();
+        return ['refresh_token_not_found', 'refresh_token_already_used', 'invalid_grant'].includes(code)
+            || /invalid refresh token|refresh token not found|refresh token already used/.test(message);
+    }
+
+    async function invalidateSession(message = 'Sua sessão expirou. Entre novamente para continuar sincronizando.') {
+        const stored = readSession();
+        if (stored?.refresh_token && session?.refresh_token && stored.refresh_token !== session.refresh_token) {
+            saveSession(stored);
+            updateRealtimeToken();
+            return false;
+        }
+        sessionInvalidated = true;
+        if (recoveryTimer) global.clearTimeout(recoveryTimer);
+        recoveryTimer = null;
+        recoveryAttempt = 0;
+        if (channel && realtimeClient) await realtimeClient.removeChannel(channel).catch(() => {});
+        channel = null;
+        realtimeClient = null;
+        session = null;
+        localStorage.removeItem(SESSION_KEY);
+        emitStatus('local', message);
+        if (!isPublicTaskView()) showAccessScreen();
+        global.dispatchEvent(new CustomEvent('alo:session-expired', { detail: { message } }));
+        return true;
     }
 
     function deviceId() {
@@ -81,8 +174,9 @@
     }
 
     function scheduleRecovery(delay = 5000) {
-        if (recoveryTimer || !session || isDemoMode() || !navigator.onLine) return;
-        const wait = Math.min(60000, Math.max(delay, 5000) * Math.max(1, recoveryAttempt + 1));
+        if (recoveryTimer || !session || sessionInvalidated || isDemoMode() || !navigator.onLine) return;
+        const authWait = Math.max(0, refreshBackoffUntil() - Date.now());
+        const waitTime = Math.max(authWait, Math.min(60000, Math.max(delay, 5000) * Math.max(1, recoveryAttempt + 1)));
         recoveryTimer = global.setTimeout(async () => {
             recoveryTimer = null;
             const recovered = await initialize();
@@ -90,7 +184,7 @@
                 recoveryAttempt = Math.min(recoveryAttempt + 1, 6);
                 scheduleRecovery(5000);
             }
-        }, wait);
+        }, waitTime);
     }
 
     function errorMessage(error) {
@@ -115,6 +209,8 @@
             const error = new Error(data?.message || data?.msg || data?.error_description || data?.error || `Falha no servidor (${response.status}).`);
             error.status = response.status;
             error.retryAfter = response.headers.get('Retry-After') || '';
+            error.code = data?.error_code || data?.code || '';
+            error.payload = data;
             throw error;
         }
         return data;
@@ -122,9 +218,26 @@
 
     async function refreshSession() {
         if (!session?.refresh_token) throw new Error('Conecte a conta da nuvem nas configurações.');
+        if (sessionInvalidated) throw new Error('Sua sessão expirou. Entre novamente.');
         if (refreshPromise) return refreshPromise;
         const attemptedRefreshToken = session.refresh_token;
         refreshPromise = (async () => {
+            const backoff = refreshBackoffUntil();
+            if (backoff > Date.now()) {
+                const error = new Error('A conexão está aguardando o prazo seguro para tentar novamente.');
+                error.status = 429;
+                error.retryAt = backoff;
+                throw error;
+            }
+            if (!acquireRefreshLock(attemptedRefreshToken)) {
+                const adopted = await adoptPeerSession(attemptedRefreshToken);
+                if (adopted) return adopted;
+                if (!acquireRefreshLock(attemptedRefreshToken)) {
+                    const error = new Error('Outra aba está renovando a sessão.');
+                    error.code = 'refresh_in_progress';
+                    throw error;
+                }
+            }
             emitStatus('connecting', 'Renovando a conexão com a nuvem...');
             const response = await global.fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
                 method: 'POST',
@@ -140,15 +253,31 @@
                 }
             }
             const refreshed = saveSession(await parseResponse(response));
+            localStorage.removeItem(REFRESH_BACKOFF_KEY);
             updateRealtimeToken();
             recoveryAttempt = 0;
             emitStatus('online', 'Conexão com a nuvem restabelecida');
             global.setTimeout(wakeAllModules, 0);
             return refreshed;
-        })().catch(error => {
-            scheduleRecovery();
+        })().catch(async error => {
+            if (isTerminalRefreshError(error)) {
+                const stored = readSession();
+                if (stored?.refresh_token && stored.refresh_token !== attemptedRefreshToken) {
+                    saveSession(stored);
+                    updateRealtimeToken();
+                    return session;
+                }
+                await invalidateSession();
+            } else if (Number(error?.status || 0) === 429) {
+                const until = error.retryAt || registerRefreshBackoff(error);
+                emitStatus('warning', 'Aguardando para reconectar sem bloquear sua conta...');
+                scheduleRecovery(Math.max(5000, until - Date.now()));
+            } else {
+                scheduleRecovery();
+            }
             throw error;
         }).finally(() => {
+            releaseRefreshLock();
             refreshPromise = null;
         });
         return refreshPromise;
@@ -178,6 +307,7 @@
         }
         if (response.status === 401) {
             await refreshSession();
+            if (!session) return response;
             headers.set('Authorization', `Bearer ${session.access_token}`);
             try {
                 response = await request();
@@ -185,7 +315,11 @@
                 scheduleRecovery();
                 throw error;
             }
-            if (response.status === 401) scheduleRecovery();
+            if (response.status === 401) {
+                const error = new Error('A sessão não foi aceita pela nuvem.');
+                error.code = 'invalid_grant';
+                await invalidateSession();
+            }
         }
         return response;
     }
@@ -225,7 +359,6 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
             realtime: { params: { eventsPerSecond: 20 } }
         });
-        await realtimeClient.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
         realtimeClient.realtime.setAuth(session.access_token);
         channel = realtimeClient.channel(`alo-cozinha:${session.user.id}`)
             .on('postgres_changes', {
@@ -265,7 +398,7 @@
                 return true;
             } catch (error) {
                 emitStatus('error', errorMessage(error));
-                scheduleRecovery();
+                if (!sessionInvalidated && session) scheduleRecovery();
                 return false;
             }
         })().finally(() => { initializing = null; });
@@ -277,6 +410,8 @@
     }
 
     async function signIn(email, password, captchaToken = '') {
+        sessionInvalidated = false;
+        localStorage.removeItem(REFRESH_BACKOFF_KEY);
         const data = await authRequest('/auth/v1/token?grant_type=password', { email, password, ...captchaSecurity(captchaToken) });
         saveSession(data);
         await initialize();
@@ -308,6 +443,9 @@
         if (recoveryTimer) global.clearTimeout(recoveryTimer);
         recoveryTimer = null;
         recoveryAttempt = 0;
+        sessionInvalidated = false;
+        localStorage.removeItem(REFRESH_BACKOFF_KEY);
+        releaseRefreshLock();
         session = null;
         localStorage.removeItem(SESSION_KEY);
         emitStatus('local', 'Conta desconectada; dados locais preservados');
@@ -421,18 +559,26 @@
     function readLoginGuard() {
         try {
             const value = JSON.parse(localStorage.getItem(LOGIN_GUARD_KEY) || 'null');
-            if (!value) return { attempts: 0, lockedUntil: 0 };
-            if (Number(value.lockedUntil || 0) <= Date.now()) {
+            if (!value) return { attempts: 0, lockedUntil: 0, windowUntil: 0 };
+            const now = Date.now();
+            const windowUntil = Number(value.windowUntil || value.lockedUntil || 0);
+            if (windowUntil <= now) {
                 localStorage.removeItem(LOGIN_GUARD_KEY);
-                return { attempts: 0, lockedUntil: 0 };
+                return { attempts: 0, lockedUntil: 0, windowUntil: 0 };
+            }
+            const lockedUntil = Number(value.lockedUntil || 0);
+            if (lockedUntil > 0 && lockedUntil <= now) {
+                localStorage.removeItem(LOGIN_GUARD_KEY);
+                return { attempts: 0, lockedUntil: 0, windowUntil: 0 };
             }
             return {
                 attempts: Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, Number(value.attempts || 0))),
-                lockedUntil: Number(value.lockedUntil || 0)
+                lockedUntil,
+                windowUntil
             };
         } catch (error) {
             localStorage.removeItem(LOGIN_GUARD_KEY);
-            return { attempts: 0, lockedUntil: 0 };
+            return { attempts: 0, lockedUntil: 0, windowUntil: 0 };
         }
     }
 
@@ -454,9 +600,11 @@
     function registerInvalidLogin() {
         const current = readLoginGuard();
         const attempts = Math.min(LOGIN_MAX_ATTEMPTS, current.attempts + 1);
+        const now = Date.now();
         return saveLoginGuard({
             attempts,
-            lockedUntil: Date.now() + LOGIN_LOCK_MS
+            lockedUntil: attempts >= LOGIN_MAX_ATTEMPTS ? now + LOGIN_LOCK_MS : 0,
+            windowUntil: current.windowUntil > now ? current.windowUntil : now + LOGIN_ATTEMPT_WINDOW_MS
         });
     }
 
@@ -481,7 +629,7 @@
             return false;
         }
         if (submit) submit.disabled = true;
-        setAccessFeedback(`Login bloqueado temporariamente. Tente novamente em ${formatLoginLock(remaining)}.`, true);
+        setAccessFeedback(`Proteção temporária após 3 senhas incorretas. Tente novamente em ${formatLoginLock(remaining)}.`, true);
         loginGuardTimer = global.setTimeout(applyLoginGuard, 1000);
         return true;
     }
@@ -655,8 +803,16 @@
         const ownsSessionKey = global.AloStorageScope?.ownsPhysicalKey;
         if (ownsSessionKey ? !ownsSessionKey(event.key, SESSION_KEY) : event.key !== SESSION_KEY) return;
         const stored = readSession();
-        if (!stored?.access_token || stored.access_token === session?.access_token) return;
+        if (!stored?.access_token) {
+            session = null;
+            sessionInvalidated = true;
+            emitStatus('local', 'Conta desconectada em outra aba');
+            if (!isPublicTaskView()) showAccessScreen();
+            return;
+        }
+        if (stored.access_token === session?.access_token && stored.refresh_token === session?.refresh_token) return;
         session = stored;
+        sessionInvalidated = false;
         updateRealtimeToken();
         recoveryAttempt = 0;
         emitStatus('connecting', 'Sessão atualizada; reconectando...');

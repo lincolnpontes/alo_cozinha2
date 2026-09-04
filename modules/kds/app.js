@@ -3,9 +3,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     db.configs.url = window.AloCloud?.getEndpoint?.() || '';
     let categoriaAtual = null;
     const KDS_ORDER_KEY = 'alo_kds_product_order_v1';
+    const KDS_VIEW_KEY = 'alo_kds_product_view_v1';
     let ordemProdutos = ['cadastro', 'categoria', 'mais_pedidos'].includes(localStorage.getItem(KDS_ORDER_KEY))
         ? localStorage.getItem(KDS_ORDER_KEY)
         : 'cadastro';
+    let visualizacaoProdutos = ['lista', 'quadro'].includes(localStorage.getItem(KDS_VIEW_KEY))
+        ? localStorage.getItem(KDS_VIEW_KEY)
+        : 'lista';
     let menuOrdemAberto = false;
     let popularidadeCache = { assinatura: '', valores: {} };
     let popularidadeRemota = (() => { try { return JSON.parse(localStorage.getItem('alo_kds_popularity_v1') || '{}'); } catch (error) { return {}; } })();
@@ -240,6 +244,11 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     document.addEventListener('pointerdown', event => {
         const picker = document.querySelector('.header-area-picker');
         if (picker && !picker.contains(event.target)) fecharSeletorAreas();
+        const orderPicker = document.querySelector('.kds-order-picker');
+        if (menuOrdemAberto && orderPicker && !orderPicker.contains(event.target)) {
+            menuOrdemAberto = false;
+            renderizarFiltros();
+        }
     });
 
     function prepararAudioNoPrimeiroToque() {
@@ -427,7 +436,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             setoresTarefas: [{ id: 'setor_cozinha', nome: 'Cozinha', emoji: '🧑‍🍳', ativo: true }],
             funcionarios: [], tarefas: [], coreCompartilhado: null,
             configsTarefas: { som: 'beep', volume: '80', repeticaoMinutos: '5' },
-            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido", loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true }, loginObrigatorioChecklistVisoes: { documentos:false, geral:false }, modulosVisiveis: { kds:true, checklist:true, compras:true, l42:true } }
+            configs: { modo: "panelas", url: "", senhaModo: "", somCozinha: "sem_som", somPanelas: "sem_som", volumeCozinha: "100", volumePanelas: "70", dadosBaixados: false, bancoPendente: false, revisaoBanco: 0, suporteDadosCompartilhados: false, telaAtiva: "sim", inatividade: "0", reenvio: "permitido", virBuscarAtivo: true, loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true }, loginObrigatorioChecklistVisoes: { documentos:false, geral:false }, modulosVisiveis: { kds:true, checklist:true, compras:true, l42:true } }
         };
         let local = JSON.parse(localStorage.getItem('kds_v1_db'));
         if(local) {
@@ -440,6 +449,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             if(!local.configs.telaAtiva) local.configs.telaAtiva = "sim";
             if(!local.configs.inatividade) local.configs.inatividade = "0";
             if(!local.configs.reenvio) local.configs.reenvio = "permitido";
+            if(typeof local.configs.virBuscarAtivo !== 'boolean') local.configs.virBuscarAtivo = true;
             local.configs.loginObrigatorioModulos = { kds:false, checklist:false, compras:true, l42:true, ...(local.configs.loginObrigatorioModulos || {}) };
             local.configs.loginObrigatorioChecklistVisoes = { documentos:false, geral:false, ...(local.configs.loginObrigatorioChecklistVisoes || {}) };
             local.configs.modulosVisiveis = { kds:true, checklist:true, compras:true, l42:true, ...(local.configs.modulosVisiveis || {}) };
@@ -588,7 +598,10 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function renderizarFiltros() {
         const rotulos = { cadastro: 'Ordem de cadastro', categoria: 'Ordem por categoria', mais_pedidos: 'Mais pedidos' };
-        let html = `<div class="kds-order-picker"><button type="button" class="chip kds-all-chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="toggleMenuOrdemProdutos(event)" aria-haspopup="menu" aria-expanded="${menuOrdemAberto}">TODOS <span class="filter-menu-chevron" aria-hidden="true">⌄</span></button><div class="kds-order-menu" style="display:${menuOrdemAberto ? 'grid' : 'none'}" role="menu" aria-label="Ordenar produtos">${Object.entries(rotulos).map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${ordemProdutos === id}" class="${ordemProdutos === id ? 'selected' : ''}" onclick="selecionarOrdemProdutos('${id}', event)"><span>${label}</span><b>${ordemProdutos === id ? '✓' : ''}</b></button>`).join('')}</div></div>`;
+        const visualizacoes = { lista: 'Lista', quadro: 'Quadro' };
+        const opcoesVisualizacao = Object.entries(visualizacoes).map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${visualizacaoProdutos === id}" class="${visualizacaoProdutos === id ? 'selected' : ''}" onclick="selecionarVisualizacaoProdutos('${id}', event)"><span>${label}</span><b>${visualizacaoProdutos === id ? '✓' : ''}</b></button>`).join('');
+        const opcoesOrdem = Object.entries(rotulos).map(([id, label]) => `<button type="button" role="menuitemradio" aria-checked="${ordemProdutos === id}" class="${ordemProdutos === id ? 'selected' : ''}" onclick="selecionarOrdemProdutos('${id}', event)"><span>${label}</span><b>${ordemProdutos === id ? '✓' : ''}</b></button>`).join('');
+        let html = `<div class="kds-order-picker"><button type="button" class="chip kds-all-chip ${categoriaAtual === null ? 'active' : ''}" style="${categoriaAtual === null ? 'background:#ccc; color:#000;' : ''}" onclick="toggleMenuOrdemProdutos(event)" aria-haspopup="menu" aria-expanded="${menuOrdemAberto}">TODOS <span class="filter-menu-chevron" aria-hidden="true">⌄</span></button><div class="kds-order-menu" style="display:${menuOrdemAberto ? 'grid' : 'none'}" role="menu" aria-label="Visualizar e ordenar produtos"><div class="kds-order-menu-title">Visualização</div>${opcoesVisualizacao}<div class="kds-order-menu-title">Ordenação</div>${opcoesOrdem}</div></div>`;
         db.categorias.forEach(cat => { const isActive = categoriaAtual === cat.nome; html += `<div class="chip ${isActive ? 'active' : ''}" style="background-color: ${cat.cor}; color: ${cat.corTexto};" onclick="filtrarCategoria('${cat.nome}')">${cat.nome}</div>`; });
         document.getElementById('containerFiltros').innerHTML = html;
     }
@@ -624,6 +637,17 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         renderizarFiltros();
         renderizarListaPanelas();
         if (ordem === 'mais_pedidos') atualizarPopularidadeRemota();
+    }
+
+    function selecionarVisualizacaoProdutos(visualizacao, event) {
+        event?.stopPropagation?.();
+        if (!['lista', 'quadro'].includes(visualizacao)) return;
+        visualizacaoProdutos = visualizacao;
+        categoriaAtual = null;
+        menuOrdemAberto = false;
+        localStorage.setItem(KDS_VIEW_KEY, visualizacao);
+        renderizarFiltros();
+        renderizarListaPanelas();
     }
 
     async function atualizarPopularidadeRemota() {
@@ -666,6 +690,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function renderizarListaPanelas() {
         const lista = document.getElementById('listaProdutosPanelas'); lista.innerHTML = '';
+        lista.classList.toggle('kds-grid-view', visualizacaoProdutos === 'quadro');
         const areaAtual = getAreaAtual();
         const produtosDaArea = db.produtos.filter(p => getAreasOrigemProduto(p).includes(areaAtual.id));
         let filtrados = categoriaAtual === null ? [...produtosDaArea] : produtosDaArea.filter(p => p.categoria === categoriaAtual);
@@ -1117,9 +1142,12 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 emoji = '🔥';
                 statusTxt = 'Em preparo';
                 tempoStr = getTempoRelativo(p.timestamp);
+                const botaoVirBuscar = db.configs.virBuscarAtivo !== false
+                    ? `<button class="btn-pedido-acao acao-buscar" onclick="executarAcaoPedido(this, '${p.id}', 'buscar')" aria-label="Pedir para vir buscar" title="Vir buscar"><span>🏃🏻‍♀️</span><span class="acao-label">Vir buscar</span></button>`
+                    : '';
                 acoesHtml = `
                     <button class="btn-pedido-acao acao-enviar" onclick="executarAcaoPedido(this, '${p.id}', 'enviado')" aria-label="Enviar pedido" title="Enviar"><span class="emoji-enviar">⬆</span><span class="acao-label">Enviar</span></button>
-                    <button class="btn-pedido-acao acao-buscar" onclick="executarAcaoPedido(this, '${p.id}', 'buscar')" aria-label="Pedir para vir buscar" title="Vir buscar"><span>🏃🏻‍♀️</span><span class="acao-label">Vir buscar</span></button>
+                    ${botaoVirBuscar}
                     <button class="btn-pedido-acao acao-cancelar" onclick="cancelarPedidoPeloBotao(this, '${p.id}')" aria-label="Cancelar pedido" title="Cancelar"><span>❌</span></button>`;
             }
             else if (p.status === 'enviado') {
@@ -1850,6 +1878,27 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     var sincronizarPuxarNuvem;
 
+    async function coletarFotosTarefasBackup() {
+        const tarefasComFoto = (db.tarefas || []).filter(tarefa => tarefa && tarefa.fotoReferencia && tarefa.id);
+        const photos = {};
+        if (!tarefasComFoto.length) return photos;
+        if (!db.configs.url) throw new Error('Conecte a nuvem para incluir as fotos das tarefas no backup.');
+        for (const tarefa of tarefasComFoto) {
+            const file = await AloApi.getTaskPhoto(db.configs.url, tarefa.id, true);
+            if (!file?.encontrada || !file.dataUrl) throw new Error(`A foto da tarefa “${tarefa.nome || tarefa.id}” não pôde ser incluída no backup.`);
+            photos[tarefa.id] = { dataUrl:file.dataUrl, mime:file.mime || 'image/jpeg', name:file.nome || `tarefa-${tarefa.id}.jpg` };
+        }
+        return photos;
+    }
+
+    async function restaurarFotosTarefasBackup(photos) {
+        const entries = Object.entries(photos || {});
+        if (!entries.length) return;
+        for (const [taskId, file] of entries) {
+            if (file?.dataUrl) await AloApi.uploadTaskPhoto(db.configs.url, taskId, file.dataUrl);
+        }
+    }
+
     async function exportarDadosFisicos() {
         const button = document.getElementById('btnExportarBackupCompleto');
         const status = document.getElementById('statusImportacaoBackup');
@@ -1873,11 +1922,17 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 AloL42Module.getBackup()
             ]);
             await Promise.allSettled([AloTechnicalSheets.syncNow(), AloChecklistDocuments.syncNow()]);
+            if (status) status.innerText = 'Incluindo fotos, logomarca e documentos...';
+            const [fichasTecnicas, documentosChecklist, taskPhotos] = await Promise.all([
+                AloTechnicalSheets.getBackupWithMedia(),
+                AloChecklistDocuments.getBackupWithMedia(),
+                coletarFotosTarefasBackup()
+            ]);
             const dataToExport = {
                 app: 'alo_cozinha',
                 format: 'backup_completo',
-                schemaVersion: 3,
-                version: '2.1.48',
+                schemaVersion: 4,
+                version: '2.1.49',
                 exportadoEm: new Date().toISOString(),
                 kdsChecklist: {
                     db: JSON.parse(JSON.stringify(db)),
@@ -1888,9 +1943,10 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 },
                 compras,
                 l42,
-                fichasTecnicas: AloTechnicalSheets.getBackup(),
-                documentosChecklist: AloChecklistDocuments.getBackup(),
-                compartilhado: AloSharedData.getBackup()
+                fichasTecnicas,
+                documentosChecklist,
+                compartilhado: AloSharedData.getBackup(),
+                media: { taskPhotos }
             };
             const dataStr = JSON.stringify(dataToExport, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
@@ -2014,7 +2070,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
 
     function separarModulosDoBackup(importedData) {
         if (importedData?.format === 'backup_completo' && importedData?.app === 'alo_cozinha') {
-            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, fichasTecnicas: importedData.fichasTecnicas || null, documentosChecklist: importedData.documentosChecklist || null, compartilhado: importedData.compartilhado || null, completo: true };
+            return { kdsChecklist: importedData.kdsChecklist || null, compras: importedData.compras || null, l42: importedData.l42 || null, fichasTecnicas: importedData.fichasTecnicas || null, documentosChecklist: importedData.documentosChecklist || null, compartilhado: importedData.compartilhado || null, media: importedData.media || null, completo: true };
         }
         if (importedData?.app_id === 'alofeira') return { kdsChecklist: null, compras: importedData, l42: null, fichasTecnicas: null, documentosChecklist:null, compartilhado: null, completo: false };
         if (importedData?.formato === 'alo-etiqueta-backup-completo') return { kdsChecklist: null, compras: null, l42: importedData, fichasTecnicas: null, documentosChecklist:null, compartilhado: null, completo: false };
@@ -2092,6 +2148,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 normalizarSonsConfigurados();
                 salvarBancoLocal();
                 salvarHistoricoLocal();
+                await restaurarFotosTarefasBackup(modulos.media?.taskPhotos);
                 etapasConcluidas.push('KDS e Checklist');
             }
 
@@ -2106,13 +2163,13 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
             }
 
             if (modulos.fichasTecnicas) {
-                AloTechnicalSheets.restoreBackup(modulos.fichasTecnicas);
+                await AloTechnicalSheets.restoreBackupWithMedia(modulos.fichasTecnicas);
                 AloTechnicalSheets.syncNow().catch(() => {});
                 etapasConcluidas.push('Fichas Técnicas');
             }
 
             if (modulos.documentosChecklist) {
-                AloChecklistDocuments.restoreBackup(modulos.documentosChecklist);
+                await AloChecklistDocuments.restoreBackupWithMedia(modulos.documentosChecklist);
                 AloChecklistDocuments.syncNow().catch(() => {});
                 etapasConcluidas.push('Documentos do Checklist');
             }
@@ -2150,6 +2207,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         document.getElementById('configTelaAtiva').value = db.configs.telaAtiva || 'sim';
         document.getElementById('configInatividade').value = db.configs.inatividade || '0';
         document.getElementById('configReenvio').value = db.configs.reenvio || 'permitido';
+        document.getElementById('configVirBuscarAtivo').checked = db.configs.virBuscarAtivo !== false;
         atualizarLabelsVolume();
     }
 
@@ -2171,6 +2229,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
         db.configs.telaAtiva = document.getElementById('configTelaAtiva').value;
         db.configs.inatividade = document.getElementById('configInatividade').value;
         db.configs.reenvio = document.getElementById('configReenvio').value;
+        db.configs.virBuscarAtivo = document.getElementById('configVirBuscarAtivo').checked;
         if(configuracoesAnteriores !== JSON.stringify(dadosBancoParaNuvem().configs)) marcarBancoAlterado();
         else salvarBancoLocal();
 
@@ -3093,6 +3152,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
                 telaAtiva: settings.telaAtiva || 'sim',
                 inatividade: settings.inatividade || '0',
                 reenvio: settings.reenvio || 'permitido',
+                virBuscarAtivo: settings.virBuscarAtivo !== false,
                 loginObrigatorioModulos: { kds:false, checklist:false, compras:true, l42:true, ...(settings.loginObrigatorioModulos || {}) },
                 loginObrigatorioChecklistVisoes: { documentos:false, geral:false, ...(settings.loginObrigatorioChecklistVisoes || {}) },
                 modulosVisiveis: { kds:true, checklist:true, compras:true, l42:true, ...(settings.modulosVisiveis || {}) }
@@ -3260,7 +3320,7 @@ const STORAGE_KDS_SELECTED_AREA = 'alo_kds_selected_area_v1';
     };
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.48').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=2.1.49').catch(() => {}));
     }
 
     instalarProtecaoRolagemModais();

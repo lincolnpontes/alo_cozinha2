@@ -1,5 +1,5 @@
 let backendFeiraValidadoEm = 0;
-const CAMPOS_CONFIG_LOCAIS_FEIRA = ['url', 'colabAtivoId', 'modo', 'dadosBaixados', 'ultimaMudancaLocal', 'ultimoSyncConfirmado', 'syncPendente', 'relogioServidorOffset', 'relogioServidorSincronizadoEm', 'backendComControleRevisao', 'importacaoInicialPendente'];
+const CAMPOS_CONFIG_LOCAIS_FEIRA = ['url', 'colabAtivoId', 'modo', 'agruparComprasPorStatus', 'dadosBaixados', 'ultimaMudancaLocal', 'ultimoSyncConfirmado', 'syncPendente', 'relogioServidorOffset', 'relogioServidorSincronizadoEm', 'backendComControleRevisao', 'importacaoInicialPendente'];
 
 function atualizarEstadoSync(estado, mensagem) {
     const indicador = document.getElementById('syncIndicador');
@@ -564,7 +564,8 @@ async function restaurarBackupComprasPeloHost(importado) {
         const nuvemAtual = await baixarBancoNuvem(20000);
         const restaurado = normalizarBanco(importado);
         restaurado.configs.url = urlAtual;
-        restaurado.configs.modo = modoAtual === 'compras' ? 'compras' : 'pedido';
+        restaurado.configs.modo = ['pedido', 'compras', 'receber'].includes(modoAtual) ? modoAtual : 'pedido';
+        if(restaurado.configs.modo === 'receber' && restaurado.configs.modoReceberAtivo !== true) restaurado.configs.modo = 'compras';
         restaurado.configs.colabAtivoId = restaurado.colaboradores.some(item => item.id === operadorAtual && item.ativo !== false) ? operadorAtual : null;
         restaurado.configs.dadosBaixados = true;
         restaurado.configs.backendComControleRevisao = Boolean(nuvemAtual.serverNow && nuvemAtual.syncRevision !== undefined);

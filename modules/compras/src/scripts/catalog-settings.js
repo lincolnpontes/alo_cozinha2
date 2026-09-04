@@ -53,5 +53,36 @@ function renderizarFornecedoresVinculados() {
     function editarFormSubcat(idx) { let n = prompt("Novo nome para a subcategoria:", tempSubcats[idx]); if(n && n.trim() !== "") { tempRenames.push({old: tempSubcats[idx], new: n.trim()}); tempSubcats[idx] = n.trim(); renderFormSubcats(); } }
     function removerFormSubcat(idx) { const nome = tempSubcats[idx]; const catId = document.getElementById('catId').value; if(catId && db.produtos.some(p => p.ativo !== false && p.categoria === catId && p.subcategoria === nome)) return alert('Esta subcategoria ainda possui produtos. Mova esses produtos antes de removê-la.'); tempSubcats.splice(idx, 1); renderFormSubcats(); }
 
+    var abrirFormProdutoSemEstoque = abrirFormProduto;
+    abrirFormProduto = function(id, origem = null) {
+        abrirFormProdutoSemEstoque(id, origem);
+        const produto = id ? db.produtos.find(item => item.id === id) : null;
+        document.getElementById('prodEstoqueMinimo').value = produto?.estoqueMinimo ?? '';
+        document.getElementById('prodEstoqueMaximo').value = produto?.estoqueMaximo ?? '';
+    };
+
+    var salvarProdutoSemEstoque = salvarProduto;
+    salvarProduto = function() {
+        const minimumInput = document.getElementById('prodEstoqueMinimo');
+        const maximumInput = document.getElementById('prodEstoqueMaximo');
+        const minimumText = minimumInput.value.trim();
+        const maximumText = maximumInput.value.trim();
+        const minimum = minimumText === '' ? '' : parseFloatBr(minimumText);
+        const maximum = maximumText === '' ? '' : parseFloatBr(maximumText);
+        if (minimumText && minimum === '') { minimumInput.focus(); return alert('Digite um estoque mínimo válido.'); }
+        if (maximumText && maximum === '') { maximumInput.focus(); return alert('Digite um estoque máximo válido.'); }
+        if (minimum !== '' && maximum !== '' && maximum < minimum) { maximumInput.focus(); return alert('O estoque máximo precisa ser maior ou igual ao mínimo.'); }
+        let productId = document.getElementById('prodId').value;
+        if (!productId) { productId = `p_${Date.now()}`; document.getElementById('prodId').value = productId; }
+        const previousProduct = db.produtos.find(item => item.id === productId);
+        salvarProdutoSemEstoque();
+        const product = db.produtos.find(item => item.id === productId);
+        if (!product || product === previousProduct) return;
+        product.estoqueMinimo = minimum;
+        product.estoqueMaximo = maximum;
+        marcarMudancaEstrutural(product);
+        sincronizarFundo(false, true);
+    };
+
     function abrirFormCategoria(id) { fecharModal('modalListagem'); document.getElementById('novaSubcatNome').value = ''; tempRenames = []; const chkAvulso = document.getElementById('catPermiteAvulso'); if(id) { const c = db.categorias.find(x => x.id === id); document.getElementById('catId').value = id; document.getElementById('catNome').value = c.nome; document.getElementById('catCor').value = c.cor; document.getElementById('catCorTexto').value = c.corTexto; tempSubcats = c.subcategorias ? [...c.subcategorias] : []; chkAvulso.checked = c.permiteAvulso || false; chkAvulso.disabled = true; } else { document.getElementById('catId').value = ''; document.getElementById('catNome').value = ''; document.getElementById('catCor').value = '#1565C0'; document.getElementById('catCorTexto').value = '#ffffff'; tempSubcats = []; chkAvulso.checked = false; chkAvulso.disabled = false; } renderFormSubcats(); document.getElementById('modalFormCategoria').style.display = 'flex'; }
     function salvarCategoria() { const nome = document.getElementById('catNome').value.trim(); if(!nome) return alert('Informe o nome da categoria.'); const id = document.getElementById('catId').value || 'c_'+Date.now(); const agora = agoraServidor(); if(tempRenames.length > 0) { db.produtos.forEach(p => { if(p.categoria === id) { let rename = tempRenames.find(r => r.old === p.subcategoria); if(rename) { p.subcategoria = rename.new; p.atualizadoEm = agora; } } }); } const idx = db.categorias.findIndex(x => x.id === id); const anterior = idx >= 0 ? db.categorias[idx] : {}; const ordem = idx >= 0 && anterior.ordem !== undefined ? Number(anterior.ordem) : db.categorias.length; const novo = Object.assign({}, anterior, { id, nome, cor: document.getElementById('catCor').value, corTexto: document.getElementById('catCorTexto').value, subcategorias: Array.from(new Set(tempSubcats.map(s => s.trim()).filter(Boolean))), permiteAvulso: idx >= 0 ? Boolean(anterior.permiteAvulso) : document.getElementById('catPermiteAvulso').checked, ordem, ativo: true, atualizadoEm: agora }); if(idx >= 0) db.categorias[idx] = novo; else db.categorias.push(novo); marcarMudancaEstrutural(novo); fecharModal('modalFormCategoria'); abrirGerenciar('categorias', true); renderizarLista(); sincronizarFundo(false, true); }

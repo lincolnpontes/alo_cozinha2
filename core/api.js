@@ -67,8 +67,8 @@
         return post(baseUrl, { action: 'excluir_foto_tarefa', tarefaId: taskId });
     }
 
-    async function getTaskPhoto(baseUrl, taskId) {
-        const response = await request(buildUrl(baseUrl, { action: 'foto_tarefa', tarefaId: taskId }), { cache: 'no-store' });
+    async function getTaskPhoto(baseUrl, taskId, includeData = false) {
+        const response = await request(buildUrl(baseUrl, { action: 'foto_tarefa', tarefaId: taskId, dados: includeData ? '1' : '0' }), { cache: 'no-store' });
         return readJson(response, 'Não foi possível carregar a foto.');
     }
 

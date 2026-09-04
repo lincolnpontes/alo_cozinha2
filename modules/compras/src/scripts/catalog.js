@@ -6,7 +6,7 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
     function agendarReagrupamentoCompras() {
         if(timerReagruparCompras) clearTimeout(timerReagruparCompras);
         timerReagruparCompras = null;
-        if(db.configs.modo !== 'compras' || !agrupamentoCompradoAtivo) return;
+        if(db.configs.modo === 'pedido' || !agrupamentoCompradoAtivo) return;
         const agora = agoraServidor();
         const esperas = db.pedidosAtivos
             .filter(pedido => pedido.transicaoProgresso && agora - Number(pedido.transicaoProgresso) < 10000)
@@ -14,7 +14,7 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
         if(!esperas.length) return;
         timerReagruparCompras = setTimeout(() => {
             timerReagruparCompras = null;
-            if(db.configs.modo === 'compras' && agrupamentoCompradoAtivo) renderizarLista();
+            if(db.configs.modo !== 'pedido' && agrupamentoCompradoAtivo) renderizarLista();
         }, Math.min(...esperas));
     }
 
@@ -60,6 +60,8 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
                 let classesExtra = ""; let infoDireita = ""; let iconeListaPedido = '○'; let classeIconePedido = 'neutro';
                 let defaultUn = p.unidades && p.unidades.length > 0 ? p.unidades[0] : '';
                 let padraoTexto = (p.qtdPadrao !== null && p.qtdPadrao !== '') ? `(Padrão: ${p.qtdPadrao} ${defaultUn})` : '';
+                const limitesEstoque = [p.estoqueMinimo !== '' && p.estoqueMinimo != null ? `mín. ${p.estoqueMinimo}` : '', p.estoqueMaximo !== '' && p.estoqueMaximo != null ? `máx. ${p.estoqueMaximo}` : ''].filter(Boolean).join(' · ');
+                if(limitesEstoque) padraoTexto += `${padraoTexto ? '<br>' : ''}<span class="item-stock-limits">Estoque ${escaparHtml(limitesEstoque)}</span>`;
                 if(p.obsPadrao) { let quebra = padraoTexto ? '<br>' : ''; padraoTexto += `${quebra}<span style="color:#000; font-size:11px;">Obs Padrão: ${escaparHtml(p.obsPadrao)}</span>`; }
 
                 if (pedidoEditavel) {
@@ -108,6 +110,7 @@ function statusEfetivoNoAgrupamento(pedido, agora = agoraServidor()) {
             document.getElementById('containerBotoesEnvio').style.display = temRascunho ? 'flex' : 'none';
         } else {
             let comprasParaMostrar = db.pedidosAtivos.filter(pa => pa.status !== 'rascunho' && !pa.excluido && !pa.ocultoCompras);
+            if(db.configs.modo === 'receber') comprasParaMostrar = comprasParaMostrar.filter(pa => pa.status === 'pedido_forn');
             if(agrupamentoCompradoAtivo) {
                 comprasParaMostrar.sort((a, b) => {
                     let getStatusPrio = (s) => s === 'pendente' ? 1 : (s === 'pedido_forn' ? 2 : (s === 'cancelado' ? 4 : 3));

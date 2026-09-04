@@ -56,6 +56,7 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .kds-order-menu button { min-height: 45px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 13px; border: 0; border-bottom: 1px solid #edf0f1; background: #fff; color: #273940; font-size: 14px; font-weight: 750; text-align: left; cursor: pointer; }
         .kds-order-menu button:last-child { border-bottom: 0; }
         .kds-order-menu button.selected { background: #edf5f0; color: #196128; }
+        .kds-order-menu-title { padding: 7px 13px 5px; border-bottom: 1px solid #e6eaec; background: #f3f5f6; color: #617078; font-size: 11px; font-weight: 900; text-transform: uppercase; }
 
         .list { padding: 0; margin: 0; list-style: none; padding-bottom: 20px; }
         .item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: transform 0.2s; overflow: hidden; touch-action: pan-y; }
@@ -74,8 +75,21 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
         .painel-ultimos { flex: 0 0 35%; height: 35%; max-height: 35%; border-top: 3px solid #ccc; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
         .painel-titulo { min-height: 32px; padding: 3px 8px; background: #eee; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
         .painel-titulo button { min-width: 32px; min-height: 28px; padding: 0; }
+        .painel-titulo .btn-clear-history { display: inline-grid; place-items: center; border: 0; background: transparent; cursor: pointer; }
+        .painel-titulo .btn-clear-history img { width: 29px; height: 29px; display: block; }
 
         .swipe-hint { color: #1976D2; font-size: 24px; font-weight: bold; pointer-events: none; }
+        #listaProdutosPanelas.kds-grid-view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; align-content: start; }
+        #listaProdutosPanelas.kds-grid-view .item { min-width: 0; min-height: 76px; padding: 9px; border: 1px solid #dce2e5; border-radius: 7px; background: #fff; box-sizing: border-box; }
+        #listaProdutosPanelas.kds-grid-view .item-avatar { width: 34px; min-width: 34px; height: 34px; margin-right: 8px; }
+        #listaProdutosPanelas.kds-grid-view .item-title { white-space: normal; line-height: 1.15; }
+        #listaProdutosPanelas.kds-grid-view .swipe-hint { display: none; }
+        .kds-basic-toggle { margin: 0 0 15px; }
+
+        #areaPickerButton .header-area-emoji,
+        #tasksAreaPickerButton .header-area-emoji { font-size: 31px; }
+        #areaPickerButton .header-area-emoji .area-visual-image,
+        #tasksAreaPickerButton .header-area-emoji .area-visual-image { transform: scale(1.18); }
 
         .pedido-cozinha { align-items: stretch; gap: 10px; padding: 12px; cursor: default; touch-action: pan-y; }
         .pedido-aceitavel { cursor: pointer; }
@@ -290,6 +304,8 @@ body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; pad
                 font-size: var(--area-name-size-mobile, 15px);
             }
             .header-area-emoji { width: 27px; height: 27px; display: inline-flex; font-size: 22px; }
+            #areaPickerButton .header-area-emoji,
+            #tasksAreaPickerButton .header-area-emoji { font-size: 27px; }
             .header-area-chevron { font-size: 12px; }
             .header-area-options { position: fixed; top: 62px; left: 10px; width: calc(100vw - 20px); transform: none; }
         }

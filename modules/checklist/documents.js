@@ -462,11 +462,41 @@
         setSyncStatus(state.outbox.length ? 'syncing' : (navigator.onLine ? 'ok' : 'error'), state.outbox.length ? 'Alterações aguardando confirmação' : 'Documentos sincronizados');
     }
     function getBackup() { return { schemaVersion:1, ...clone(state) }; }
+    async function getBackupWithMedia() {
+        const backup = getBackup();
+        backup.media = { files:{} };
+        const documentsWithFile = state.documents.filter(item => !item.excluido && item.arquivo);
+        if (!documentsWithFile.length) return backup;
+        if (!deps.getUrl()) throw new Error('Conecte a nuvem para incluir os documentos anexados no backup.');
+        for (const record of documentsWithFile) {
+            const file = await global.AloApi.getChecklistDocumentFile(deps.getUrl(), record.id, true);
+            if (!file?.encontrada || !file.dataUrl) throw new Error(`O arquivo de “${record.nome}” não pôde ser incluído no backup.`);
+            backup.media.files[record.id] = {
+                dataUrl:file.dataUrl,
+                mime:file.mime || record.arquivo?.mime || 'application/octet-stream',
+                name:file.nome || record.arquivo?.nome || `documento-${record.id}`
+            };
+        }
+        return backup;
+    }
     function restoreBackup(backup) {
         if (!backup || !Array.isArray(backup.documents)) return false;
         state = { documents:backup.documents.map(normalizeDocument), outbox:Array.isArray(backup.outbox) ? backup.outbox : [], revision:Number(backup.revision || 0) };
         saveState(); render(); return true;
     }
+    async function restoreBackupWithMedia(backup) {
+        if (!restoreBackup(backup)) return false;
+        const files = backup?.media?.files || {};
+        const entries = Object.entries(files);
+        if (!entries.length) return true;
+        if (!deps.getUrl()) throw new Error('Conecte a nuvem para restaurar os documentos anexados.');
+        for (const [documentId, file] of entries) {
+            if (!file?.dataUrl) continue;
+            await global.AloApi.uploadChecklistDocument(deps.getUrl(), documentId, file.dataUrl, file.name || `documento-${documentId}`);
+            if (String(file.mime || '').startsWith('image/')) filePreviewCache.set(documentId, file.dataUrl);
+        }
+        return true;
+    }
 
-    global.AloChecklistDocuments = Object.freeze({ configure, activate, render, openManager, closeManager, renderManager, openForm, closeForm, openDetail, closeDetail, openImageViewer, closeImageViewer, changeImageZoom, shareFile, handleFile, removeFileDraft, saveForm, deleteCurrent, openFile, syncNow, getBackup, restoreBackup });
+    global.AloChecklistDocuments = Object.freeze({ configure, activate, render, openManager, closeManager, renderManager, openForm, closeForm, openDetail, closeDetail, openImageViewer, closeImageViewer, changeImageZoom, shareFile, handleFile, removeFileDraft, saveForm, deleteCurrent, openFile, syncNow, getBackup, getBackupWithMedia, restoreBackup, restoreBackupWithMedia });
 })(window);

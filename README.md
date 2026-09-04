@@ -1,13 +1,16 @@
-# Alô Cozinha v2.1.48
+# Alô Cozinha v2.1.49
 
 Aplicativo para operação de restaurante com quatro módulos: pedidos entre áreas (KDS), checklist por setor, Lista de Compras e Etiquetas.
 
-- A v2.1.48 recupera a exibição integral da Lista de Compras para administradores, confirma a hidratação autenticada antes de abrir o módulo e impede que uma restauração comece enquanto Compras não estiver pronto na nuvem.
+- A v2.1.49 coordena a renovação da sessão Supabase entre módulos e abas, evita reutilização do refresh token e recupera a conexão sem exigir logout após falhas transitórias.
+- O backup completo v2.1.49 inclui dados do restaurante, logomarca, setores, funcionários e as mídias privadas de tarefas, fichas técnicas e documentos, com restauração para o Storage do Supabase.
+- A Lista de Compras ganha estoque mínimo/máximo e o modo opcional Receber; o KDS ganha visualização em quadro, controle de “Vir buscar”, ícones maiores de área e uma nova ação para limpar o histórico.
+- Etiquetas passa a usar somente o tema transparente integrado, inclusive para bancos antigos.
 
 ## Novidades da v2
 
 - A v2.1.47 isola todo o armazenamento local, o IndexedDB e os caches por Alô Cozinha e por conta Supabase. Os módulos não leem nem sobrescrevem dados dos aplicativos antigos, e Etiquetas deixou de importar armazenamento legado.
-- A v2.1.47 protege entrada, cadastro e recuperação de senha com Cloudflare Turnstile validado pelo Supabase, além de bloquear o aparelho por cinco minutos após três senhas incorretas.
+- A v2.1.47 protege entrada, cadastro e recuperação de senha com Cloudflare Turnstile validado pelo Supabase. Na v2.1.49, a proteção local após três senhas incorretas foi reduzida para 30 segundos para não prender o operador.
 - A v2.1.47 impede que exclusões e retornos do módulo Etiquetas reconstruam a tela antiga do Alô Etiqueta e mantém o cabeçalho integrado.
 - A v2.1.47 centraliza as ações dos cartões de atividade, capitaliza os exemplos do Etiquetas e refina o ícone de Configurações.
 - O APK v2.1.47 mantém os arquivos empacotados e passa a servi-los por uma origem HTTPS interna segura, compatível com o Turnstile sem atualizar o app por fora da Play Store.

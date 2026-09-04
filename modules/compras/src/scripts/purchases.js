@@ -1,7 +1,7 @@
 function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(pa))]); atualizarBotaoDesfazer(); }
     function desfazerAcao() { if(pilhaDesfazer.length === 0) return; const agora = agoraServidor(); let last = pilhaDesfazer.pop(); let itensRestore = Array.isArray(last) ? last : (last.pedidos || [last]); itensRestore.forEach(itemBackup => { let idx = db.pedidosAtivos.findIndex(x => x.idUnico === itemBackup.idUnico); if(idx !== -1) { itemBackup.dataStatus = agora; db.pedidosAtivos[idx] = itemBackup; } }); if(last && !Array.isArray(last) && last.produtos) { last.produtos.forEach(produtoBackup => { produtoBackup.atualizadoEm = agora; const idx = db.produtos.findIndex(p => p.id === produtoBackup.id); if(idx >= 0) db.produtos[idx] = produtoBackup; else db.produtos.push(produtoBackup); }); } db.configs.syncPendente = true; salvarBanco(); renderizarLista(); sincronizarFundo(false, true); atualizarBotaoDesfazer(); mostrarToast('Última alteração desfeita.', 'sucesso'); }
-    function atualizarCentroFiltrosCompras() { const centro = document.getElementById('filtrosCentroCompras'); const barra = document.querySelector('.filters'); const acoes = document.getElementById('acoesSelecaoCompras'); const desfazer = document.getElementById('btnDesfazerBar'); const visivel = db.configs.modo === 'compras' && (acoes.style.display !== 'none' || desfazer.style.display !== 'none'); centro.style.display = visivel ? 'flex' : 'none'; barra.classList.toggle('com-centro', visivel); }
-    function atualizarBotaoDesfazer() { const btn = document.getElementById('btnDesfazerBar'); if (db.configs.modo === 'compras' && pilhaDesfazer.length > 0 && !modoSelecaoAtivo) { btn.style.display = 'inline-flex'; } else { btn.style.display = 'none'; } atualizarCentroFiltrosCompras(); }
+    function atualizarCentroFiltrosCompras() { const centro = document.getElementById('filtrosCentroCompras'); const barra = document.querySelector('.filters'); const acoes = document.getElementById('acoesSelecaoCompras'); const desfazer = document.getElementById('btnDesfazerBar'); const visivel = db.configs.modo !== 'pedido' && (acoes.style.display !== 'none' || desfazer.style.display !== 'none'); centro.style.display = visivel ? 'flex' : 'none'; barra.classList.toggle('com-centro', visivel); }
+    function atualizarBotaoDesfazer() { const btn = document.getElementById('btnDesfazerBar'); if (db.configs.modo !== 'pedido' && pilhaDesfazer.length > 0 && !modoSelecaoAtivo) { btn.style.display = 'inline-flex'; } else { btn.style.display = 'none'; } atualizarCentroFiltrosCompras(); }
 
     function getPermissoesComprasColab(colaborador = null) {
         const atual = arguments.length > 0
@@ -15,7 +15,7 @@ function registrarDesfazer(pa) { pilhaDesfazer.push([JSON.parse(JSON.stringify(p
     }
 
     function acaoToqueSimples(el) {
-        if(db.configs.modo === 'compras') return abrirAcoesCompra(el.getAttribute('data-id'), el);
+        if(db.configs.modo !== 'pedido') return abrirAcoesCompra(el.getAttribute('data-id'), el);
         const pId = el.getAttribute('data-id');
         const pedId = el.getAttribute('data-pedid');
         const produto = db.produtos.find(x => x.id === pId);

@@ -479,7 +479,10 @@ async function handleFileGet(ctx: CloudContext, url: URL): Promise<Response | nu
   if (action === "foto_tarefa") {
     const metadata = await getFileMetadata(ctx, "taskPhotos", String(url.searchParams.get("tarefaId") || ""));
     if (!metadata) return json({ status: "ok", encontrada: false });
-    return json({ status: "ok", encontrada: true, atualizadaEm: metadata.atualizadoEm, url: await signedFile(ctx, metadata) });
+    const result: JsonObject = { status: "ok", encontrada: true, ...metadata };
+    if (url.searchParams.get("dados") === "1") result.dataUrl = await dataUrlForFile(ctx, metadata);
+    else result.url = await signedFile(ctx, metadata);
+    return json(result);
   }
   if (action === "arquivo_documento") {
     const metadata = await getFileMetadata(ctx, "files", String(url.searchParams.get("documentoId") || ""));

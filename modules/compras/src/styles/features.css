@@ -27,6 +27,11 @@
         .pedido-draft-toggle { border: 0; background: transparent; cursor: pointer; }
         .pedido-flow-state { min-height: 42px; align-items: center; justify-content: center; margin: -2px 0 13px; padding: 8px 11px; border: 1px solid #e7c47f; border-left: 5px solid #d98500; border-radius: 7px; background: #fff8e8; color: #61420a; box-shadow: 0 2px 8px rgba(126, 87, 16, .08); }
         .pedido-flow-state strong { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .3px; }
+        .pedido-stock-guide { min-height:38px; align-items:center; justify-content:space-between; gap:10px; margin:-5px 0 12px; padding:7px 10px; border:1px solid #b9d8d1; border-radius:6px; background:#edf7f5; color:#245c52; }
+        .pedido-stock-guide strong { font-size:10px; font-weight:900; }
+        .pedido-stock-guide span { font-size:13px; font-weight:800; text-align:right; }
+        .produto-estoque-limites { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+        .item-stock-limits { color:#267064; font-size:11px; font-weight:800; }
         .btn-editar-pedido { background:#238636; }
 
         .menu-compra-overlay { display:none; position:fixed; inset:0; z-index:1050; background:transparent; }

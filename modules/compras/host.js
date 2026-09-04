@@ -2,7 +2,8 @@
     const STORAGE_KEY = 'alofeira_v1';
     const MODE_LABELS = {
         pedido: { name: 'Pedir', emoji: '📝' },
-        compras: { name: 'Comprar', emoji: '🛒' }
+        compras: { name: 'Comprar', emoji: '🛒' },
+        receber: { name: 'Receber', emoji: '📦' }
     };
     let getServerUrl = () => '';
     let loadPromise = null;
@@ -121,6 +122,9 @@
         const profileName = document.getElementById('feiraProfileName');
         const profileEmoji = document.getElementById('feiraProfileEmoji');
         const syncIndicator = document.getElementById('feiraSyncIndicator');
+        const receiveOption = document.querySelector('[data-feira-mode="receber"]');
+        const buyOption = document.querySelector('[data-feira-mode="compras"]');
+        const receiveSetting = document.getElementById('comprasReceiveModeEnabled');
         if (modeName) modeName.textContent = label.name;
         if (modeEmoji) modeEmoji.textContent = label.emoji;
         if (profileName) profileName.textContent = state.profileName || 'Perfil';
@@ -130,6 +134,9 @@
             syncIndicator.title = state.syncMessage || 'Estado da sincronização de Compras';
             syncIndicator.setAttribute('aria-label', syncIndicator.title);
         }
+        if (receiveOption) receiveOption.style.display = state.receiveModeEnabled && state.canReceive !== false ? 'grid' : 'none';
+        if (buyOption) buyOption.style.display = state.canBuy !== false || (!state.receiveModeEnabled && state.canReceive !== false) ? 'grid' : 'none';
+        if (receiveSetting) receiveSetting.checked = state.receiveModeEnabled === true;
         document.querySelectorAll('[data-feira-mode]').forEach(button => {
             const selected = button.dataset.feiraMode === mode;
             button.classList.toggle('selected', selected);
@@ -161,6 +168,14 @@
         updateHeader({ ...currentHeaderState(), mode });
         const child = await waitForChild();
         child.alterarModo(mode);
+    }
+
+    async function setReceiveModeEnabled(enabled) {
+        const child = await waitForChild();
+        if (typeof child.definirModoReceberAtivoPeloHost !== 'function') throw new Error('Atualize a Lista de Compras para configurar o recebimento.');
+        const state = child.definirModoReceberAtivoPeloHost(Boolean(enabled));
+        updateHeader(state);
+        return state;
     }
 
     async function openProfile() {
@@ -286,7 +301,7 @@
     }
 
     global.AloFeiraModule = Object.freeze({
-        configure, open, syncServerUrl, ensureCloudReady, toggleModePicker, closeModePicker, setMode,
+        configure, open, syncServerUrl, ensureCloudReady, toggleModePicker, closeModePicker, setMode, setReceiveModeEnabled,
         updateHeader, refreshHeader, openProfile, openManager, prepareLogin, authenticateOperator,
         logout, getBackup, restoreBackup, getSharedSnapshot, getCategories, applySharedPeople, applySharedRestaurant, activateSharedPerson,
         registerProductPrice, createProductForIngredient, syncNow, clearHistory, backToSettings

@@ -34,6 +34,13 @@ function abrirModalEditarPedido(paId, pId) {
     }
 
     const pedidoAtual = paId ? db.pedidosAtivos.find(x => x.idUnico === paId) : null;
+    const stockGuide = document.getElementById('editPedidoStockGuide');
+    const hasMinimum = p.estoqueMinimo !== '' && p.estoqueMinimo != null;
+    const hasMaximum = p.estoqueMaximo !== '' && p.estoqueMaximo != null;
+    if (stockGuide) {
+        stockGuide.style.display = hasMinimum || hasMaximum ? 'flex' : 'none';
+        stockGuide.innerHTML = `<strong>ESTOQUE IDEAL</strong><span>${hasMinimum ? `Mín. ${escaparHtml(p.estoqueMinimo)}` : ''}${hasMinimum && hasMaximum ? ' · ' : ''}${hasMaximum ? `Máx. ${escaparHtml(p.estoqueMaximo)}` : ''}</span>`;
+    }
     const flowState = document.getElementById('editPedidoFlowState');
     if(pedidoAtual) {
         document.getElementById('editPedidoArea').style.display = 'block';

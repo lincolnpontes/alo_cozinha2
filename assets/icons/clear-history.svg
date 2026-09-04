@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Limpar histórico">
+  <rect x="12" y="14" width="24" height="27" rx="5" fill="#eef2f3" stroke="#455a64" stroke-width="3"/>
+  <path d="M9 13h30M18 13V8h12v5" fill="none" stroke="#455a64" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19 21v12M29 21v12" fill="none" stroke="#455a64" stroke-width="3" stroke-linecap="round"/>
+  <path d="M38 27a10 10 0 0 1-9 11" fill="none" stroke="#2e7d32" stroke-width="3" stroke-linecap="round"/>
+  <path d="m28 34 1 4 4-1" fill="none" stroke="#2e7d32" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

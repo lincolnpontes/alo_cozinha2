@@ -11,6 +11,7 @@ function criarBancoBase() {
             pedidosAtivos: [],
             configs: {
                 modo: "pedido",
+                modoReceberAtivo: false,
                 senhaAdminHash: "",
                 exigirColaborador: true,
                 agruparComprasPorStatus: false,
@@ -50,10 +51,13 @@ function criarBancoBase() {
         });
         banco.categorias.forEach((c, index) => { if(!c.subcategorias) c.subcategorias = []; if(c.ativo === undefined) c.ativo = true; if(c.ordem === undefined) c.ordem = index; });
         banco.categorias.sort((a, b) => Number(a.ordem || 0) - Number(b.ordem || 0));
-        banco.produtos.forEach(p => { if(!p.unidades) p.unidades = ['']; if(!p.fornecedores) p.fornecedores = []; p.historicoPrecos = AloFeiraDomain.normalizarHistoricoPrecos(p.historicoPrecos, p.atualizadoEm); if(!p.precosExcluidos || typeof p.precosExcluidos !== 'object') p.precosExcluidos = {}; if(p.ativo === undefined) p.ativo = true; });
+        banco.produtos.forEach(p => { if(!p.unidades) p.unidades = ['']; if(!p.fornecedores) p.fornecedores = []; p.estoqueMinimo = p.estoqueMinimo === '' || p.estoqueMinimo == null ? '' : Math.max(0, Number(p.estoqueMinimo) || 0); p.estoqueMaximo = p.estoqueMaximo === '' || p.estoqueMaximo == null ? '' : Math.max(0, Number(p.estoqueMaximo) || 0); p.historicoPrecos = AloFeiraDomain.normalizarHistoricoPrecos(p.historicoPrecos, p.atualizadoEm); if(!p.precosExcluidos || typeof p.precosExcluidos !== 'object') p.precosExcluidos = {}; if(p.ativo === undefined) p.ativo = true; });
         banco.fornecedores.forEach(f => { if(f.ativo === undefined) f.ativo = true; });
         banco.colaboradores.forEach(c => { if(c.ativo === undefined) c.ativo = true; if(!c.emoji) c.emoji = '👤'; });
         banco.configs.agruparComprasPorStatus = banco.configs.agruparComprasPorStatus === true;
+        banco.configs.modoReceberAtivo = banco.configs.modoReceberAtivo === true;
+        if(!['pedido', 'compras', 'receber'].includes(banco.configs.modo)) banco.configs.modo = 'pedido';
+        if(banco.configs.modo === 'receber' && !banco.configs.modoReceberAtivo) banco.configs.modo = 'compras';
         if(banco.configs.ultimaMudancaLocal === undefined) banco.configs.ultimaMudancaLocal = 0;
         if(banco.configs.historicoApagadoEm === undefined) banco.configs.historicoApagadoEm = 0;
         if(banco.configs.relogioServidorOffset === undefined) banco.configs.relogioServidorOffset = 0;
@@ -95,7 +99,7 @@ function criarBancoBase() {
     }
     function podeUsarProdutoCompras(produto, modo = db.configs.modo, avisar = false) {
         const permitido = Boolean(produto && podeUsarCategoriaCompras(produto.categoria, modo));
-        if(!permitido && avisar) mostrarToast(`Seu perfil não pode ${modo === 'pedido' ? 'pedir' : 'comprar'} itens desta categoria.`, 'erro');
+        if(!permitido && avisar) mostrarToast(`Seu perfil não pode ${modo === 'pedido' ? 'pedir' : (modo === 'receber' ? 'receber' : 'comprar')} itens desta categoria.`, 'erro');
         return permitido;
     }
     function temAcessoAdmin() { const ativos = db.colaboradores.filter(c => c.ativo !== false); if(ativos.length === 0) return true; const atual = ativos.find(c => c.id === db.configs.colabAtivoId); return Boolean(atual && atual.isAdmin); }
